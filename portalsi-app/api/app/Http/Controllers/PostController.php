@@ -1,0 +1,918 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Events\NotificationCreated;
+use App\Jobs\GenerateVideoThumbnail;
+use App\Models\Notification;
+use App\Models\Post;
+use App\Models\PostMention;
+use App\Models\Tag;
+use App\Models\User;
+use Carbon\Carbon;
+use DB;
+use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
+
+class PostController extends Controller
+{
+    private function mediaDisk(): string
+    {
+        return config('filesystems.default', 'public');
+    }
+
+    private function storagePathFromUrl(string $url): string
+    {
+        $path = ltrim(parse_url($url, PHP_URL_PATH) ?? $url, '/');
+
+        return preg_replace('#^storage/#', '', $path);
+    }
+
+    /**
+     * Tambahkan info story (has_story & story_viewed) ke user
+     */
+    private function attachStoryInfo($user, $authUser)
+    {
+        $storyIds = DB::table('stories')
+            ->where('user_id', $user->user_id)
+            ->where('created_at', '>=', Carbon::now()->subHours(24))
+            ->pluck('story_id');
+
+        $user->has_story = $storyIds->isNotEmpty();
+
+        if ($storyIds->isNotEmpty() && $authUser) {
+            $viewedCount = DB::table('story_views')
+                ->whereIn('story_id', $storyIds)
+                ->where('viewer_id', $authUser->user_id)
+                ->count();
+
+            $user->story_viewed = ($viewedCount === $storyIds->count());
+        } else {
+            $user->story_viewed = false;
+        }
+
+        return $user;
+    }
+
+    public function index(Request $request)
+    {
+        $authUser = Auth::user();
+        $page = max(1, (int) $request->input('page', 1));
+        $perPage = max(1, min(20, (int) $request->input('per_page', 10)));
+
+        $followingIds = $authUser->following()
+            ->wherePivot('status', 'accepted')
+            ->pluck('users.user_id');
+
+        // ========== MAIN POSTS ==========
+        $mainPosts = collect();
+
+        if ($followingIds->isEmpty()) {
+            // random feed untuk user yang belum follow siapapun
+            $mainPosts = Post::with(['user', 'tags', 'mentions'])
+                ->withCount(['likes', 'comments'])
+                ->where('is_archived', false)
+                ->whereHas('user', fn ($q) => $q->where('is_private', 0))
+                ->orderByDesc('created_at')
+                ->take(100)
+                ->get()
+                ->map(function ($post) use ($authUser) {
+                    $post->is_liked = (bool) $post->likes()->where('user_id', $authUser->user_id)->exists();
+                    $post->is_bookmarked = (bool) $post->bookmarks()->where('user_id', $authUser->user_id)->exists();
+                    $post->type = 'post';
+                    $post->user = $this->attachStoryInfo($post->user, $authUser);
+                    $post->user->is_verified = (bool) $post->user->is_verified;
+
+                    // musik fields (safe)
+                    $post->music_track_name = $post->music_track_name ?? null;
+                    $post->music_artist_name = $post->music_artist_name ?? null;
+                    $post->music_preview_url = $post->music_preview_url ?? null;
+                    $post->music_album_art_url = $post->music_album_art_url ?? null;
+                    $post->music_start_position_ms = $post->music_start_position_ms ?? null;
+                    $post->music_clip_duration_ms = $post->music_clip_duration_ms ?? null;
+
+                    // thumbnail safe field
+                    $post->thumbnail_url = $post->thumbnail_url ?? null;
+
+                    return $post;
+                })
+                ->shuffle()
+                ->values();
+        } else {
+            // Distribusi feed
+            $total = 100;
+            $countTimeline = (int) round($total * 0.50);
+            $countRelasi = (int) round($total * 0.10);
+            $countRandom = (int) round($total * 0.25);
+            $countLiked = (int) round($total * 0.15);
+            $timelineUserIds = $followingIds->concat([$authUser->user_id])->unique()->values();
+
+            // Timeline posts (dari following + diri sendiri)
+            $timelinePosts = Post::with(['user', 'tags', 'mentions'])
+                ->withCount(['likes', 'comments'])
+                ->where('is_archived', false)
+                ->whereIn('user_id', $timelineUserIds)
+                ->orderByDesc('created_at')
+                ->take($countTimeline)
+                ->get();
+
+            // Second degree (temannya teman)
+            $secondDegreeIds = DB::table('follows')
+                ->whereIn('follower_id', $followingIds)
+                ->whereNotIn('followed_id', $followingIds)
+                ->where('followed_id', '!=', $authUser->user_id)
+                ->pluck('followed_id');
+
+            $relasiPosts = Post::with(['user', 'tags', 'mentions'])
+                ->withCount(['likes', 'comments'])
+                ->where('is_archived', false)
+                ->whereIn('user_id', $secondDegreeIds)
+                ->whereHas('user', fn ($q) => $q->where('is_private', 0))
+                ->orderByDesc('created_at')
+                ->take($countRelasi)
+                ->get();
+
+            // Random posts
+            $randomPosts = Post::with(['user', 'tags', 'mentions'])
+                ->withCount(['likes', 'comments'])
+                ->where('is_archived', false)
+                ->whereNotIn('user_id', $followingIds)
+                ->where('user_id', '!=', $authUser->user_id)
+                ->whereHas('user', fn ($q) => $q->where('is_private', 0))
+                ->inRandomOrder()
+                ->take($countRandom)
+                ->get();
+
+            // Posts yang disukai following
+            $likedByFollowingIds = DB::table('likes')
+                ->whereIn('user_id', $followingIds)
+                ->pluck('post_id');
+
+            $likedPosts = Post::with(['user', 'tags', 'mentions'])
+                ->withCount(['likes', 'comments'])
+                ->where('is_archived', false)
+                ->whereIn('post_id', $likedByFollowingIds)
+                ->whereHas('user', fn ($q) => $q->where('is_private', 0))
+                ->orderByDesc('created_at')
+                ->take($countLiked)
+                ->get();
+
+            // Shuffle tiap kategori
+            $timelinePosts = $timelinePosts->shuffle();
+            $relasiPosts = $relasiPosts->shuffle();
+            $randomPosts = $randomPosts->shuffle();
+            $likedPosts = $likedPosts->shuffle();
+
+            // Gabungkan dan tambahkan fields tambahan
+            $mainPosts = $timelinePosts
+                ->merge($relasiPosts)
+                ->merge($randomPosts)
+                ->merge($likedPosts)
+                ->map(function ($post) use ($authUser) {
+                    $post->is_liked = (bool) $post->likes()->where('user_id', $authUser->user_id)->exists();
+                    $post->is_bookmarked = (bool) $post->bookmarks()->where('user_id', $authUser->user_id)->exists();
+                    $post->type = 'post';
+                    $post->user = $this->attachStoryInfo($post->user, $authUser);
+                    $post->user->is_verified = (bool) $post->user->is_verified;
+
+                    $post->music_track_name = $post->music_track_name ?? null;
+                    $post->music_artist_name = $post->music_artist_name ?? null;
+                    $post->music_preview_url = $post->music_preview_url ?? null;
+                    $post->music_album_art_url = $post->music_album_art_url ?? null;
+                    $post->music_start_position_ms = $post->music_start_position_ms ?? null;
+                    $post->music_clip_duration_ms = $post->music_clip_duration_ms ?? null;
+
+                    // thumbnail safe field
+                    $post->thumbnail_url = $post->thumbnail_url ?? null;
+
+                    return $post;
+                })
+                ->shuffle()
+                ->values();
+        }
+
+        if ($mainPosts->isEmpty()) {
+            $mainPosts = Post::with(['user', 'tags', 'mentions'])
+                ->withCount(['likes', 'comments'])
+                ->where('is_archived', false)
+                ->whereHas('user', fn ($q) => $q->where('is_private', 0))
+                ->orderByDesc('created_at')
+                ->take(100)
+                ->get()
+                ->map(function ($post) use ($authUser) {
+                    $post->is_liked = (bool) $post->likes()->where('user_id', $authUser->user_id)->exists();
+                    $post->is_bookmarked = (bool) $post->bookmarks()->where('user_id', $authUser->user_id)->exists();
+                    $post->type = 'post';
+                    $post->user = $this->attachStoryInfo($post->user, $authUser);
+                    $post->user->is_verified = (bool) $post->user->is_verified;
+                    $post->music_track_name = $post->music_track_name ?? null;
+                    $post->music_artist_name = $post->music_artist_name ?? null;
+                    $post->music_preview_url = $post->music_preview_url ?? null;
+                    $post->music_album_art_url = $post->music_album_art_url ?? null;
+                    $post->music_start_position_ms = $post->music_start_position_ms ?? null;
+                    $post->music_clip_duration_ms = $post->music_clip_duration_ms ?? null;
+                    $post->thumbnail_url = $post->thumbnail_url ?? null;
+
+                    return $post;
+                })
+                ->shuffle()
+                ->values();
+        }
+
+        // ========== SUGGESTIONS ==========
+        $suggestions = collect();
+
+        if ($followingIds->isNotEmpty()) {
+            $mutuals = DB::table('follows')
+                ->select('followed_id', DB::raw('COUNT(*) as mutual_count'))
+                ->whereIn('follower_id', $followingIds)
+                ->whereNotIn('followed_id', $followingIds)
+                ->where('followed_id', '!=', $authUser->user_id)
+                ->groupBy('followed_id')
+                ->orderByDesc('mutual_count')
+                ->take(10)
+                ->get();
+
+            $userIds = $mutuals->pluck('followed_id');
+
+            if ($userIds->isNotEmpty()) {
+                $users = User::whereIn('user_id', $userIds)
+                    ->where('is_private', 0)
+                    ->orderByRaw('FIELD(user_id, '.implode(',', $userIds->toArray()).')')
+                    ->get();
+
+                $suggestions = $suggestions->merge($users);
+            }
+        }
+
+        if ($suggestions->count() < 10) {
+            $need = 10 - $suggestions->count();
+
+            $randomUsers = User::where('user_id', '!=', $authUser->user_id)
+                ->whereNotIn('user_id', $followingIds)
+                ->whereNotIn('user_id', $suggestions->pluck('user_id'))
+                ->where('is_private', 0)
+                ->inRandomOrder()
+                ->take($need)
+                ->get();
+
+            $suggestions = $suggestions->merge($randomUsers);
+        }
+
+        $suggestions = $suggestions->map(function ($user) use ($authUser) {
+            $isFollowBack = DB::table('follows')
+                ->where('follower_id', $user->user_id)
+                ->where('followed_id', $authUser->user_id)
+                ->where('status', 'accepted')
+                ->exists();
+
+            $user->is_follow_back = (bool) $isFollowBack;
+            $user = $this->attachStoryInfo($user, $authUser);
+            $user->is_verified = (bool) $user->is_verified;
+
+            return $user;
+        })
+            ->shuffle()
+            ->sortByDesc('is_follow_back')
+            ->values();
+
+        // ========== MERGE POSTS + SUGGESTIONS (FULL FEED DULU) ==========
+        $feedWithSuggestions = collect();
+        $postCount = 0;
+        foreach ($mainPosts as $item) {
+            $feedWithSuggestions->push($item);
+            $postCount++;
+            if ($postCount === 2 || ($postCount > 2 && $postCount % 8 === 0)) {
+                $feedWithSuggestions->push((object) [
+                    'type' => 'suggestion',
+                    'users' => $suggestions->shuffle()
+                        ->take(15)
+                        ->map(function ($user) {
+                            return [
+                                'user_id' => $user->user_id,
+                                'username' => $user->username,
+                                'full_name' => $user->full_name,
+                                'profile_picture_url' => $user->profile_picture_url,
+                                'role' => $user->role ?? 'student',
+                                'is_private' => (bool) $user->is_private,
+                                'is_follow_back' => (bool) $user->is_follow_back,
+                                'is_verified' => (bool) $user->is_verified,
+                                'has_story' => (bool) $user->has_story,
+                                'story_viewed' => (bool) $user->story_viewed,
+                            ];
+                        })
+                        ->values(),
+                ]);
+            }
+        }
+
+        // ✅ Sekarang baru di-paginate setelah feed full terbentuk
+        $totalFeed = $feedWithSuggestions->count();
+        $feedSlice = $feedWithSuggestions
+            ->slice(($page - 1) * $perPage, $perPage)
+            ->values();
+
+        $paginator = new LengthAwarePaginator(
+            $feedSlice,
+            $totalFeed,
+            $perPage,
+            $page,
+            [
+                'path' => $request->url(),
+                'query' => $request->query(),
+            ]
+        );
+
+        $nextPage = $paginator->currentPage() < $paginator->lastPage()
+            ? $request->url().'?'.http_build_query(array_merge($request->query(), ['page' => $paginator->currentPage() + 1]))
+            : null;
+
+        $prevPage = $paginator->currentPage() > 1
+            ? $request->url().'?'.http_build_query(array_merge($request->query(), ['page' => $paginator->currentPage() - 1]))
+            : null;
+
+        $lastPage = $request->url().'?'.http_build_query(array_merge($request->query(), ['page' => $paginator->lastPage()]));
+
+        return response()->json([
+            'current_page' => $paginator->currentPage(),
+            'per_page' => $paginator->perPage(),
+            'total' => $paginator->total(),
+            'next_page_url' => $nextPage,
+            'prev_page_url' => $prevPage,
+            'last_page_url' => $lastPage,
+            'feed' => $feedSlice,
+        ]);
+    }
+
+    public function explore(Request $request)
+    {
+        $authUser = Auth::user();
+        $page = max(1, (int) $request->input('page', 1));
+        $perPage = max(1, (int) $request->input('per_page', 15));
+
+        $query = Post::with(['user', 'tags'])
+            ->withCount(['likes', 'comments'])
+            ->where('is_archived', false);
+
+        if ($request->filled('tag')) {
+            $tagName = $request->tag;
+            $query->whereHas('tags', fn ($q) => $q->where('tag_name', $tagName));
+        }
+
+        $sort = $request->input('sort', 'random');
+        if ($sort === 'popular') {
+            // Acak-populer: postingan ber-like tinggi lebih mungkin di atas, tapi urutannya
+            // bervariasi (tidak selalu 1 postingan yang sama terus di puncak). Seed di-bucket
+            // per 30 menit agar pagination (infinite scroll) tetap konsisten dalam satu sesi.
+            $seed = (int) (($authUser->user_id ?? 0) + floor(time() / 1800));
+            $query->orderByRaw('RAND(?) * (likes_count + 1) DESC', [$seed]);
+        } elseif ($sort === 'newest') {
+            $query->orderByDesc('created_at');
+        } else {
+            $query->inRandomOrder();
+        }
+
+        $total = $query->count();
+
+        $posts = $query->skip(($page - 1) * $perPage)
+            ->take($perPage)
+            ->get()
+            ->map(function ($post) use ($authUser) {
+                // tambahkan is_liked / is_bookmarked jika ada auth
+                $post->is_liked = $authUser ? $post->likes()->where('user_id', $authUser->user_id)->exists() : false;
+                $post->is_bookmarked = $authUser ? $post->bookmarks()->where('user_id', $authUser->user_id)->exists() : false;
+                $post->type = 'post';
+                $post->user = $this->attachStoryInfo($post->user, $authUser);
+                $post->user->is_verified = (bool) $post->user->is_verified;
+
+                // musik
+                $post->music_track_name = $post->music_track_name ?? null;
+                $post->music_artist_name = $post->music_artist_name ?? null;
+                $post->music_preview_url = $post->music_preview_url ?? null;
+                $post->music_album_art_url = $post->music_album_art_url ?? null;
+                $post->music_start_position_ms = $post->music_start_position_ms ?? null;
+                $post->music_clip_duration_ms = $post->music_clip_duration_ms ?? null;
+
+                // thumbnail
+                $post->thumbnail_url = $post->thumbnail_url ?? null;
+
+                return $post;
+            });
+
+        $paginator = new LengthAwarePaginator(
+            $posts,
+            $total,
+            $perPage,
+            $page,
+            ['path' => url()->current(), 'query' => $request->query()]
+        );
+
+        return response()->json($paginator);
+    }
+
+    public function show($id)
+    {
+        $authUser = Auth::user();
+
+        $post = Post::with(['user', 'tags', 'mentions'])
+            ->withCount(['likes', 'comments'])
+            ->findOrFail($id);
+
+        $owner = $post->user;
+
+        // Cek akses view
+        $canView = ! $owner->is_private ||
+            ($authUser && (
+                $authUser->user_id === $owner->user_id ||
+                $owner->followers()
+                    ->where('follower_id', $authUser->user_id)
+                    ->where('status', 'accepted')
+                    ->exists()
+            ));
+
+        if (! $canView) {
+            return response()->json([
+                'message' => 'Post ini hanya bisa dilihat oleh followers yang telah diterima.',
+            ], 403);
+        }
+
+        $post->is_liked = $authUser
+            ? $post->likes()->where('user_id', $authUser->user_id)->exists()
+            : false;
+
+        $post->is_bookmarked = $authUser
+            ? $post->bookmarks()->where('user_id', $authUser->user_id)->exists()
+            : false;
+
+        if ($authUser) {
+            if ($authUser->user_id === $owner->user_id) {
+                $post->user->is_following = true;
+            } else {
+                $post->user->is_following = $owner->followers()
+                    ->where('follower_id', $authUser->user_id)
+                    ->where('status', 'accepted')
+                    ->exists();
+            }
+        } else {
+            $post->user->is_following = false;
+        }
+
+        $post->user = $this->attachStoryInfo($post->user, $authUser);
+        $post->user->is_verified = (bool) $post->user->is_verified;
+
+        // musik
+        $post->music_track_name = $post->music_track_name ?? null;
+        $post->music_artist_name = $post->music_artist_name ?? null;
+        $post->music_preview_url = $post->music_preview_url ?? null;
+        $post->music_album_art_url = $post->music_album_art_url ?? null;
+        $post->music_start_position_ms = $post->music_start_position_ms ?? null;
+        $post->music_clip_duration_ms = $post->music_clip_duration_ms ?? null;
+
+        // thumbnail
+        $post->thumbnail_url = $post->thumbnail_url ?? null;
+
+        return response()->json($post);
+    }
+
+    // Buat post baru (media upload pakai file). Menerima optional 'thumbnail' file untuk video.
+    public function store(Request $request)
+    {
+        $request->validate([
+            'caption' => 'nullable|string|max:2200',
+            'media' => 'nullable|file|max:512000',
+            'media_key' => 'nullable|string|max:255', // jalur direct-upload ke R2
+            'thumbnail' => 'nullable|file|mimes:jpg,jpeg,png|max:51200', // up to 50MB thumb jika perlu (ubah sesuai kebijakan)
+            'location' => 'nullable|string',
+            'is_archived' => 'nullable|boolean',
+            'is_video' => 'nullable|boolean',
+            'video_muted' => 'nullable|boolean',
+            // musik fields
+            'music_track_name' => 'nullable|string|max:255',
+            'music_artist_name' => 'nullable|string|max:255',
+            'music_preview_url' => 'nullable|string',
+            'music_album_art_url' => 'nullable|string|max:255',
+            'music_start_position_ms' => 'nullable|integer',
+            'music_clip_duration_ms' => 'nullable|string|max:255',
+        ]);
+
+        $imageExtensions = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+        $videoExtensions = ['mp4', 'mov', 'webm', 'avi', '3gp', 'mkv', 'm4v'];
+        $allowedExtensions = [...$imageExtensions, ...$videoExtensions];
+        $disk = $this->mediaDisk();
+
+        // Kumpulkan media dari jalur direct (media_keys[] / media_key) dan fallback (file media[]).
+        $rawKeys = $request->input('media_keys', []);
+        if (! is_array($rawKeys)) {
+            $rawKeys = [$rawKeys];
+        }
+        $singleKey = trim((string) $request->input('media_key'));
+        if ($singleKey !== '') {
+            $rawKeys[] = $singleKey;
+        }
+        $rawKeys = array_values(array_unique(array_filter(array_map(
+            fn ($key) => trim((string) $key),
+            $rawKeys
+        ))));
+
+        $files = array_values(array_filter(\Illuminate\Support\Arr::wrap($request->file('media'))));
+
+        $total = count($rawKeys) + count($files);
+        if ($total === 0) {
+            return response()->json([
+                'message' => 'Media wajib diunggah.',
+                'errors' => ['media' => ['Media wajib diunggah.']],
+            ], 422);
+        }
+        if ($total > 15) {
+            return response()->json([
+                'message' => 'Maksimal 15 foto per postingan.',
+                'errors' => ['media' => ['Maksimal 15 foto per postingan.']],
+            ], 422);
+        }
+
+        $mediaUrls = [];
+        $extensions = [];
+
+        // Jalur direct: verifikasi tiap key di R2.
+        foreach ($rawKeys as $key) {
+            if (! preg_match('#^uploads/(posts|stories)/[A-Za-z0-9._/\-]+\.[A-Za-z0-9]+$#', $key)
+                || str_contains($key, '..')) {
+                return response()->json([
+                    'message' => 'Key media tidak valid.',
+                    'errors' => ['media' => ['Key media tidak valid.']],
+                ], 422);
+            }
+            $ext = strtolower(pathinfo($key, PATHINFO_EXTENSION));
+            if (! in_array($ext, $allowedExtensions, true)) {
+                return response()->json([
+                    'message' => 'Format media tidak didukung.',
+                    'errors' => ['media' => ['Format media tidak didukung.']],
+                ], 422);
+            }
+            try {
+                $exists = Storage::disk($disk)->exists($key);
+            } catch (\Throwable $error) {
+                return response()->json(['message' => 'Media belum dapat diverifikasi. Coba lagi.'], 503);
+            }
+            if (! $exists) {
+                return response()->json([
+                    'message' => 'Media belum selesai terunggah. Coba lagi.',
+                    'errors' => ['media' => ['Media belum terunggah.']],
+                ], 422);
+            }
+            $extensions[] = $ext;
+            $mediaUrls[] = Storage::disk($disk)->url($key);
+        }
+
+        // Jalur fallback: simpan tiap file ke disk.
+        foreach ($files as $media) {
+            $ext = strtolower($media->getClientOriginalExtension());
+            if (! in_array($ext, $allowedExtensions, true)) {
+                return response()->json([
+                    'message' => 'Format media tidak didukung. Gunakan JPG, PNG, WebP, GIF, MP4, MOV, WebM, AVI, 3GP, MKV, atau M4V.',
+                    'errors' => ['media' => ['Format media tidak didukung.']],
+                ], 422);
+            }
+            try {
+                $mediaPath = $media->store('uploads/posts', $disk);
+            } catch (\Throwable $error) {
+                \Log::error('Post media upload failed', [
+                    'user_id' => Auth::id(),
+                    'extension' => $ext,
+                    'error' => $error->getMessage(),
+                ]);
+
+                return response()->json(['message' => 'Media gagal disimpan ke penyimpanan. Silakan coba lagi.'], 503);
+            }
+            if (! $mediaPath) {
+                return response()->json(['message' => 'Media gagal disimpan ke penyimpanan. Silakan coba lagi.'], 503);
+            }
+            $extensions[] = $ext;
+            $mediaUrls[] = Storage::disk($disk)->url($mediaPath);
+        }
+
+        // Aturan: video hanya boleh tunggal; unggah banyak media hanya untuk foto.
+        $hasVideo = count(array_intersect($extensions, $videoExtensions)) > 0;
+        if ($hasVideo && count($mediaUrls) > 1) {
+            return response()->json([
+                'message' => 'Video hanya boleh satu per postingan. Untuk banyak media, gunakan foto.',
+                'errors' => ['media' => ['Video hanya boleh satu per postingan.']],
+            ], 422);
+        }
+
+        $isVideo = $hasVideo;
+        $mediaUrl = $mediaUrls[0];
+        $extension = $extensions[0];
+
+        // Simpan thumbnail jika ada (frontend disarankan mengirim screenshot 1 detik pertama)
+        $thumbnailUrl = null;
+        if ($request->hasFile('thumbnail')) {
+            try {
+                $thumbPath = $request->file('thumbnail')->store('uploads/posts/thumbnails', $disk);
+                if ($thumbPath) {
+                    $thumbnailUrl = Storage::disk($disk)->url($thumbPath);
+                }
+            } catch (\Throwable $error) {
+                // Thumbnail is an optimization only; never reject an otherwise valid video.
+                \Log::warning('Video thumbnail upload failed', [
+                    'user_id' => Auth::id(),
+                    'error' => $error->getMessage(),
+                ]);
+            }
+        }
+
+        $post = Post::create([
+            'user_id' => Auth::id(),
+            'caption' => $request->caption,
+            'media_url' => $mediaUrl,
+            'media_urls' => count($mediaUrls) > 1 ? $mediaUrls : null,
+            'thumbnail_url' => $thumbnailUrl,
+            'location' => $request->location,
+            'is_archived' => $request->is_archived ?? false,
+            'is_video' => $isVideo,
+            // Video dibisukan bila diminta user ATAU saat post memakai musik.
+            'video_muted' => $isVideo && ($request->boolean('video_muted') || $request->filled('music_track_name')),
+            // musik
+            'music_track_name' => $request->music_track_name,
+            'music_artist_name' => $request->music_artist_name,
+            'music_preview_url' => $request->music_preview_url,
+            'music_album_art_url' => $request->music_album_art_url,
+            'music_start_position_ms' => $request->music_start_position_ms,
+            'music_clip_duration_ms' => $request->music_clip_duration_ms,
+        ]);
+
+        if ($isVideo && empty($thumbnailUrl)) {
+            GenerateVideoThumbnail::dispatch($post->post_id)->afterResponse();
+        }
+
+        // Tangani hashtag
+        if ($request->filled('caption')) {
+            preg_match_all('/#(\w+)/', $request->caption, $tags);
+            foreach ($tags[1] as $tagName) {
+                $tag = Tag::firstOrCreate(['tag_name' => $tagName]);
+                $post->tags()->attach($tag->tag_id);
+            }
+        }
+
+        // Tangani mention
+        if ($request->filled('caption')) {
+            preg_match_all('/@([A-Za-z0-9._]+)/', $request->caption, $mentions);
+            foreach ($mentions[1] as $username) {
+                $mentionedUser = User::where('username', $username)->first();
+                if ($mentionedUser && $mentionedUser->user_id !== Auth::id()) {
+                    PostMention::create([
+                        'post_id' => $post->post_id,
+                        'mentioned_user_id' => $mentionedUser->user_id,
+                    ]);
+                    $notification = Notification::createFor($mentionedUser->user_id, [
+                        'type' => 'mention',
+                        'related_user_id' => Auth::id(),
+                        'related_post_id' => $post->post_id,
+                        'is_read' => false,
+                    ]);
+                    if ($notification) {
+                        broadcast(new NotificationCreated($notification));
+                    }
+                }
+            }
+        }
+
+        // Notifikasi ke followers (logika original dipertahankan; gunakan post_id konsisten)
+        $author = $post->user;
+        $followers = $author->followers()->wherePivot('status', 'accepted')->withPivot('followed_at')->get();
+
+        foreach ($followers as $follower) {
+            $postCountSinceFollow = Post::where('user_id', $author->user_id)
+                ->where('created_at', '>=', $follower->pivot->followed_at)
+                ->count();
+
+            if ($postCountSinceFollow <= 2) {
+                // Hormati preferensi penerima: "pengingat postingan baru dari..." (all/mutual/off).
+                $notification = Notification::createFor($follower->user_id, [
+                    'type' => 'new_post',
+                    'related_user_id' => $author->user_id,
+                    'related_post_id' => $post->post_id,
+                ]);
+                if ($notification) {
+                    broadcast(new NotificationCreated($notification));
+                }
+            }
+        }
+
+        $post->load(['user', 'tags', 'mentions']);
+        $post->loadCount(['likes', 'comments']);
+        $post->is_liked = false;
+        $post->is_bookmarked = false;
+        $post->type = 'post';
+
+        return response()->json([
+            'message' => 'Post created',
+            'post' => $post,
+        ], 201);
+    }
+
+    // Edit post (media optional)
+    public function update(Request $request, $id)
+    {
+        $post = Post::findOrFail($id);
+
+        if ($post->user_id !== Auth::id()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $request->validate([
+            'caption' => 'nullable|string|max:2200',
+            'media' => 'nullable|file|mimes:jpg,jpeg,png,mp4,mov,webm,avi,3gp,mkv|max:512000',
+            'thumbnail' => 'nullable|file|mimes:jpg,jpeg,png|max:51200',
+            'location' => 'nullable|string',
+            'is_archived' => 'nullable|boolean',
+            'is_video' => 'nullable|boolean',
+            // musik
+            'music_track_name' => 'nullable|string|max:255',
+            'music_artist_name' => 'nullable|string|max:255',
+            'music_preview_url' => 'nullable|string',
+            'music_album_art_url' => 'nullable|string|max:255',
+            'music_start_position_ms' => 'nullable|integer',
+            'music_clip_duration_ms' => 'nullable|string|max:255',
+        ]);
+
+        // Replace media jika ada
+        if ($request->hasFile('media')) {
+            if ($post->media_url) {
+                Storage::disk($this->mediaDisk())->delete(
+                    $this->storagePathFromUrl($post->media_url)
+                );
+            }
+            $disk = $this->mediaDisk();
+            $mediaPath = $request->file('media')->store('uploads/posts', $disk);
+            $post->media_url = Storage::disk($disk)->url($mediaPath);
+        }
+
+        // Replace thumbnail jika ada
+        if ($request->hasFile('thumbnail')) {
+            if ($post->thumbnail_url) {
+                Storage::disk($this->mediaDisk())->delete(
+                    $this->storagePathFromUrl($post->thumbnail_url)
+                );
+            }
+            $disk = $this->mediaDisk();
+            $thumbPathNew = $request->file('thumbnail')->store('uploads/posts/thumbnails', $disk);
+            $post->thumbnail_url = Storage::disk($disk)->url($thumbPathNew);
+        }
+
+        // Update fields
+        $post->caption = $request->caption ?? $post->caption;
+        $post->location = $request->location ?? $post->location;
+        $post->is_archived = $request->is_archived ?? $post->is_archived;
+        $post->is_video = $request->is_video ?? $post->is_video;
+
+        // musik
+        $post->music_track_name = $request->music_track_name ?? $post->music_track_name;
+        $post->music_artist_name = $request->music_artist_name ?? $post->music_artist_name;
+        $post->music_preview_url = $request->music_preview_url ?? $post->music_preview_url;
+        $post->music_album_art_url = $request->music_album_art_url ?? $post->music_album_art_url;
+        $post->music_start_position_ms = $request->music_start_position_ms ?? $post->music_start_position_ms;
+        $post->music_clip_duration_ms = $request->music_clip_duration_ms ?? $post->music_clip_duration_ms;
+
+        $post->save();
+
+        return response()->json([
+            'message' => 'Post updated',
+            'post' => $post,
+        ]);
+    }
+
+    // Hapus post
+    public function destroy($id)
+    {
+        $post = Post::findOrFail($id);
+
+        if ($post->user_id !== Auth::id()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        // Hapus media
+        if ($post->media_url) {
+            Storage::disk($this->mediaDisk())->delete(
+                $this->storagePathFromUrl($post->media_url)
+            );
+        }
+
+        // Hapus thumbnail jika ada
+        if ($post->thumbnail_url) {
+            Storage::disk($this->mediaDisk())->delete(
+                $this->storagePathFromUrl($post->thumbnail_url)
+            );
+        }
+
+        $post->delete();
+
+        return response()->json(['message' => 'Post deleted']);
+    }
+
+    public function circleAvatar($id)
+    {
+        $authUser = Auth::user();
+        $user = User::select('user_id', 'profile_picture_url')->findOrFail($id);
+
+        // Tambahkan info story
+        $user = $this->attachStoryInfo($user, $authUser);
+
+        return response()->json([
+            'circle_avatar' => $user,
+        ]);
+    }
+
+    public function clips($id, Request $request)
+    {
+        $authUser = Auth::user();
+
+        // Ambil daftar exclude dari query param (kalau ada)
+        $excludeIds = $request->input('exclude', []);
+        if (! is_array($excludeIds)) {
+            $excludeIds = [$excludeIds];
+        }
+
+        // Pastikan clip utama juga di-exclude dari next
+        $excludeIds[] = $id;
+
+        // Ambil clip utama
+        $mainClip = Post::with(['user', 'tags'])
+            ->withCount(['likes', 'comments'])
+            ->where('is_video', true)
+            ->where('is_archived', false)
+            ->findOrFail($id);
+
+        $mainClip->is_liked = $authUser
+            ? $mainClip->likes()->where('user_id', $authUser->user_id)->exists()
+            : false;
+
+        $mainClip->is_bookmarked = $authUser
+            ? $mainClip->bookmarks()->where('user_id', $authUser->user_id)->exists()
+            : false;
+
+        $mainClip->type = 'clip';
+        $mainClip->user = $this->attachStoryInfo($mainClip->user, $authUser);
+        $mainClip->user->is_verified = (bool) $mainClip->user->is_verified;
+
+        // musik + thumbnail untuk mainClip
+        $mainClip->music_track_name = $mainClip->music_track_name ?? null;
+        $mainClip->music_artist_name = $mainClip->music_artist_name ?? null;
+        $mainClip->music_preview_url = $mainClip->music_preview_url ?? null;
+        $mainClip->music_album_art_url = $mainClip->music_album_art_url ?? null;
+        $mainClip->music_start_position_ms = $mainClip->music_start_position_ms ?? null;
+        $mainClip->music_clip_duration_ms = $mainClip->music_clip_duration_ms ?? null;
+        $mainClip->thumbnail_url = $mainClip->thumbnail_url ?? null;
+
+        // Ambil 1 clip random, exclude id utama + exclude dari param
+        $nextClips = Post::with(['user', 'tags'])
+            ->withCount(['likes', 'comments'])
+            ->where('is_video', true)
+            ->where('is_archived', false)
+            ->whereNotIn('post_id', $excludeIds)
+            ->inRandomOrder()
+            ->take(1)
+            ->get()
+            ->map(function ($post) use ($authUser) {
+                $post->is_liked = $authUser
+                    ? $post->likes()->where('user_id', $authUser->user_id)->exists()
+                    : false;
+
+                $post->is_bookmarked = $authUser
+                    ? $post->bookmarks()->where('user_id', $authUser->user_id)->exists()
+                    : false;
+
+                $post->type = 'clip';
+                $post->user = $this->attachStoryInfo($post->user, $authUser);
+                $post->user->is_verified = (bool) $post->user->is_verified;
+
+                // musik + thumbnail
+                $post->music_track_name = $post->music_track_name ?? null;
+                $post->music_artist_name = $post->music_artist_name ?? null;
+                $post->music_preview_url = $post->music_preview_url ?? null;
+                $post->music_album_art_url = $post->music_album_art_url ?? null;
+                $post->music_start_position_ms = $post->music_start_position_ms ?? null;
+                $post->music_clip_duration_ms = $post->music_clip_duration_ms ?? null;
+                $post->thumbnail_url = $post->thumbnail_url ?? null;
+
+                return $post;
+            });
+
+        // Update exclude list dengan id baru yang sudah dipakai
+        $newExcludeIds = array_merge($excludeIds, $nextClips->pluck('post_id')->toArray());
+
+        // Buat next_page_url, bawa exclude list biar ga duplikat
+        $lastId = $nextClips->last()?->post_id;
+        $nextPageUrl = $lastId
+            ? url('/api/clips/'.$lastId.'?'.http_build_query(['exclude' => $newExcludeIds]))
+            : null;
+
+        return response()->json([
+            'clip' => $mainClip,
+            'next_clips' => $nextClips,
+            'next_page_url' => $nextPageUrl,
+        ]);
+    }
+}

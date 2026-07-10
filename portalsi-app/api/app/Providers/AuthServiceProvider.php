@@ -1,0 +1,29 @@
+<?php
+
+namespace App\Providers;
+use App\Models\Announcement;
+use App\Policies\AnnouncementPolicy;
+
+
+// use Illuminate\Support\Facades\Gate;
+use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
+
+class AuthServiceProvider extends ServiceProvider
+{
+    /**
+     * The model to policy mappings for the application.
+     *
+     * @var array<class-string, class-string>
+     */
+    protected $policies = [
+        \App\Models\Announcement::class => \App\Policies\AnnouncementPolicy::class,
+    ];
+
+    /**
+     * Register any authentication / authorization services.
+     */
+    public function boot(): void
+    {
+        //
+    }
+}
