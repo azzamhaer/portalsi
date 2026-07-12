@@ -1,7 +1,7 @@
 # PortalSI Meet — Production Architecture Blueprint
 
 > Opinionated technical design oleh AI engineer untuk video conferencing web app skala produksi.
-> Target: 10–50 user/room, scalable ke ribuan concurrent users, low-latency, no-login.
+> Target: 10-50 user/room, scalable ke ribuan concurrent users, low-latency, host login via akun Portal SI, guest join cukup dengan nama.
 
 ---
 
@@ -15,7 +15,7 @@
 | Signaling/State | **LiveKit built-in + Redis** | LiveKit punya signaling sendiri via WebSocket. Redis untuk room metadata, lobby queue, presence. |
 | TURN/STUN | **coturn self-hosted (multi-region)** | Vendor TURN (Twilio) mahal di skala. Hetzner unmetered bandwidth = murah drastis. |
 | Codec | **VP9 + Simulcast 3 layer**, AV1 progressive rollout | VP9 universal support, AV1 hemat 30–50% bandwidth tapi belum stabil di Safari. |
-| Auth Model | **Anonymous + JWT short-lived (1h)** | No-login, tapi token room-scoped untuk mencegah abuse. |
+| Auth Model | **Portal SI host auth + JWT room-scoped short-lived** | Host wajib akun Portal SI untuk membuat room, peserta bisa join dengan nama dan token room-scoped. |
 | Hosting v1 | **Hetzner CCX23 + Docker Compose** | $30/bulan, 4 vCPU dedicated, unmetered bandwidth — sweet spot media server. |
 | Hosting v2 | **Kubernetes multi-region + LiveKit Distributed** | Saat traffic >5k concurrent. |
 
@@ -300,19 +300,20 @@ Ini yang sering bikin proyek video conferencing **gagal di production** padahal 
 - Implement **lazy subscribe**: video di luar viewport (scrolled-off) auto-unsubscribe.
 - Default view "Active Speaker" mode untuk room >12 user, "Grid" untuk ≤12.
 
-### F. Security tanpa Authentication
+### F. Security dengan Auth Host Portal SI
 
-**Masalah**: Siapa pun yang tahu Room ID bisa join → potensi Zoom bombing.
+**Masalah**: Jika pembuatan room publik, siapa pun bisa spam room baru. Jika Room ID bocor, peserta tidak diundang juga bisa mencoba join.
 
 **Solusi (defense in depth)**:
-1. **Room ID 6 chars** dari base32 (exclude 0/O/1/I/L) → ~308 juta kombinasi. Brute force impractical kalau dikombinasi dengan rate limit.
-2. **Optional password** (bcrypt) — host bisa wajibkan.
-3. **Lobby/waiting room** — host approve setiap joiner (recommended default).
-4. **JWT short-lived** (1 jam, room+identity scoped) — tidak bisa dipakai ulang.
-5. **Rate limit**: max 10 join/menit/IP, max 20 room-create/jam/IP.
-6. **DTLS-SRTP** mengenkripsi semua media client↔SFU. Untuk paranoid mode: **End-to-End Encryption (E2EE)** via Insertable Streams API — SFU jadi hanya forwarder packet terenkripsi (LiveKit support out-of-the-box).
-7. **Host controls**: kick, mute-all, lock room (no new joiner).
-8. **Audit log** ke Loki: siapa join kapan, dari IP mana (untuk forensics).
+1. **Create room wajib sesi Portal SI** melalui cookie host dari `/api/auth/login` atau `/api/auth/register`.
+2. **Rate limit create room per akun Portal SI + IP**, bukan hanya IP, agar abuse lebih mudah dikunci.
+3. **Room ID 6 chars** dari base32 (exclude 0/O/1/I/L) → ~308 juta kombinasi. Brute force impractical kalau dikombinasi dengan rate limit.
+4. **Optional password** (bcrypt) — host bisa wajibkan.
+5. **Lobby/waiting room** — host approve setiap joiner (recommended default).
+6. **JWT short-lived** (1 jam, room+identity scoped) — tidak bisa dipakai ulang.
+7. **DTLS-SRTP** mengenkripsi semua media client↔SFU. Untuk paranoid mode: **End-to-End Encryption (E2EE)** via Insertable Streams API — SFU jadi hanya forwarder packet terenkripsi (LiveKit support out-of-the-box).
+8. **Host controls**: kick, mute-all, lock room (no new joiner).
+9. **Audit log** ke Loki: siapa join kapan, dari IP mana (untuk forensics).
 
 ### G. Bandwidth Cost (#1 hidden expense)
 

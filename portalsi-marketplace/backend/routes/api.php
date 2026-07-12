@@ -49,6 +49,8 @@ Route::post('/tripay/callback',         TripayCallbackController::class);
 /* ===== Authenticated ===== */
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/auth/logout',          [AuthController::class, 'logout']);
+
+    Route::middleware('portal.si')->group(function () {
     Route::get('/auth/me',               [AuthController::class, 'me']);
     Route::put('/auth/profile',          [AuthController::class, 'updateProfile']);
     Route::post('/auth/change-password', [AuthController::class, 'changePassword']);
@@ -175,5 +177,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/categories',             [AdminController::class, 'saveCategory']);
         Route::put('/categories/{id}',         [AdminController::class, 'saveCategory']);
         Route::delete('/categories/{id}',      [AdminController::class, 'deleteCategory']);
+    });
     });
 });

@@ -116,7 +116,7 @@ export const apiEndpoints = {
   faqs:           (f?: typeof fetch) => api('/faqs', { fetcher: f }),
 
   /* auth */
-  login:    (email: string, password: string) => api('/auth/login',    { method: 'POST', body: { email, password } as any }),
+  login:    (login: string, password: string) => api('/auth/login',    { method: 'POST', body: { login, password } as any }),
   register: (b: any) => api('/auth/register', { method: 'POST', body: b }),
   logout:   ()       => api('/auth/logout',  { method: 'POST' }),
   me:       ()       => api('/auth/me'),
@@ -126,8 +126,8 @@ export const apiEndpoints = {
   requestChangeEmail: (new_email: string) =>
     api('/auth/request-change-email', { method: 'POST', body: { new_email } as any }),
   forgotPassword: (email: string) => api('/auth/forgot-password', { method: 'POST', body: { email } as any }),
-  resetPassword: (token: string, new_password: string) =>
-    api('/auth/reset-password', { method: 'POST', body: { token, new_password } as any }),
+  resetPassword: (email: string, token: string, new_password: string) =>
+    api('/auth/reset-password', { method: 'POST', body: { email, token, new_password } as any }),
   verifyEmail: (token: string) => api('/auth/verify-email', { method: 'POST', body: { token } as any }),
   resendVerification: () => api('/auth/resend-verification', { method: 'POST' }),
   confirmEmail: (token: string) => api('/auth/confirm-email', { method: 'POST', body: { token } as any }),

@@ -2,338 +2,327 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exceptions\PortalSiIdentityException;
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Services\BrevoService;
+use App\Services\PortalSiIdentityService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 
 class AuthController extends Controller
 {
-    protected function brevo(): BrevoService { return new BrevoService(); }
-
-    protected function frontendUrl(): string
-    {
-        return rtrim(config('services.frontend_url', 'http://localhost:5173'), '/');
-    }
+    public function __construct(private readonly PortalSiIdentityService $portalSi) {}
 
     public function register(Request $request)
     {
+        $request->merge([
+            'full_name' => $request->input('full_name', $request->input('name')),
+        ]);
+
         $data = $request->validate([
-            'name'     => 'required|string|max:255',
-            'email'    => 'required|email|unique:users,email',
-            'phone'    => 'nullable|string|max:20',
+            'username' => ['required', 'string', 'max:80', 'regex:/^[a-zA-Z0-9._]+$/'],
+            'full_name' => 'required|string|max:255',
+            'email' => 'required|email',
+            'phone' => 'nullable|string|max:20',
             'password' => ['required', Password::min(6)],
-        ]);
-        $user = User::create([
-            'name'     => $data['name'],
-            'email'    => $data['email'],
-            'phone'    => $data['phone'] ?? null,
-            'password' => $data['password'],
-            'role'     => 'BUYER',
+        ], [
+            'username.regex' => 'Username hanya boleh berisi huruf, angka, titik, dan underscore.',
         ]);
 
-        // Kirim email "selamat datang" + verification link
-        $this->sendWelcomeEmail($user);
+        try {
+            $portal = $this->portalSi->register($data);
+            $user = $this->syncPortalUser($this->extractPortalUser($portal), $portal['token'] ?? null, $data['phone'] ?? null);
+        } catch (PortalSiIdentityException $e) {
+            return $this->portalError($e);
+        }
 
-        $token = $user->createToken('auth')->plainTextToken;
         return response()->json([
-            'user' => $this->userResource($user),
-            'token' => $token,
+            'user' => $this->userResource($user->load('vendor')),
+            'token' => $user->createToken('marketplace')->plainTextToken,
         ], 201);
     }
 
     public function login(Request $request)
     {
         $data = $request->validate([
-            'email'    => 'required|email',
+            'login' => 'required_without:email|string',
+            'email' => 'required_without:login|string',
             'password' => 'required|string',
         ]);
-        $user = User::where('email', $data['email'])->first();
-        if (!$user || !Hash::check($data['password'], $user->password)) {
-            return response()->json(['message' => 'Email atau password salah'], 401);
+
+        try {
+            $portal = $this->portalSi->login($data['login'] ?? $data['email'], $data['password'], $request);
+            $user = $this->syncPortalUser($this->extractPortalUser($portal), $portal['token'] ?? null);
+        } catch (PortalSiIdentityException $e) {
+            return $this->portalError($e);
         }
+
         $user->load('vendor');
-        // Block login kalau vendor permanently banned
         if ($user->vendor?->is_banned) {
             return response()->json([
-                'message' => 'Akun toko Anda telah diban permanen.' . ($user->vendor->ban_reason ? "\nAlasan: " . $user->vendor->ban_reason : ''),
+                'message' => 'Akun toko Anda telah diban permanen.'.($user->vendor->ban_reason ? "\nAlasan: ".$user->vendor->ban_reason : ''),
             ], 403);
         }
-        $token = $user->createToken('auth')->plainTextToken;
+
         return response()->json([
-            'user'  => $this->userResource($user),
-            'token' => $token,
+            'user' => $this->userResource($user),
+            'token' => $user->createToken('marketplace')->plainTextToken,
         ]);
     }
 
     public function logout(Request $request)
     {
+        $this->portalSi->logout($request->user()?->portal_access_token);
         $request->user()?->currentAccessToken()?->delete();
+
         return response()->json(['ok' => true]);
     }
 
     public function me(Request $request)
     {
-        return response()->json($this->userResource($request->user()->load('vendor')));
+        $user = $request->user()->load('vendor');
+
+        if ($user->portal_access_token) {
+            try {
+                $portalUser = $this->portalSi->user($user->portal_access_token);
+                $user = $this->syncPortalUser($this->extractPortalUser($portalUser), $user->portal_access_token)->load('vendor');
+            } catch (PortalSiIdentityException $e) {
+                if (in_array($e->status, [401, 403], true)) {
+                    $request->user()?->currentAccessToken()?->delete();
+
+                    return response()->json(['message' => 'Sesi Portal SI kedaluwarsa. Silakan login ulang.'], 401);
+                }
+            }
+        }
+
+        return response()->json($this->userResource($user));
     }
 
     public function updateProfile(Request $request)
     {
         $data = $request->validate([
-            'name'  => 'required|string|max:255',
+            'name' => 'required|string|max:255',
             'phone' => 'nullable|string|max:20',
         ]);
-        $request->user()->update($data);
-        return response()->json($this->userResource($request->user()->fresh('vendor')));
+
+        $user = $request->user();
+
+        try {
+            if ($user->portal_access_token) {
+                $portal = $this->portalSi->updateProfile($user->portal_access_token, $data);
+                $user = $this->syncPortalUser($this->extractPortalUser($portal), $user->portal_access_token);
+            }
+        } catch (PortalSiIdentityException $e) {
+            return $this->portalError($e);
+        }
+
+        $user->phone = $data['phone'] ?? null;
+        $user->save();
+
+        return response()->json($this->userResource($user->fresh('vendor')));
     }
 
-    /* ---------- Change Password (verifikasi password lama) ---------- */
     public function changePassword(Request $request)
     {
         $data = $request->validate([
             'current_password' => 'required|string',
-            'new_password'     => ['required', Password::min(6)],
+            'new_password' => ['required', Password::min(8)],
         ]);
-        $user = $request->user();
-        if (!Hash::check($data['current_password'], $user->password)) {
-            return response()->json(['message' => 'Password lama salah'], 422);
+
+        try {
+            $this->portalSi->changePassword(
+                $this->requirePortalToken($request->user()),
+                $data['current_password'],
+                $data['new_password'],
+            );
+        } catch (PortalSiIdentityException $e) {
+            return $this->portalError($e);
         }
-        $user->update(['password' => $data['new_password']]); // model cast hashed
+
+        $request->user()->forceFill(['password' => Str::password(48)])->save();
         \App\Models\UserNotification::send(
-            $user->id, 'PASSWORD_CHANGED',
-            'Password Anda diubah',
-            "Password akun Anda baru saja diubah. Jika ini bukan Anda, segera hubungi admin.",
-            '/profile', 'WARNING'
+            $request->user()->id,
+            'PASSWORD_CHANGED',
+            'Password Portal SI Anda diubah',
+            'Password akun Portal SI yang dipakai marketplace baru saja diubah.',
+            '/profile',
+            'WARNING'
         );
-        // Kirim notif email
-        $this->brevo()->send(
-            $user->email, $user->name,
-            'Password Anda baru saja diubah',
-            $this->brevo()->layout(
-                'Password berubah',
-                "<p>Hai <b>" . htmlspecialchars($user->name) . "</b>,</p>
-                 <p>Password akun Anda baru saja diubah. Jika ini bukan Anda, segera hubungi tim support kami.</p>"
-            )
-        );
+
         return response()->json(['ok' => true]);
     }
 
-    /* ---------- Forgot Password ---------- */
     public function forgotPassword(Request $request)
     {
         $data = $request->validate(['email' => 'required|email']);
-        $user = User::where('email', $data['email'])->first();
-        // Tetap return 200 supaya tidak membocorkan info user mana yang ada
-        if (!$user) return response()->json(['ok' => true]);
 
-        $token = Str::random(64);
-        DB::table('password_resets')->where('email', $user->email)->delete();
-        DB::table('password_resets')->insert([
-            'email'      => $user->email,
-            'token'      => $token,
-            'expires_at' => now()->addHour(),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        try {
+            $this->portalSi->forgotPassword($data['email']);
+        } catch (PortalSiIdentityException $e) {
+            if ($e->status !== 404) {
+                return $this->portalError($e);
+            }
+        }
 
-        $url = $this->frontendUrl() . '/reset-password?token=' . urlencode($token);
-        $this->brevo()->send(
-            $user->email, $user->name,
-            'Reset Password',
-            $this->brevo()->layout(
-                'Permintaan reset password',
-                "<p>Hai <b>" . htmlspecialchars($user->name) . "</b>,</p>
-                 <p>Kami menerima permintaan untuk mereset password akun Anda. Klik tombol di bawah untuk mengatur password baru. Link berlaku selama 1 jam.</p>
-                 <p style='font-size:11px;color:#888;'>Kalau Anda tidak meminta, abaikan email ini. Jika email tidak terlihat di inbox, cek folder Spam/Promosi.</p>",
-                $url, 'Reset Password'
-            )
-        );
         return response()->json(['ok' => true]);
     }
 
     public function resetPassword(Request $request)
     {
         $data = $request->validate([
-            'token'        => 'required|string',
-            'new_password' => ['required', Password::min(6)],
+            'email' => 'required|email',
+            'token' => 'required|string',
+            'new_password' => ['required', Password::min(8)],
         ]);
-        $row = DB::table('password_resets')->where('token', $data['token'])->first();
-        if (!$row || $row->expires_at < now()) {
-            return response()->json(['message' => 'Token reset sudah kadaluarsa atau tidak valid'], 422);
+
+        try {
+            $this->portalSi->resetPassword($data['email'], $data['token'], $data['new_password']);
+        } catch (PortalSiIdentityException $e) {
+            return $this->portalError($e);
         }
-        $user = User::where('email', $row->email)->first();
-        if (!$user) return response()->json(['message' => 'User tidak ditemukan'], 422);
-        $user->update(['password' => $data['new_password']]);
-        DB::table('password_resets')->where('token', $data['token'])->delete();
+
         return response()->json(['ok' => true]);
     }
 
-    /* ---------- Change Email (konfirmasi ke email lama terlebih dahulu) ---------- */
     public function requestChangeEmail(Request $request)
     {
-        $data = $request->validate(['new_email' => 'required|email|unique:users,email']);
-        $user = $request->user();
+        $data = $request->validate(['new_email' => 'required|email']);
 
-        $token = Str::random(64);
-        DB::table('email_change_requests')->where('user_id', $user->id)->delete();
-        DB::table('email_change_requests')->insert([
-            'user_id'    => $user->id,
-            'new_email'  => $data['new_email'],
-            'token'      => $token,
-            'expires_at' => now()->addHours(24),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
-        $url = $this->frontendUrl() . '/confirm-email?token=' . urlencode($token);
-        $this->brevo()->send(
-            $user->email, $user->name,
-            'Konfirmasi Perubahan Email',
-            $this->brevo()->layout(
-                'Konfirmasi perubahan email',
-                "<p>Hai <b>" . htmlspecialchars($user->name) . "</b>,</p>
-                 <p>Anda meminta untuk mengganti email akun menjadi <b>" . htmlspecialchars($data['new_email']) . "</b>.</p>
-                 <p>Demi keamanan, klik tombol di bawah dari email saat ini untuk menyetujui perubahan tersebut. Link berlaku selama 24 jam.</p>
-                 <p style='font-size:12px;color:#666;'>Jika Anda tidak meminta perubahan ini, abaikan email ini dan segera ubah password.</p>",
-                $url, 'Setujui Perubahan Email'
-            )
-        );
-
-        return response()->json(['ok' => true]);
-    }
-
-    public function confirmChangeEmail(Request $request)
-    {
-        $data = $request->validate(['token' => 'required|string']);
-        $row = DB::table('email_change_requests')->where('token', $data['token'])->first();
-        if (!$row || $row->expires_at < now()) {
-            return response()->json(['message' => 'Token konfirmasi sudah kadaluarsa atau tidak valid'], 422);
-        }
-        if (User::where('email', $row->new_email)->exists()) {
-            return response()->json(['message' => 'Email sudah dipakai akun lain'], 422);
-        }
-        $user = User::find($row->user_id);
-        if (!$user) return response()->json(['message' => 'User tidak ditemukan'], 422);
-        $oldEmail = $user->email;
-        $user->email = $row->new_email;
-        $user->email_verified_at = now();
-        $user->save();
-        DB::table('email_change_requests')->where('token', $data['token'])->delete();
-        \App\Models\UserNotification::send(
-            $user->id, 'EMAIL_CHANGED',
-            'Email akun Anda berubah',
-            "Email akun Anda diubah dari {$oldEmail} menjadi {$row->new_email}.",
-            '/profile', 'SUCCESS'
-        );
-        return response()->json(['ok' => true, 'email' => $row->new_email]);
-    }
-
-    /* ---------- Email Verification (welcome flow) ---------- */
-    protected function sendWelcomeEmail(User $user): void
-    {
-        $token = Str::random(64);
-        DB::table('email_verifications')->insert([
-            'user_id'    => $user->id,
-            'token'      => $token,
-            'expires_at' => now()->addDays(7),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-        $url = $this->frontendUrl() . '/verify-email?token=' . urlencode($token);
-        $this->brevo()->send(
-            $user->email, $user->name,
-            'Selamat datang di ' . \App\Models\Setting::get('app_name', 'MPSI'),
-            $this->brevo()->layout(
-                'Selamat datang!',
-                "<p>Hai <b>" . htmlspecialchars($user->name) . "</b>,</p>
-                 <p>Akun Anda berhasil dibuat. Klik tombol di bawah untuk memverifikasi email Anda dan menyelesaikan pendaftaran.</p>
-                 <p style='font-size:12px;color:#666;'>Jika email verifikasi tidak terlihat di inbox, silakan cek folder Spam/Promosi.</p>",
-                $url, 'Verifikasi Email'
-            )
-        );
-    }
-
-    /**
-     * Resend verification email — rate limited.
-     * Aturan: minimal 60 detik dari kirim sebelumnya, maks 3 kali per hari (per user).
-     */
-    public function resendVerification(Request $request)
-    {
-        $user = $request->user();
-        if ($user->email_verified_at) {
-            return response()->json(['message' => 'Email Anda sudah terverifikasi'], 422);
+        try {
+            $result = $this->portalSi->requestEmailChange($this->requirePortalToken($request->user()), $data['new_email']);
+        } catch (PortalSiIdentityException $e) {
+            return $this->portalError($e);
         }
 
-        // Hitung pengiriman 24 jam terakhir
-        $sentToday = DB::table('email_verifications')
-            ->where('user_id', $user->id)
-            ->where('created_at', '>=', now()->subDay())
-            ->count();
-        if ($sentToday >= 3) {
-            return response()->json([
-                'message' => 'Sudah mencapai batas 3 kali pengiriman per 24 jam. Coba lagi besok.',
-                'limit_reached' => true,
-            ], 429);
-        }
-
-        // Cek cooldown 60 detik dari kirim terakhir
-        $last = DB::table('email_verifications')
-            ->where('user_id', $user->id)
-            ->orderByDesc('id')->first();
-        if ($last) {
-            $secondsSince = now()->diffInSeconds($last->created_at);
-            if ($secondsSince < 60) {
-                $wait = 60 - $secondsSince;
-                return response()->json([
-                    'message' => "Mohon tunggu {$wait} detik lagi sebelum mengirim ulang.",
-                    'cooldown_seconds' => $wait,
-                ], 429);
-            }
-        }
-
-        $this->sendWelcomeEmail($user);
         return response()->json([
             'ok' => true,
-            'sent_today' => $sentToday + 1,
-            'remaining_today' => max(0, 3 - ($sentToday + 1)),
-            'cooldown_seconds' => 60,
+            'message' => $result['message'] ?? 'Link konfirmasi dikirim oleh Portal SI.',
+            'pending_email' => $result['pending_email'] ?? $data['new_email'],
         ]);
     }
 
-    public function verifyEmail(Request $request)
+    public function resendVerification(Request $request)
     {
-        $data = $request->validate(['token' => 'required|string']);
-        $row = DB::table('email_verifications')->where('token', $data['token'])->first();
-        if (!$row || $row->expires_at < now()) {
-            return response()->json(['message' => 'Token verifikasi kadaluarsa'], 422);
+        try {
+            $result = $this->portalSi->resendVerification($this->requirePortalToken($request->user()));
+        } catch (PortalSiIdentityException $e) {
+            return $this->portalError($e);
         }
-        $user = User::find($row->user_id);
-        if (!$user) return response()->json(['message' => 'User tidak ditemukan'], 422);
-        // Direct assignment + save() bypass mass-assignment protection
-        $user->email_verified_at = now();
+
+        return response()->json([
+            'ok' => true,
+            'message' => $result['message'] ?? 'Email verifikasi dikirim ulang oleh Portal SI.',
+            'remaining_today' => null,
+            'cooldown_seconds' => $result['resend_cooldown_seconds'] ?? 60,
+        ]);
+    }
+
+    public function verifyEmail()
+    {
+        return response()->json([
+            'message' => 'Verifikasi email kini dilakukan lewat link resmi Portal SI. Silakan buka email verifikasi dari Portal SI, lalu klik "Cek status" di marketplace.',
+        ], 410);
+    }
+
+    public function confirmChangeEmail()
+    {
+        return response()->json([
+            'message' => 'Konfirmasi perubahan email kini dilakukan lewat link resmi Portal SI.',
+        ], 410);
+    }
+
+    private function syncPortalUser(array $portalUser, ?string $portalToken = null, ?string $phone = null): User
+    {
+        $portalId = (int) ($portalUser['user_id'] ?? $portalUser['id'] ?? 0);
+        $email = strtolower(trim((string) ($portalUser['email'] ?? '')));
+        $username = strtolower(trim((string) ($portalUser['username'] ?? '')));
+        $fullName = trim((string) ($portalUser['full_name'] ?? $portalUser['name'] ?? ''));
+
+        if ($portalId <= 0) {
+            throw new PortalSiIdentityException('Response user Portal SI tidak valid.', 502);
+        }
+
+        if ($email === '') {
+            throw new PortalSiIdentityException('Akun Portal SI ini belum memiliki email. Tambahkan email di Portal SI sebelum memakai marketplace.', 422);
+        }
+
+        $user = User::where('portal_user_id', $portalId)->first()
+            ?: User::whereRaw('LOWER(email) = ?', [$email])->first();
+
+        if ($user && $user->portal_user_id && (int) $user->portal_user_id !== $portalId) {
+            throw new PortalSiIdentityException('Email ini sudah terhubung ke akun Portal SI lain.', 409);
+        }
+
+        if (! $user) {
+            $user = new User([
+                'password' => Str::password(48),
+                'role' => 'BUYER',
+            ]);
+        }
+
+        $user->fill([
+            'portal_user_id' => $portalId,
+            'portal_username' => $username ?: null,
+            'portal_role' => $portalUser['role'] ?? null,
+            'name' => $fullName ?: ($username ?: $email),
+            'email' => $email,
+            'email_verified_at' => $portalUser['email_verified_at'] ?? null,
+        ]);
+
+        if ($phone !== null) {
+            $user->phone = $phone ?: null;
+        }
+
+        if ($portalToken) {
+            $user->portal_access_token = $portalToken;
+        }
+
         $user->save();
-        DB::table('email_verifications')->where('user_id', $user->id)->delete();
-        return response()->json(['ok' => true, 'verified_at' => $user->email_verified_at?->toIso8601String()]);
+
+        return $user;
+    }
+
+    private function extractPortalUser(array $payload): array
+    {
+        return is_array($payload['user'] ?? null)
+            ? $payload['user']
+            : $payload;
+    }
+
+    private function requirePortalToken(User $user): string
+    {
+        if (! $user->portal_access_token) {
+            throw new PortalSiIdentityException('Silakan login ulang dengan akun Portal SI.', 401);
+        }
+
+        return $user->portal_access_token;
+    }
+
+    private function portalError(PortalSiIdentityException $e)
+    {
+        return response()->json(array_filter([
+            'message' => $e->getMessage(),
+            'errors' => $e->errors ?: null,
+        ]), $e->status);
     }
 
     private function userResource(User $u): array
     {
         return [
-            'id'                => $u->id,
-            'name'              => $u->name,
-            'email'             => $u->email,
+            'id' => $u->id,
+            'portal_user_id' => $u->portal_user_id,
+            'portal_username' => $u->portal_username,
+            'name' => $u->name,
+            'email' => $u->email,
             'email_verified_at' => $u->email_verified_at,
-            'phone'             => $u->phone,
-            'role'              => $u->role,
-            'vendor_id'             => $u->vendor?->id,
-            'vendor_username'       => $u->vendor?->username,
-            'vendor_status'         => $u->vendor?->verification_status,
-            'vendor_tour_done'      => $u->vendor?->tour_completed_at !== null,
-            'vendor_is_banned'      => (bool) ($u->vendor?->is_banned),
+            'phone' => $u->phone,
+            'role' => $u->role,
+            'vendor_id' => $u->vendor?->id,
+            'vendor_username' => $u->vendor?->username,
+            'vendor_status' => $u->vendor?->verification_status,
+            'vendor_tour_done' => $u->vendor?->tour_completed_at !== null,
+            'vendor_is_banned' => (bool) ($u->vendor?->is_banned),
         ];
     }
 }

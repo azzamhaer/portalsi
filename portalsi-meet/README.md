@@ -1,6 +1,6 @@
 # PortalSI Meet
 
-Video conference web app real-time, tanpa login, production-ready. Dibangun dengan Next.js 14 + LiveKit (SFU) + Redis + coturn.
+Video conference web app real-time dengan akun Portal SI untuk host dan akses nama-only untuk peserta. Dibangun dengan Next.js 14 + LiveKit (SFU) + Redis + coturn.
 
 ![Tech](https://img.shields.io/badge/Next.js-14-black) ![Tech](https://img.shields.io/badge/LiveKit-SFU-f59e0b) ![Tech](https://img.shields.io/badge/WebRTC-supported-10b981)
 
@@ -110,6 +110,8 @@ portalsi-meet/
 | `LIVEKIT_API_SECRET` | ✅ | Secret untuk sign JWT (min 32 chars) |
 | `LIVEKIT_HTTP_URL` | ✅ | HTTP URL ke LiveKit server (internal: `http://livekit:7880`) |
 | `REDIS_URL` | ✅ | Connection string Redis (`redis://redis:6379`) |
+| `PORTALSI_API_URL` | optional | Base URL Portal SI API untuk login/register host meeting. Default: `https://api-new.portalsi.com/api` |
+| `PORTALSI_API_TIMEOUT_MS` | optional | Timeout request auth Portal SI dalam milidetik. Default: `12000` |
 | `PUBLIC_IP` | ✅ | IP publik VPS untuk coturn |
 | `TURN_REALM` | ✅ | Domain TURN realm |
 | `TURN_USER` / `TURN_PASSWORD` | ✅ | Credential TURN |

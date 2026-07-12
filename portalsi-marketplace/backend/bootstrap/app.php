@@ -16,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->prepend(HandleCors::class);
         $middleware->alias([
             'admin' => \App\Http\Middleware\AdminOnly::class,
+            'portal.si' => \App\Http\Middleware\EnsurePortalSiSession::class,
         ]);
         $middleware->validateCsrfTokens(except: [
             'api/*',

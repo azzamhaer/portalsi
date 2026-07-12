@@ -23,10 +23,22 @@ export async function GET(
 }
 
 export async function DELETE(
-  _req: Request,
+  req: Request,
   { params }: { params: { id: string } }
 ) {
   const id = normalizeRoomId(params.id);
+  const room = await getRoom(id);
+  if (!room) {
+    return NextResponse.json({ error: 'Room not found' }, { status: 404 });
+  }
+
+  let body: any = {};
+  try { body = await req.json(); } catch {}
+  const hostIdentity = String(body.hostIdentity ?? new URL(req.url).searchParams.get('hostIdentity') ?? '');
+  if (hostIdentity !== room.hostIdentity) {
+    return NextResponse.json({ error: 'Not authorized' }, { status: 403 });
+  }
+
   await deleteRoom(id);
   return NextResponse.json({ success: true });
 }

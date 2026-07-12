@@ -4,7 +4,7 @@
   import { apiEndpoints, setToken } from '$lib/api';
   import { auth, toast } from '$lib/stores.svelte';
 
-  let email = $state(''), password = $state(''), loading = $state(false);
+  let login = $state(''), password = $state(''), loading = $state(false);
   const next = $derived($page.url.searchParams.get('next') || '/');
   const action = $derived($page.url.searchParams.get('action') || '');
 
@@ -12,7 +12,7 @@
     e.preventDefault();
     loading = true;
     try {
-      const r: any = await apiEndpoints.login(email, password);
+      const r: any = await apiEndpoints.login(login, password);
       setToken(r.token); auth.set(r.user);
       toast.success('Selamat datang');
       if (action) {
@@ -31,10 +31,10 @@
 <div class="container-x py-16 grid place-items-center min-h-[60vh]">
   <div class="w-full max-w-md card">
     <h1 class="font-display text-3xl font-bold tracking-tightest text-center mb-2">Masuk</h1>
-    <p class="text-center text-sm text-ink-500 mb-8">Lanjutkan ke akun Anda.</p>
+    <p class="text-center text-sm text-ink-500 mb-8">Gunakan akun Portal SI Anda untuk masuk ke marketplace.</p>
     <form on:submit={submit} class="space-y-4">
-      <div><label class="label">Email</label>
-        <input type="email" required autocomplete="email" bind:value={email} class="input" />
+      <div><label class="label">Email atau Username Portal SI</label>
+        <input type="text" required autocomplete="username" bind:value={login} class="input" />
       </div>
       <div><label class="label">Password</label>
         <input type="password" required autocomplete="current-password" bind:value={password} class="input" />

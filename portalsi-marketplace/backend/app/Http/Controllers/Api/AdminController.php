@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Exceptions\PortalSiIdentityException;
 use App\Models\Category;
 use App\Models\Order;
 use App\Models\OrderReturn;
@@ -10,6 +11,7 @@ use App\Models\ShippingOption;
 use App\Models\Tag;
 use App\Models\User;
 use App\Models\Vendor;
+use App\Services\PortalSiIdentityService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -64,14 +66,28 @@ class AdminController extends Controller
         ]);
     }
 
-    public function freshStart(Request $request)
+    public function freshStart(Request $request, PortalSiIdentityService $portalSi)
     {
         $data = $request->validate([
             'confirm' => 'required|in:FRESH_START',
             'password' => 'required|string',
         ]);
 
-        if (!Hash::check($data['password'], $request->user()->password)) {
+        $adminPasswordValid = false;
+        $admin = $request->user();
+
+        if ($admin?->portal_access_token) {
+            try {
+                $portalSi->login($admin->portal_username ?: $admin->email, $data['password'], $request);
+                $adminPasswordValid = true;
+            } catch (PortalSiIdentityException $e) {
+                if ($e->status === 503) {
+                    return response()->json(['message' => $e->getMessage()], 503);
+                }
+            }
+        }
+
+        if (! $adminPasswordValid && !Hash::check($data['password'], $admin->password)) {
             return response()->json(['message' => 'Password admin tidak valid'], 422);
         }
 

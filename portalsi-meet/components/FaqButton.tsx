@@ -13,7 +13,7 @@ export function FaqButton() {
     },
     {
       q: "Apakah saya perlu membuat akun?",
-      a: "Tidak, Anda dapat menggunakan Portal SI Meet secara gratis tanpa perlu mendaftar atau menginstal aplikasi."
+      a: "Untuk membuat meeting, Anda perlu login dengan akun Portal SI. Untuk bergabung sebagai peserta, cukup isi nama dan kode meeting dari penyelenggara."
     },
     {
       q: "Mengapa kamera/mikrofon saya tidak berfungsi?",

@@ -11,11 +11,11 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: 'Portal SI Meet',
   description:
-    'Meeting online berkualitas HD tanpa perlu install aplikasi atau daftar akun. Buat ruang rapat sekarang, share Room ID, selesai.',
+    'Meeting online berkualitas HD. Host membuat ruang dengan akun Portal SI, peserta bisa bergabung cukup dengan nama dan Room ID.',
   keywords: ['video conference', 'meeting online', 'webinar', 'video call', 'portalsi'],
   openGraph: {
     title: 'PortalSI Meet',
-    description: 'Video conference real-time, gratis, tanpa install.',
+    description: 'Video conference real-time dengan akun Portal SI untuk host dan akses cepat untuk peserta.',
     type: 'website',
   },
   robots: { index: true, follow: true },

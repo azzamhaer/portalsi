@@ -82,7 +82,7 @@
   async function changePassword(e: Event) {
     e.preventDefault();
     if (cpNew !== cpConfirm) { toast.error('Konfirmasi password tidak cocok'); return; }
-    if (cpNew.length < 6) { toast.error('Password baru minimal 6 karakter'); return; }
+    if (cpNew.length < 8) { toast.error('Password baru minimal 8 karakter'); return; }
     cpSaving = true;
     try {
       await apiEndpoints.changePassword(cpOld, cpNew);
@@ -149,7 +149,7 @@
     <!-- Admin: hanya panel profile, tanpa sidebar buyer -->
     <div class="max-w-2xl mx-auto space-y-5">
       <div class="card">
-        <h3 class="font-semibold mb-4 flex items-center gap-2"><Icon name="user" size={16} /> Data Akun Admin</h3>
+        <h3 class="font-semibold mb-4 flex items-center gap-2"><Icon name="user" size={16} /> Data Akun Portal SI</h3>
         <form on:submit={save} class="space-y-4">
           <div><label class="label">Nama</label><input bind:value={name} class="input" /></div>
           <div><label class="label">Email saat ini</label><input value={auth.user?.email ?? ''} disabled class="input bg-ink-50" /></div>
@@ -160,7 +160,7 @@
 
       <div class="card">
         <h3 class="font-semibold mb-4 flex items-center gap-2"><Icon name="mail" size={16} /> Ubah Email</h3>
-        <p class="text-xs text-ink-500 mb-3">Link persetujuan akan dikirim ke email saat ini. Email baru aktif setelah link disetujui.</p>
+        <p class="text-xs text-ink-500 mb-3">Perubahan email diproses lewat Portal SI. Link konfirmasi akan dikirim ke email baru.</p>
         <form on:submit={changeEmail} class="flex gap-2">
           <input type="email" bind:value={newEmail} class="input flex-1" placeholder="email-baru@contoh.com" required />
           <button disabled={ceSaving} class="btn-primary btn-md">{ceSaving ? 'Mengirim…' : 'Kirim konfirmasi'}</button>
@@ -169,11 +169,11 @@
 
       <div class="card">
         <h3 class="font-semibold mb-4 flex items-center gap-2"><Icon name="lock" size={16} /> Ubah Password</h3>
-        <p class="text-xs text-ink-500 mb-3">Lupa password lama? Gunakan <a href="/forgot-password" class="link">reset password via email</a>.</p>
+        <p class="text-xs text-ink-500 mb-3">Password ini mengikuti akun Portal SI. Lupa password lama? Gunakan <a href="/forgot-password" class="link">reset password via email</a>.</p>
         <form on:submit={changePassword} class="space-y-3 max-w-md">
           <div><label class="label">Password lama</label><input type="password" bind:value={cpOld} class="input" required /></div>
-          <div><label class="label">Password baru</label><input type="password" bind:value={cpNew} class="input" required minlength="6" /></div>
-          <div><label class="label">Konfirmasi password baru</label><input type="password" bind:value={cpConfirm} class="input" required minlength="6" /></div>
+          <div><label class="label">Password baru</label><input type="password" bind:value={cpNew} class="input" required minlength="8" /></div>
+          <div><label class="label">Konfirmasi password baru</label><input type="password" bind:value={cpConfirm} class="input" required minlength="8" /></div>
           <button disabled={cpSaving} class="btn-primary btn-md">{cpSaving ? 'Menyimpan…' : 'Ubah Password'}</button>
         </form>
       </div>
@@ -228,7 +228,7 @@
         </div>
 
         <div class="card">
-          <h3 class="font-semibold mb-4">Data Pribadi</h3>
+          <h3 class="font-semibold mb-4">Data Akun Portal SI</h3>
           <form on:submit={save} class="space-y-4 max-w-lg">
             <div><label class="label">Nama</label><input bind:value={name} class="input" /></div>
             <div><label class="label">Email</label><input value={auth.user?.email ?? ''} disabled class="input bg-ink-50" /></div>
@@ -239,7 +239,7 @@
 
         <div class="card">
           <h3 class="font-semibold mb-3 flex items-center gap-2"><Icon name="mail" size={16} /> Ubah Email</h3>
-          <p class="text-xs text-ink-500 mb-3">Link persetujuan dikirim ke email saat ini. Email baru aktif setelah link disetujui.</p>
+          <p class="text-xs text-ink-500 mb-3">Perubahan email diproses lewat Portal SI. Link konfirmasi akan dikirim ke email baru.</p>
           <form on:submit={changeEmail} class="flex gap-2">
             <input type="email" bind:value={newEmail} class="input flex-1" placeholder="email-baru@contoh.com" required />
             <button disabled={ceSaving} class="btn-primary btn-md">{ceSaving ? 'Mengirim…' : 'Kirim'}</button>
@@ -248,11 +248,11 @@
 
         <div class="card">
           <h3 class="font-semibold mb-3 flex items-center gap-2"><Icon name="lock" size={16} /> Ubah Password</h3>
-          <p class="text-xs text-ink-500 mb-3">Lupa password lama? Gunakan <a href="/forgot-password" class="link">reset password via email</a>.</p>
+          <p class="text-xs text-ink-500 mb-3">Password ini mengikuti akun Portal SI. Lupa password lama? Gunakan <a href="/forgot-password" class="link">reset password via email</a>.</p>
           <form on:submit={changePassword} class="space-y-3 max-w-md">
             <div><label class="label">Password lama</label><input type="password" bind:value={cpOld} class="input" required /></div>
-            <div><label class="label">Password baru</label><input type="password" bind:value={cpNew} class="input" required minlength="6" /></div>
-            <div><label class="label">Konfirmasi password baru</label><input type="password" bind:value={cpConfirm} class="input" required minlength="6" /></div>
+            <div><label class="label">Password baru</label><input type="password" bind:value={cpNew} class="input" required minlength="8" /></div>
+            <div><label class="label">Konfirmasi password baru</label><input type="password" bind:value={cpConfirm} class="input" required minlength="8" /></div>
             <button disabled={cpSaving} class="btn-primary btn-md">{cpSaving ? 'Menyimpan…' : 'Ubah Password'}</button>
           </form>
         </div>

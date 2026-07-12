@@ -31,8 +31,13 @@ export async function POST(
   }
 
   const identity = String(body.identity ?? '').trim();
+  const hostIdentity = String(body.hostIdentity ?? '').trim();
   if (!identity) {
     return NextResponse.json({ error: 'Identity wajib' }, { status: 400 });
+  }
+
+  if (hostIdentity !== room.hostIdentity) {
+    return NextResponse.json({ error: 'Tidak punya akses host' }, { status: 403 });
   }
 
   // Protect against kicking the host

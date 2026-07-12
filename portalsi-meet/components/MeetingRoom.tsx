@@ -568,7 +568,11 @@ function Shell({ roomId, isHost, password, onLeave, videoQuality, setVideoQualit
     onManualDisconnect();
     setTimeout(() => room.disconnect(), 150);
     try {
-      await fetch(`/api/rooms/${roomId}`, { method: 'DELETE' });
+      await fetch(`/api/rooms/${roomId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hostIdentity: localParticipant.identity }),
+      });
     } catch {}
     setEndMessage({ title: 'Rapat Selesai', msg: 'Anda telah mengakhiri rapat ini.' });
   };

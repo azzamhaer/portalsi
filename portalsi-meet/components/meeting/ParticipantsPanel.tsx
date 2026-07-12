@@ -72,7 +72,7 @@ export function ParticipantsPanel({
     else if (type === 'demote' && onDemote) onDemote(target);
     else if (type === 'kick') {
       pub?.({ type: 'host_action', action: 'kick', target });
-      try { fetch(`/api/rooms/${roomId}/kick`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ identity: target }) }); } catch {}
+      try { fetch(`/api/rooms/${roomId}/kick`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ identity: target, hostIdentity: localParticipant.identity }) }); } catch {}
     }
     setConfirmAction(null);
   };

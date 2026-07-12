@@ -13,6 +13,9 @@ export interface RoomPermissions {
 export interface RoomRecord {
   id: string;
   hostIdentity: string;
+  hostPortalUserId?: number;
+  hostUsername?: string;
+  hostEmail?: string | null;
   passwordHash?: string;
   lobby: boolean;
   createdAt: number;
@@ -36,9 +39,11 @@ function waitStatusKey(waitingId: string) { return `wstatus:${waitingId}`; }
 
 export async function createRoom(opts: {
   id: string; hostIdentity: string; hostName: string; password?: string; lobby?: boolean; scheduledFor?: number;
+  hostPortalUserId?: number; hostUsername?: string; hostEmail?: string | null;
 }): Promise<RoomRecord> {
   const record: RoomRecord = {
     id: opts.id, hostIdentity: opts.hostIdentity, hostName: opts.hostName,
+    hostPortalUserId: opts.hostPortalUserId, hostUsername: opts.hostUsername, hostEmail: opts.hostEmail,
     passwordHash: opts.password ? await bcrypt.hash(opts.password, 10) : undefined,
     lobby: opts.lobby ?? false, createdAt: Date.now(), scheduledFor: opts.scheduledFor,
     permissions: { allowChat: true, allowScreenShare: true, allowJoin: true, allowReactions: true, lobbyMode: false, allowRename: true },

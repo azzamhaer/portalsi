@@ -1,7 +1,7 @@
 {
   "name": "PortalSI Meet",
   "short_name": "PortalSI Meet",
-  "description": "Video conference tanpa login, berbasis web.",
+  "description": "Video conference berbasis web dengan akun Portal SI untuk host.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0a0a0f",

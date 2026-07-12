@@ -13,13 +13,28 @@ class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable;
 
-    protected $fillable = ['name', 'email', 'email_verified_at', 'password', 'phone', 'role', 'image'];
-    protected $hidden = ['password', 'remember_token'];
+    protected $fillable = [
+        'portal_user_id',
+        'portal_username',
+        'portal_role',
+        'portal_access_token',
+        'name',
+        'email',
+        'email_verified_at',
+        'password',
+        'phone',
+        'role',
+        'image',
+    ];
+
+    protected $hidden = ['password', 'remember_token', 'portal_access_token'];
+
     protected function casts(): array
     {
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'portal_access_token' => 'encrypted',
         ];
     }
 
