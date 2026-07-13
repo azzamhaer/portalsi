@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2, ArrowLeft, Video, Lock, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 import { MeetingRoom } from './MeetingRoom';
@@ -18,6 +18,8 @@ function getBrowserId(): string {
 
 export function RoomClient({ roomId }: { roomId: string }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const adminHandoffKey = searchParams.get('admin_handoff') || '';
   const [state, setState] = useState<State>('loading');
   const [error, setError] = useState<string | null>(null);
   const [conn, setConn] = useState<ConnectionInfo | null>(null);
@@ -82,6 +84,30 @@ export function RoomClient({ roomId }: { roomId: string }) {
   }, [roomId]);
 
   useEffect(() => {
+    if (adminHandoffKey) {
+      (async () => {
+        try {
+          const res = await fetch(`/api/admin/rooms/${roomId}/observer-handoff?key=${encodeURIComponent(adminHandoffKey)}`);
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Link observer moderator tidak valid.');
+          setConn({
+            token: data.token,
+            wsUrl: data.wsUrl,
+            name: data.name,
+            isHost: true,
+            initialMic: false,
+            initialCam: false,
+          });
+          setName(data.name);
+          setState('connected');
+        } catch (e: any) {
+          setError(e.message || 'Gagal masuk sebagai moderator.');
+          setState('error');
+        }
+      })();
+      return;
+    }
+
     // Host reconnect
     const hostData = sessionStorage.getItem(`lk-${roomId}`);
     if (hostData) {
@@ -109,7 +135,7 @@ export function RoomClient({ roomId }: { roomId: string }) {
         setState(data.requiresPassword ? 'need-password' : 'need-name');
       } catch { setState('error'); setError('Tidak bisa memuat info ruang.'); }
     })();
-  }, [roomId, performJoin]);
+  }, [roomId, performJoin, adminHandoffKey]);
 
   function onSubmitName(e: React.FormEvent) {
     e.preventDefault();

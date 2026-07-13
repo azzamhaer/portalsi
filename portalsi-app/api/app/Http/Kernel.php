@@ -65,6 +65,8 @@ class Kernel extends HttpKernel
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         'verified.api' => \App\Http\Middleware\EnsureEmailIsVerifiedApi::class,
+        'admin.panel' => \App\Http\Middleware\EnsureAdminPanelAccess::class,
+        'notBanned' => \App\Http\Middleware\EnsureUserNotBanned::class,
     ];
 
     protected $routeMiddleware = [
@@ -74,6 +76,8 @@ class Kernel extends HttpKernel
     
         // Tambahkan ini untuk hanya user yang verified badge (is_verified == 1)
         'onlyVerified' => \App\Http\Middleware\OnlyVerified::class,
+        'admin.panel' => \App\Http\Middleware\EnsureAdminPanelAccess::class,
+        'notBanned' => \App\Http\Middleware\EnsureUserNotBanned::class,
     ];
     
 }

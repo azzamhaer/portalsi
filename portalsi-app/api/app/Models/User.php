@@ -39,6 +39,11 @@ class User extends Authenticatable implements MustVerifyEmail
         'profile_picture_url',
         'banner_url',
         'is_verified',       // centang biru
+        'is_banned',
+        'banned_at',
+        'banned_by',
+        'ban_reason',
+        'admin_notes',
         'is_private',
         'role',              // dev, teacher, parent, student
         'email_verified_at', // verifikasi email
@@ -54,6 +59,10 @@ class User extends Authenticatable implements MustVerifyEmail
     protected $hidden = [
         'password_hash',
         'remember_token',
+        'admin_notes',
+        'ban_reason',
+        'banned_at',
+        'banned_by',
     ];
 
     /**
@@ -62,6 +71,8 @@ class User extends Authenticatable implements MustVerifyEmail
     protected $casts = [
         'email_verified_at' => 'datetime',
         'is_verified' => 'boolean',
+        'is_banned' => 'boolean',
+        'banned_at' => 'datetime',
         'is_private' => 'boolean',
         'is_online' => 'boolean',
         'last_seen' => 'datetime',

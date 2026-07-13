@@ -53,6 +53,18 @@ export async function removeParticipant(roomId: string, identity: string) {
   await svc.removeParticipant(roomId, identity);
 }
 
+export async function listParticipants(roomId: string) {
+  const svc = getRoomService();
+  if (!svc) return [];
+  return await svc.listParticipants(roomId);
+}
+
+export async function deleteLiveKitRoom(roomId: string) {
+  const svc = getRoomService();
+  if (!svc) return;
+  await svc.deleteRoom(roomId);
+}
+
 export async function mutePublishedTrack(
   roomId: string,
   identity: string,

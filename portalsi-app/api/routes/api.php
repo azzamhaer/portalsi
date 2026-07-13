@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\AdminPanelController;
 use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\BookmarkController;
 use App\Http\Controllers\CommentController;
@@ -200,6 +201,14 @@ Route::post('/login', function (Request $request) use ($sendVerificationEmail) {
         return response()->json(['code' => 2001, 'message' => 'Username/email atau password salah!'], 401);
     }
 
+    if ((bool) ($user->is_banned ?? false)) {
+        return response()->json([
+            'code' => 2003,
+            'message' => 'Akun Anda sedang diblokir dari Portal SI.',
+            'ban_reason' => $user->ban_reason,
+        ], 403);
+    }
+
     if (! $user->hasVerifiedEmail()) {
         $cooldown = (int) config('auth.verification_resend_cooldown', 60);
         $cacheKey = 'email_verification_login_resend:'.$user->getKey();
@@ -303,7 +312,7 @@ Route::post('/email/verification-notification', function (Request $request) use 
         'message' => $verificationEmail['message'],
         'verification_email_status' => $verificationEmail['status'],
     ], $verificationEmail['status'] === 'sent' ? 200 : 500);
-})->middleware(['auth:sanctum'])->name('verification.send');
+})->middleware(['auth:sanctum', 'notBanned'])->name('verification.send');
 
 Route::post('/email/resend-verification', function (Request $request) use ($sendVerificationEmail) {
     $request->validate([
@@ -409,7 +418,7 @@ Route::post('/bind-email', function (Request $request) use ($sendVerificationEma
             : $verificationEmail['message'],
         'verification_email_status' => $verificationEmail['status'],
     ], $verificationEmail['status'] === 'sent' ? 200 : 500);
-})->middleware(['auth:sanctum']);
+})->middleware(['auth:sanctum', 'notBanned']);
 
 Route::get('/profile/{username}', [ProfileController::class, 'show']);
 
@@ -433,12 +442,49 @@ Route::get('/posts/{id}/og', function ($id) {
     ]);
 })->whereNumber('id');
 
+Route::middleware(['auth:sanctum', 'admin.panel'])->prefix('admin-panel')->group(function () {
+    Route::get('/me', [AdminPanelController::class, 'me']);
+    Route::get('/overview', [AdminPanelController::class, 'overview']);
+    Route::get('/audit-logs', [AdminPanelController::class, 'auditLogs']);
+
+    Route::get('/users', [AdminPanelController::class, 'users']);
+    Route::get('/users/{user}', [AdminPanelController::class, 'user'])->whereNumber('user');
+    Route::patch('/users/{user}', [AdminPanelController::class, 'updateUser'])->whereNumber('user');
+    Route::post('/users/{user}/ban', [AdminPanelController::class, 'banUser'])->whereNumber('user');
+    Route::post('/users/{user}/unban', [AdminPanelController::class, 'unbanUser'])->whereNumber('user');
+    Route::delete('/users/{user}', [AdminPanelController::class, 'deleteUser'])->whereNumber('user');
+
+    Route::get('/direct-messages', [AdminPanelController::class, 'directMessages']);
+    Route::patch('/direct-messages/{message}', [AdminPanelController::class, 'updateDirectMessage'])->whereNumber('message');
+    Route::delete('/direct-messages/{message}', [AdminPanelController::class, 'deleteDirectMessage'])->whereNumber('message');
+
+    Route::get('/group-messages', [AdminPanelController::class, 'groupMessages']);
+    Route::patch('/group-messages/{message}', [AdminPanelController::class, 'updateGroupMessage'])->whereNumber('message');
+    Route::delete('/group-messages/{message}', [AdminPanelController::class, 'deleteGroupMessage'])->whereNumber('message');
+
+    Route::get('/posts', [AdminPanelController::class, 'posts']);
+    Route::patch('/posts/{post}', [AdminPanelController::class, 'updatePost'])->whereNumber('post');
+    Route::delete('/posts/{post}', [AdminPanelController::class, 'deletePost'])->whereNumber('post');
+
+    Route::get('/comments', [AdminPanelController::class, 'comments']);
+    Route::patch('/comments/{comment}', [AdminPanelController::class, 'updateComment'])->whereNumber('comment');
+    Route::delete('/comments/{comment}', [AdminPanelController::class, 'deleteComment'])->whereNumber('comment');
+
+    Route::get('/stories', [AdminPanelController::class, 'stories']);
+    Route::patch('/stories/{story}', [AdminPanelController::class, 'updateStory'])->whereNumber('story');
+    Route::delete('/stories/{story}', [AdminPanelController::class, 'deleteStory'])->whereNumber('story');
+
+    Route::get('/groups', [AdminPanelController::class, 'groups']);
+    Route::patch('/groups/{group}', [AdminPanelController::class, 'updateGroup'])->whereNumber('group');
+    Route::delete('/groups/{group}', [AdminPanelController::class, 'deleteGroup'])->whereNumber('group');
+});
+
 // ═══════════════════════════════════════════
 // PROTECTED ROUTES (auth:sanctum)
 // ═══════════════════════════════════════════
 
-Route::middleware(['auth:sanctum'])->group(function () {
-    Broadcast::routes(['middleware' => ['auth:sanctum']]);
+Route::middleware(['auth:sanctum', 'notBanned'])->group(function () {
+    Broadcast::routes(['middleware' => ['auth:sanctum', 'notBanned']]);
 
     Route::post('/logout', function (Request $request) {
         $request->user()->currentAccessToken()->delete();

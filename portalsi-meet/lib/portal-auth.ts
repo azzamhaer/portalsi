@@ -5,6 +5,7 @@ export interface PortalSiUser {
   email?: string | null;
   email_verified_at?: string | null;
   role?: string | null;
+  is_verified?: boolean | number;
 }
 
 export class PortalAuthError extends Error {
@@ -27,6 +28,12 @@ export function readPortalToken(req: Request): string | null {
   const parts = cookie.split(';').map(part => part.trim());
   const item = parts.find(part => part.startsWith(`${PORTAL_TOKEN_COOKIE}=`));
   return item ? decodeURIComponent(item.slice(PORTAL_TOKEN_COOKIE.length + 1)) : null;
+}
+
+export function readPortalBearerToken(req: Request): string | null {
+  const header = req.headers.get('authorization') || '';
+  const match = header.match(/^Bearer\s+(.+)$/i);
+  return match ? match[1].trim() : null;
 }
 
 export async function loginToPortal(login: string, password: string): Promise<{ token: string; user: PortalSiUser }> {
@@ -89,6 +96,20 @@ export async function requirePortalUser(req: Request): Promise<{ token: string; 
   }
 
   const user = await getPortalUser(token);
+  return { token, user };
+}
+
+export async function requireVerifiedPortalAdmin(req: Request): Promise<{ token: string; user: PortalSiUser }> {
+  const token = readPortalBearerToken(req) || readPortalToken(req);
+  if (!token) {
+    throw new PortalAuthError('Token admin Portal SI diperlukan.', 401);
+  }
+
+  const user = await getPortalUser(token);
+  if (!Boolean(user.is_verified)) {
+    throw new PortalAuthError('Akses admin panel hanya untuk akun Portal SI yang terverifikasi.', 403);
+  }
+
   return { token, user };
 }
 

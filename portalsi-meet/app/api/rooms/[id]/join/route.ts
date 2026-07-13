@@ -37,6 +37,13 @@ export async function POST(
     );
   }
 
+  if (room.adminLocked) {
+    return NextResponse.json(
+      { error: 'Ruang sedang dikunci oleh moderator sekolah.' },
+      { status: 403 }
+    );
+  }
+
   // Check if host has blocked new joins
   if (room.permissions && !room.permissions.allowJoin) {
     return NextResponse.json(
