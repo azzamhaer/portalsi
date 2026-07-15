@@ -38,8 +38,9 @@
 		'/profile',
 		'/settings'
 	]);
+	// Halaman yang sudah punya tombol back sendiri → jangan tampilkan back global (hindari double).
 	const hasOwnBack = $derived(
-		/^\/(create\/|messages\/(direct|groups|new)|stories\/|groups\/|profile\/edit|settings\/(password|preferences))/.test(
+		/^\/(create\/|messages\/(direct|groups|new)|stories\/|groups\/|profile\/edit|portfolio\/new|settings\/(password|preferences|email|privacy|delete-account))/.test(
 			page.url.pathname
 		)
 	);
@@ -515,7 +516,7 @@
 		width: min(100%, 1080px);
 		min-height: 58px;
 		align-items: center;
-		padding: 10px 16px 4px;
+		padding: max(env(safe-area-inset-top, 0px), 20px) 16px 4px;
 		margin: 0 auto;
 	}
 	.page-back :global(button) {

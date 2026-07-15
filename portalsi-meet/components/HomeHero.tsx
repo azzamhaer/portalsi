@@ -40,6 +40,7 @@ export function HomeHero() {
   const [registerFullName, setRegisterFullName] = useState('');
   const [registerEmail, setRegisterEmail] = useState('');
   const [registerPassword, setRegisterPassword] = useState('');
+  const [verificationSentTo, setVerificationSentTo] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [roomId, setRoomId] = useState('');
   const [password, setPassword] = useState('');
@@ -141,9 +142,12 @@ export function HomeHero() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(responseError(data, 'Pendaftaran akun Portal SI gagal.'));
 
-      const user = data.user as PortalUser;
-      setAuthUser(user);
-      setName((current) => current || userDisplayName(user));
+      // Tidak auto-login. Tampilkan layar "email verifikasi terkirim";
+      // user harus verifikasi email dulu sebelum bisa login.
+      setVerificationSentTo(email);
+      setRegisterUsername('');
+      setRegisterFullName('');
+      setRegisterEmail('');
       setRegisterPassword('');
     } catch (err: any) {
       setAuthError(err?.message || 'Pendaftaran akun Portal SI gagal.');
@@ -346,6 +350,8 @@ export function HomeHero() {
                 <AuthPanel
                   mode={authMode}
                   setMode={(next) => { setAuthMode(next); setAuthError(null); }}
+                  verificationSentTo={verificationSentTo}
+                  onBackToLogin={() => { setVerificationSentTo(null); setAuthMode('login'); setAuthError(null); }}
                   busy={authBusy}
                   error={authError}
                   loginValue={loginValue}
@@ -371,7 +377,12 @@ export function HomeHero() {
                 <form onSubmit={handleCreate} className="space-y-4" autoComplete="off">
                   <div className="flex items-start justify-between gap-3 rounded-xl border border-green-100 bg-green-50 px-4 py-3">
                     <div className="min-w-0 flex items-center gap-3">
-                      <UserCircle className="h-5 w-5 shrink-0 text-dove-green" />
+                      {authUser.profile_picture_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={authUser.profile_picture_url} alt="" className="h-9 w-9 shrink-0 rounded-full object-cover border border-green-200" />
+                      ) : (
+                        <UserCircle className="h-5 w-5 shrink-0 text-dove-green" />
+                      )}
                       <div className="min-w-0">
                         <p className="text-[11px] font-semibold uppercase tracking-wide text-green-700">Akun Portal SI</p>
                         <p className="truncate text-sm font-semibold text-gray-800">{userDisplayName(authUser)}</p>
@@ -394,7 +405,14 @@ export function HomeHero() {
                     <button type="button" onClick={() => setCreateMode('schedule')} className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${createMode === 'schedule' ? 'bg-white shadow border border-gray-200 text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>Jadwalkan</button>
                   </div>
 
-                  <Field label="Nama Host" value={name} onChange={setName} placeholder={userDisplayName(authUser) || 'Masukkan nama host'} maxLength={40} autoFocus />
+                  <div>
+                    <label className="hp-label">Nama Host</label>
+                    <div className="hp-input flex items-center gap-2 bg-gray-50 text-sm text-gray-700 cursor-not-allowed" title="Nama mengikuti akun Portal SI yang login">
+                      <UserCircle className="h-4 w-4 shrink-0 text-gray-400" />
+                      <span className="truncate">{userDisplayName(authUser)}</span>
+                    </div>
+                    <p className="mt-1 text-[11px] text-gray-400">Nama mengikuti akun Portal SI yang login.</p>
+                  </div>
 
                   {createMode === 'schedule' && (
                     <div className="grid grid-cols-2 gap-3">
@@ -457,6 +475,8 @@ export function HomeHero() {
 function AuthPanel({
   mode,
   setMode,
+  verificationSentTo,
+  onBackToLogin,
   busy,
   error,
   loginValue,
@@ -480,6 +500,8 @@ function AuthPanel({
 }: {
   mode: 'login' | 'register';
   setMode: (mode: 'login' | 'register') => void;
+  verificationSentTo: string | null;
+  onBackToLogin: () => void;
   busy: boolean;
   error: string | null;
   loginValue: string;
@@ -501,6 +523,26 @@ function AuthPanel({
   onLogin: (e: React.FormEvent) => void;
   onRegister: (e: React.FormEvent) => void;
 }) {
+  if (verificationSentTo) {
+    return (
+      <div className="space-y-4 animate-scale-in text-center">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-green-100">
+          <UserCircle className="h-7 w-7 text-green-700" />
+        </div>
+        <div>
+          <p className="text-base font-semibold text-gray-800">Cek email kamu</p>
+          <p className="mt-1 text-sm leading-relaxed text-gray-600">
+            Link verifikasi sudah dikirim ke <span className="font-semibold text-gray-800">{verificationSentTo}</span>.
+            Verifikasi email dulu, lalu masuk untuk mulai membuat meeting.
+          </p>
+        </div>
+        <button type="button" onClick={onBackToLogin} className="hp-btn hp-btn-green">
+          <UserCircle className="h-4 w-4" /> Kembali ke Masuk
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4 animate-scale-in">
       <div className="rounded-xl border border-green-100 bg-green-50 px-4 py-3">

@@ -6,6 +6,7 @@ export interface PortalSiUser {
   email_verified_at?: string | null;
   role?: string | null;
   is_verified?: boolean | number;
+  profile_picture_url?: string | null;
 }
 
 export class PortalAuthError extends Error {
@@ -54,7 +55,7 @@ export async function registerToPortal(input: {
   full_name: string;
   email: string;
   password: string;
-}): Promise<{ token: string; user: PortalSiUser }> {
+}): Promise<{ user: PortalSiUser; verificationStatus?: string; message?: string }> {
   const payload = await portalRequest('/register', {
     method: 'POST',
     body: JSON.stringify({
@@ -66,11 +67,17 @@ export async function registerToPortal(input: {
     }),
   });
 
-  if (!payload.token || !payload.user) {
+  if (!payload.user) {
     throw new PortalAuthError('Response pendaftaran Portal SI tidak valid.', 502, payload);
   }
 
-  return { token: payload.token, user: payload.user };
+  // Sengaja TIDAK mengembalikan token: pendaftaran tidak boleh auto-login.
+  // User harus verifikasi email dulu sebelum bisa login.
+  return {
+    user: payload.user,
+    verificationStatus: payload.verification_email_status,
+    message: payload.message,
+  };
 }
 
 export async function getPortalUser(token: string): Promise<PortalSiUser> {

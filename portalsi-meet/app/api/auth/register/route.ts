@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { PORTAL_TOKEN_COOKIE, PortalAuthError, registerToPortal } from '@/lib/portal-auth';
+import { PortalAuthError, registerToPortal } from '@/lib/portal-auth';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -16,16 +16,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Username, nama lengkap, email, dan password wajib diisi.' }, { status: 422 });
     }
 
-    const { token, user } = await registerToPortal({ username, full_name: fullName, email, password });
-    const res = NextResponse.json({ user }, { status: 201 });
-    res.cookies.set(PORTAL_TOKEN_COOKIE, token, {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
-      path: '/',
-      maxAge: 60 * 60 * 24 * 30,
-    });
-    return res;
+    const { user, verificationStatus, message } = await registerToPortal({ username, full_name: fullName, email, password });
+    // Tidak set cookie / tidak auto-login: user harus verifikasi email dulu.
+    return NextResponse.json({ user, verificationStatus, message, needsVerification: true }, { status: 201 });
   } catch (error: any) {
     const status = error instanceof PortalAuthError ? error.status : 500;
     return NextResponse.json({ error: error?.message || 'Pendaftaran gagal.' }, { status });
