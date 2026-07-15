@@ -23,6 +23,9 @@ export interface RoomRecord {
   hostName: string;
   permissions: RoomPermissions;
   scheduledFor?: number;
+  mode?: 'instant' | 'later' | 'schedule';
+  /** Waktu (ms) room otomatis kedaluwarsa / URL tidak valid. */
+  expiresAt?: number;
   adminLocked?: boolean;
   moderatorNotes?: string | null;
   lastModeratedAt?: number;
@@ -65,6 +68,18 @@ const WAITING_TTL = 30 * 60; // 30 min
 const ROOM_AUDIT_TTL = 7 * 24 * 60 * 60;
 const OBSERVER_HANDOFF_TTL = 60;
 
+// --- Lifecycle room (Sub-4) ---
+const INSTANT_IDLE_TTL = 60 * 60;        // instan: 1 jam sebelum ada yang bergabung
+const LATER_TTL = 24 * 60 * 60;          // buat-nanti: berlaku maks 24 jam
+const SCHEDULED_VALID_TTL = 5 * 60 * 60; // terjadwal: 5 jam sejak waktu jadwal
+const ACTIVE_TTL = 24 * 60 * 60;         // saat aktif: jaga hidup (di-refresh tiap ada aktivitas)
+const EMPTY_GRACE_TTL = 60 * 60;         // setelah semua keluar: hitung mundur 1 jam lalu terhapus
+
+/** TTL detik dari waktu kedaluwarsa (min 60 detik). */
+function ttlFromExpiry(expiresAt: number): number {
+  return Math.max(60, Math.ceil((expiresAt - Date.now()) / 1000));
+}
+
 function roomKey(id: string) { return `room:${id}`; }
 function waitKey(id: string) { return `waiting:${id}`; }
 function waitStatusKey(waitingId: string) { return `wstatus:${waitingId}`; }
@@ -73,28 +88,61 @@ function observerHandoffKey(key: string) { return `adminhandoff:${key}`; }
 
 export async function createRoom(opts: {
   id: string; hostIdentity: string; hostName: string; password?: string; lobby?: boolean; scheduledFor?: number;
+  mode?: 'instant' | 'later' | 'schedule';
   hostPortalUserId?: number; hostUsername?: string; hostEmail?: string | null;
 }): Promise<RoomRecord> {
+  const now = Date.now();
+  const mode: 'instant' | 'later' | 'schedule' = opts.mode ?? (opts.scheduledFor ? 'schedule' : 'instant');
+  // Masa berlaku AWAL (sebelum ada peserta). Setelah ada aktivitas, diperpanjang via webhook.
+  let expiresAt: number;
+  if (mode === 'schedule' && opts.scheduledFor) expiresAt = opts.scheduledFor + SCHEDULED_VALID_TTL * 1000;
+  else if (mode === 'later') expiresAt = now + LATER_TTL * 1000;
+  else expiresAt = now + INSTANT_IDLE_TTL * 1000;
+
   const record: RoomRecord = {
     id: opts.id, hostIdentity: opts.hostIdentity, hostName: opts.hostName,
     hostPortalUserId: opts.hostPortalUserId, hostUsername: opts.hostUsername, hostEmail: opts.hostEmail,
     passwordHash: opts.password ? await bcrypt.hash(opts.password, 10) : undefined,
-    lobby: opts.lobby ?? false, createdAt: Date.now(), scheduledFor: opts.scheduledFor,
+    lobby: opts.lobby ?? false, createdAt: now, scheduledFor: opts.scheduledFor, mode, expiresAt,
     permissions: { allowChat: true, allowScreenShare: true, allowJoin: true, allowReactions: true, lobbyMode: false, allowRename: true },
   };
-  await redis.setex(roomKey(opts.id), ROOM_TTL, JSON.stringify(record));
+  await redis.setex(roomKey(opts.id), ttlFromExpiry(expiresAt), JSON.stringify(record));
   return record;
 }
 
 export async function getRoom(id: string): Promise<RoomRecord | null> {
   const raw = await redis.get(roomKey(id));
   if (!raw) return null;
-  try { return JSON.parse(raw) as RoomRecord; } catch { return null; }
+  try {
+    const room = JSON.parse(raw) as RoomRecord;
+    if (room.expiresAt && room.expiresAt <= Date.now()) {
+      await redis.del(roomKey(id));
+      return null;
+    }
+    return room;
+  } catch { return null; }
 }
 
 export async function saveRoom(room: RoomRecord) {
   room.updatedAt = Date.now();
-  await redis.setex(roomKey(room.id), ROOM_TTL, JSON.stringify(room));
+  const ttl = room.expiresAt ? ttlFromExpiry(room.expiresAt) : ROOM_TTL;
+  await redis.setex(roomKey(room.id), ttl, JSON.stringify(room));
+}
+
+/** Webhook: room jadi aktif (ada peserta) → perpanjang masa aktif. */
+export async function markRoomActive(id: string) {
+  const room = await getRoom(id);
+  if (!room) return;
+  room.expiresAt = Date.now() + ACTIVE_TTL * 1000;
+  await saveRoom(room);
+}
+
+/** Webhook: room kosong (semua peserta keluar) → mulai hitung mundur sebelum dihapus. */
+export async function markRoomEmpty(id: string) {
+  const room = await getRoom(id);
+  if (!room) return;
+  room.expiresAt = Date.now() + EMPTY_GRACE_TTL * 1000;
+  await saveRoom(room);
 }
 
 export async function listRooms(limit = 100): Promise<RoomRecord[]> {

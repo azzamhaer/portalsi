@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getRoom, deleteRoom } from '@/lib/rooms';
+import { endLivekitRoom } from '@/lib/livekit';
 import { normalizeRoomId } from '@/lib/room-id';
 
 export const dynamic = 'force-dynamic';
@@ -39,6 +40,8 @@ export async function DELETE(
     return NextResponse.json({ error: 'Not authorized' }, { status: 403 });
   }
 
+  // End for everyone: tutup room LiveKit (putuskan semua peserta) + hapus record (URL jadi tidak valid).
+  await endLivekitRoom(id);
   await deleteRoom(id);
   return NextResponse.json({ success: true });
 }

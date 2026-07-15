@@ -211,7 +211,7 @@ export function HomeHero() {
       const res = await fetch('/api/rooms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ hostName, password: roomPassword, lobby: false, scheduledFor }),
+        body: JSON.stringify({ hostName, password: roomPassword, lobby: false, scheduledFor, mode: createMode }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Gagal membuat ruang.');

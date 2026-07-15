@@ -48,6 +48,8 @@ export async function POST(req: Request) {
   const password = body.password ? String(body.password).slice(0, 64) : undefined;
   const lobby = Boolean(body.lobby);
   const scheduledFor = body.scheduledFor ? Number(body.scheduledFor) : undefined;
+  const mode: 'instant' | 'later' | 'schedule' | undefined =
+    ['instant', 'later', 'schedule'].includes(body.mode) ? body.mode : undefined;
 
   // Try up to 5 IDs to avoid rare collisions
   let id = '';
@@ -75,6 +77,7 @@ export async function POST(req: Request) {
     password,
     lobby,
     scheduledFor,
+    mode,
   });
 
   const token = await createAccessToken({

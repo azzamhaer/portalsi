@@ -56,6 +56,22 @@ export async function removeParticipant(roomId: string, identity: string) {
   await svc.removeParticipant(roomId, identity);
 }
 
+/**
+ * Tutup room LiveKit (memutus semua peserta). Aman dipanggil walau room belum
+ * pernah aktif / sudah tertutup — error "room does not exist" diabaikan.
+ */
+export async function endLivekitRoom(roomId: string) {
+  const svc = getRoomService();
+  if (!svc) return;
+  try {
+    await svc.deleteRoom(roomId);
+  } catch (err: any) {
+    if (!String(err?.message ?? '').toLowerCase().includes('does not exist')) {
+      console.warn('[livekit] deleteRoom gagal:', err?.message ?? err);
+    }
+  }
+}
+
 export async function listParticipants(roomId: string) {
   const svc = getRoomService();
   if (!svc) return [];
