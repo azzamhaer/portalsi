@@ -46,6 +46,11 @@ class RouteServiceProvider extends ServiceProvider
                 ->prefix('api')
                 ->group(base_path('routes/api.php'));
 
+            // Portal SI Marketplace (unified backend, prefixed under /api/marketplace)
+            Route::middleware('api')
+                ->prefix('api/marketplace')
+                ->group(base_path('routes/marketplace.php'));
+
             Route::middleware('web')
                 ->group(base_path('routes/web.php'));
         });

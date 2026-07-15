@@ -24,5 +24,8 @@ class AppServiceProvider extends ServiceProvider
         ResetPassword::createUrlUsing(function ($notifiable, string $token) {
             return url('/api/reset-password') . '?token=' . $token . '&email=' . urlencode($notifiable->email);
         });
+
+        // Portal SI Marketplace migrations (run on the 'marketplace' connection => mark_ tables)
+        $this->loadMigrationsFrom(database_path('migrations/marketplace'));
     }
 }

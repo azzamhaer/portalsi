@@ -67,6 +67,10 @@ class Kernel extends HttpKernel
         'verified.api' => \App\Http\Middleware\EnsureEmailIsVerifiedApi::class,
         'admin.panel' => \App\Http\Middleware\EnsureAdminPanelAccess::class,
         'notBanned' => \App\Http\Middleware\EnsureUserNotBanned::class,
+
+        // Portal SI Marketplace (unified backend)
+        'admin' => \App\Marketplace\Http\Middleware\AdminOnly::class,
+        'portal.si' => \App\Marketplace\Http\Middleware\EnsurePortalSiSession::class,
     ];
 
     protected $routeMiddleware = [

@@ -22,10 +22,24 @@ return [
     // Driven by env so production locks down to real web origins.
     // The native mobile client does not enforce CORS, so an empty list is
     // safe in production; set CORS_ALLOWED_ORIGINS only for browser clients.
-    'allowed_origins' => array_values(array_filter(array_map(
+    'allowed_origins' => array_values(array_unique(array_filter(array_map(
         'trim',
-        explode(',', (string) env('CORS_ALLOWED_ORIGINS', 'https://admin.portalsi.com,http://localhost:8000,http://127.0.0.1:8000,http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173'))
-    ))),
+        explode(',', (string) env('CORS_ALLOWED_ORIGINS', implode(',', [
+            'https://app.portalsi.com',
+            'https://www.app.portalsi.com',
+            'https://marketplace.portalsi.com',
+            'https://www.marketplace.portalsi.com',
+            'https://meet.portalsi.com',
+            'https://www.meet.portalsi.com',
+            'https://admin.portalsi.com',
+            'http://localhost:8000',
+            'http://127.0.0.1:8000',
+            'http://localhost:3000',
+            'http://127.0.0.1:3000',
+            'http://localhost:5173',
+            'http://127.0.0.1:5173',
+        ])))
+    )))),
 
     'allowed_origins_patterns' => [],
 
@@ -35,6 +49,6 @@ return [
 
     'max_age' => 0,
 
-    'supports_credentials' => false,
+    'supports_credentials' => true,
 
 ];
