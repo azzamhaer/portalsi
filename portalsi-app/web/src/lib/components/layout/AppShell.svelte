@@ -639,14 +639,14 @@
 			height: 0;
 			min-height: 0;
 			padding: 0;
-			transform: translateY(calc(env(safe-area-inset-top, 0px) + 14px));
+			transform: translateY(calc(env(safe-area-inset-top, 0px) + 32px));
 		}
 		.page-back :global(button) {
 			position: absolute;
 			left: 0;
 		}
 		.page-back + :global(.section-page) {
-			padding-top: 72px;
+			padding-top: 96px;
 		}
 	}
 
