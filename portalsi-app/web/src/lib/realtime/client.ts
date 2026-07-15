@@ -16,6 +16,11 @@ function getEcho(): Echo<'reverb'> | null {
 
 	const scheme = env.PUBLIC_REVERB_SCHEME === 'ws' ? 'ws' : 'wss';
 	const port = Number.parseInt(env.PUBLIC_REVERB_PORT || (scheme === 'wss' ? '443' : '80'), 10);
+	// laravel-echo v2: opsi `client` mengharapkan INSTANCE Pusher, bukan kelasnya.
+	// Memberi kelas lewat `client` membuat this.pusher = <kelas>, sehingga
+	// this.pusher.subscribe bukan function. Cara benar v2: sediakan kelas via
+	// window.Pusher agar Echo memanggil `new window.Pusher(...)`.
+	(window as unknown as { Pusher: typeof Pusher }).Pusher = Pusher;
 	echo = new Echo<'reverb'>({
 		broadcaster: 'reverb',
 		key,
@@ -24,8 +29,7 @@ function getEcho(): Echo<'reverb'> | null {
 		wssPort: port,
 		forceTLS: scheme === 'wss',
 		enabledTransports: ['ws', 'wss'],
-		authEndpoint: '/api/broadcasting/auth',
-		client: Pusher
+		authEndpoint: '/api/broadcasting/auth'
 	});
 	return echo;
 }
@@ -42,37 +46,45 @@ export function subscribePrivate(
 		return () => undefined;
 	}
 
-	subscriberCount += 1;
-	onStatus?.('connecting');
-	const event = eventName.startsWith('.') ? eventName : `.${eventName}`;
-	const channel = instance.private(channelName);
-	channel.listen(event, onEvent);
-	channel.subscribed(() => onStatus?.('connected'));
-	channel.error(() => onStatus?.('disconnected'));
+	try {
+		subscriberCount += 1;
+		onStatus?.('connecting');
+		const event = eventName.startsWith('.') ? eventName : `.${eventName}`;
+		const channel = instance.private(channelName);
+		channel.listen(event, onEvent);
+		channel.subscribed(() => onStatus?.('connected'));
+		channel.error(() => onStatus?.('disconnected'));
 
-	const connection = instance.connector.pusher.connection;
-	const connected = () => {
-		onStatus?.('connected');
-		startActivityHeartbeat();
-	};
-	const disconnected = () => onStatus?.('disconnected');
-	connection.bind('connected', connected);
-	connection.bind('disconnected', disconnected);
-	connection.bind('unavailable', disconnected);
+		const connection = instance.connector.pusher.connection;
+		const connected = () => {
+			onStatus?.('connected');
+			startActivityHeartbeat();
+		};
+		const disconnected = () => onStatus?.('disconnected');
+		connection.bind('connected', connected);
+		connection.bind('disconnected', disconnected);
+		connection.bind('unavailable', disconnected);
 
-	return () => {
-		channel.stopListening(event, onEvent);
-		connection.unbind('connected', connected);
-		connection.unbind('disconnected', disconnected);
-		connection.unbind('unavailable', disconnected);
-		instance.leave(channelName);
+		return () => {
+			channel.stopListening(event, onEvent);
+			connection.unbind('connected', connected);
+			connection.unbind('disconnected', disconnected);
+			connection.unbind('unavailable', disconnected);
+			instance.leave(channelName);
+			subscriberCount = Math.max(0, subscriberCount - 1);
+			if (subscriberCount === 0) {
+				instance.disconnect();
+				echo = null;
+				stopActivityHeartbeat();
+			}
+		};
+	} catch (err) {
+		// Realtime tidak boleh mematikan render halaman; degradasi ke "unavailable".
+		console.warn('Realtime subscribe gagal (non-fatal):', err);
+		onStatus?.('unavailable');
 		subscriberCount = Math.max(0, subscriberCount - 1);
-		if (subscriberCount === 0) {
-			instance.disconnect();
-			echo = null;
-			stopActivityHeartbeat();
-		}
-	};
+		return () => undefined;
+	}
 }
 
 function startActivityHeartbeat() {
