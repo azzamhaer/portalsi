@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getRoom, deleteRoom } from '@/lib/rooms';
 import { endLivekitRoom } from '@/lib/livekit';
 import { normalizeRoomId } from '@/lib/room-id';
+import { readPortalToken, getPortalUser } from '@/lib/portal-auth';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -36,7 +37,21 @@ export async function DELETE(
   let body: any = {};
   try { body = await req.json(); } catch {}
   const hostIdentity = String(body.hostIdentity ?? new URL(req.url).searchParams.get('hostIdentity') ?? '');
-  if (hostIdentity !== room.hostIdentity) {
+
+  // Otorisasi: cocok hostIdentity LiveKit ATAU token Portal SI milik pemilik room.
+  // (Host yang masuk lewat link punya identity 'user-...' yang beda dari room.hostIdentity,
+  //  jadi kita juga terima berdasarkan pemilik akun room.)
+  let authorized = hostIdentity !== '' && hostIdentity === room.hostIdentity;
+  if (!authorized && room.hostPortalUserId) {
+    const portalToken = readPortalToken(req);
+    if (portalToken) {
+      try {
+        const pu = await getPortalUser(portalToken);
+        authorized = pu.user_id === room.hostPortalUserId;
+      } catch { /* token invalid → tetap tidak berwenang */ }
+    }
+  }
+  if (!authorized) {
     return NextResponse.json({ error: 'Not authorized' }, { status: 403 });
   }
 
