@@ -81,6 +81,16 @@ class User extends Authenticatable implements MustVerifyEmail
     ];
 
     /**
+     * Scope: hanya user yang sudah verifikasi email.
+     * Dipakai untuk menyembunyikan user belum-verified dari area publik
+     * (feed, explore, rekomendasi, search).
+     */
+    public function scopeEmailVerified($query)
+    {
+        return $query->whereNotNull('email_verified_at');
+    }
+
+    /**
      * Default preferensi notifikasi in-app.
      *   new_post_reminders: all | mutual | off
      *   likes, comments, mentions, follows: bool

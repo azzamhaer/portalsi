@@ -256,6 +256,7 @@ class ProfileController extends Controller
         }
 
         $users = User::query()
+            ->emailVerified()
             ->where(function ($q) use ($username, $fullName) {
                 if ($username) {
                     $q->where('username', 'like', "%{$username}%");

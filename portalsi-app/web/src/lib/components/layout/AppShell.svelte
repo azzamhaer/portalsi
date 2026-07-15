@@ -39,7 +39,9 @@
 		'/settings'
 	]);
 	const hasOwnBack = $derived(
-		/^\/(create\/|messages\/(direct|groups|new)|stories\/|groups\/)/.test(page.url.pathname)
+		/^\/(create\/|messages\/(direct|groups|new)|stories\/|groups\/|profile\/edit|settings\/(password|preferences))/.test(
+			page.url.pathname
+		)
 	);
 	const showBack = $derived(!topLevel.has(page.url.pathname) && !hasOwnBack);
 	// Sembunyikan bottom-nav di halaman percakapan agar tidak menghalangi kotak pesan & tombol kirim.
@@ -636,7 +638,7 @@
 			height: 0;
 			min-height: 0;
 			padding: 0;
-			transform: translateY(14px);
+			transform: translateY(calc(env(safe-area-inset-top, 0px) + 14px));
 		}
 		.page-back :global(button) {
 			position: absolute;

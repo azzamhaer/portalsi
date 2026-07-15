@@ -132,12 +132,17 @@ class NotificationController extends Controller
 
         // Ambil isi comment/reply kalau ada
         $commentText = null;
+        $isGifComment = false;
         if (in_array($notif->type, ['comment', 'reply']) && $notif->related_comment_id) {
             $comment = Comment::find($notif->related_comment_id);
             if ($comment) {
-                $commentText = trim($comment->content) !== ''
-                    ? $comment->content
-                    : '(tidak ada isi komentar)';
+                if (trim((string) $comment->content) !== '') {
+                    $commentText = $comment->content;
+                } elseif (! empty($comment->gif_url)) {
+                    $isGifComment = true;
+                } else {
+                    $commentText = '(tidak ada isi komentar)';
+                }
             }
         }
 
@@ -146,8 +151,12 @@ class NotificationController extends Controller
             'follow_request' => "$username meminta mengikuti akun kamu",
             'follow_accepted' => "$username menerima permintaan mengikuti kamu",
             'like' => "$username menyukai postingan kamu",
-            'comment' => "$username mengomentari postingan kamu: \"$commentText\"",
-            'reply' => "$username membalas komentar kamu: \"$commentText\"",
+            'comment' => $isGifComment
+                ? "$username mengomentari postingan kamu dengan GIF"
+                : "$username mengomentari postingan kamu: \"$commentText\"",
+            'reply' => $isGifComment
+                ? "$username membalas komentar kamu dengan GIF"
+                : "$username membalas komentar kamu: \"$commentText\"",
             'mention' => "$username menyebut kamu di postingan atau komentar",
             'story_mention' => "$username menyebut kamu di cerita",
             'bio_mention' => "$username menyebut kamu di bio profil",

@@ -74,7 +74,7 @@ class PostController extends Controller
             $mainPosts = Post::with(['user', 'tags', 'mentions'])
                 ->withCount(['likes', 'comments'])
                 ->where('is_archived', false)
-                ->whereHas('user', fn ($q) => $q->where('is_private', 0))
+                ->whereHas('user', fn ($q) => $q->where('is_private', 0)->whereNotNull('email_verified_at'))
                 ->orderByDesc('created_at')
                 ->take(100)
                 ->get()
@@ -354,7 +354,8 @@ class PostController extends Controller
 
         $query = Post::with(['user', 'tags'])
             ->withCount(['likes', 'comments'])
-            ->where('is_archived', false);
+            ->where('is_archived', false)
+            ->whereHas('user', fn ($q) => $q->whereNotNull('email_verified_at'));
 
         if ($request->filled('tag')) {
             $tagName = $request->tag;
