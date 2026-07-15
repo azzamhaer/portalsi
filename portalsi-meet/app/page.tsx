@@ -41,7 +41,7 @@ export default function HomePage() {
             <span className="text-gray-200">·</span>
             <span>Aman</span>
             <span className="text-gray-200">·</span>
-            <span>Akun Portal SI untuk Host</span>
+            <span>Portal SI Account Integrated</span>
           </div>
         </div>
       </footer>

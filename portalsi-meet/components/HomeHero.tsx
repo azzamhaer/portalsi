@@ -262,19 +262,14 @@ export function HomeHero() {
       <div className="grid lg:grid-cols-2 gap-16 lg:gap-20 items-center">
         <div>
           <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 leading-[1.15] tracking-tight">
-            Buat video meeting<br />
-            <span className="hp-gradient-text">tercepat dan tersimpel yang pernah ada.</span>
+            Video meeting,<br />
+            <span className="hp-gradient-text">dibuat sesederhana mungkin.</span>
           </h1>
           <p className="mt-5 text-lg text-gray-500 leading-relaxed max-w-md">
-            Host membuat meeting dengan akun Portal SI. Peserta tetap bisa gabung cepat cukup pakai nama dan kode meeting.
+            Setiap percakapan yang bermakna dimulai dengan cara yang sederhana. Buat ruang meeting dalam hitungan detik, lalu biarkan percakapan mengalir tanpa hambatan.
           </p>
 
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Pill icon={<Zap className="h-3.5 w-3.5" />} text="Instan" />
-            <Pill icon={<Shield className="h-3.5 w-3.5" />} text="Terenkripsi" />
-            <Pill icon={<UserCircle className="h-3.5 w-3.5" />} text="Akun Portal SI" />
-            <Pill icon={<Video className="h-3.5 w-3.5" />} text="HD Video" />
-          </div>
+
         </div>
 
         <div>
