@@ -85,6 +85,16 @@ export function ParticipantsPanel({
     return c[Math.abs(h) % c.length];
   }
 
+  function avatarUrl(metadata?: string): string | null {
+    if (!metadata) return null;
+    try {
+      const m = JSON.parse(metadata);
+      return typeof m?.avatar === 'string' && m.avatar ? m.avatar : null;
+    } catch {
+      return null;
+    }
+  }
+
   return (
     <aside className="flex flex-col h-full w-full md:w-[340px] glass-panel md:rounded-2xl overflow-hidden animate-slide-in-right">
       <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
@@ -141,15 +151,21 @@ export function ParticipantsPanel({
           const micOn = !!mic && !mic.isMuted;
           const camOn = !!cam && !cam.isMuted;
           const color = nameColor(p.name || 'A');
+          const avatar = avatarUrl(p.metadata);
           const isSharing = tracks.some(t => t.participant.identity === p.identity);
           const isPinnedForMe = focusedIdentity === p.identity;
           const isPinnedGlobal = globalPinnedIdentity === p.identity;
 
           return (
             <div key={p.identity} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/[0.04] transition-all group">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold" style={{ background: `${color}20`, color }}>
-                {p.name?.charAt(0).toUpperCase() || '?'}
-              </div>
+              {avatar ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={avatar} alt="" className="h-9 w-9 shrink-0 rounded-full object-cover" />
+              ) : (
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold" style={{ background: `${color}20`, color }}>
+                  {p.name?.charAt(0).toUpperCase() || '?'}
+                </div>
+              )}
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate flex items-center gap-1.5 text-white/90">
                   {p.name || 'Anonim'}

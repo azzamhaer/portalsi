@@ -19,12 +19,15 @@ export interface TokenOptions {
   canPublish?: boolean;
   canSubscribe?: boolean;
   ttlSeconds?: number;
+  /** JSON string metadata peserta (mis. { avatar }) — dibaca di UI room. */
+  metadata?: string;
 }
 
 export async function createAccessToken(opts: TokenOptions): Promise<string> {
   const at = new AccessToken(LIVEKIT_API_KEY!, LIVEKIT_API_SECRET!, {
     identity: opts.identity,
     name: opts.name,
+    metadata: opts.metadata,
     ttl: opts.ttlSeconds ?? 60 * 60, // 1h default
   });
 

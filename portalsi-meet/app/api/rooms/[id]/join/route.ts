@@ -4,6 +4,7 @@ import { getRoom, verifyRoomPassword } from '@/lib/rooms';
 import { normalizeRoomId } from '@/lib/room-id';
 import { createAccessToken, LIVEKIT_WS_URL } from '@/lib/livekit';
 import { getClientIp, rateLimit } from '@/lib/rate-limit';
+import { readPortalToken, getPortalUser, portalDisplayName } from '@/lib/portal-auth';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -68,8 +69,21 @@ export async function POST(
     return NextResponse.json({ error: 'Body tidak valid.' }, { status: 400 });
   }
 
-  const name = String(body.name ?? '').trim().slice(0, 40);
+  let name = String(body.name ?? '').trim().slice(0, 40);
+  let avatar: string | null = null;
   const password = body.password ? String(body.password) : undefined;
+
+  // Kalau peserta login Portal SI: nama & foto profil mengikuti akun (tidak bisa diubah).
+  const portalToken = readPortalToken(req);
+  if (portalToken) {
+    try {
+      const pu = await getPortalUser(portalToken);
+      name = portalDisplayName(pu);
+      avatar = pu.profile_picture_url ?? null;
+    } catch {
+      /* token tidak valid → perlakukan sebagai tamu */
+    }
+  }
 
   if (!name) {
     return NextResponse.json({ error: 'Nama wajib diisi.' }, { status: 400 });
@@ -139,6 +153,7 @@ export async function POST(
     identity,
     name,
     isHost: false,
+    metadata: JSON.stringify({ avatar }),
   });
 
   // Remember this browser as known for this room

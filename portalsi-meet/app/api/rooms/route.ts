@@ -82,6 +82,7 @@ export async function POST(req: Request) {
     identity: hostIdentity,
     name: hostName,
     isHost: true,
+    metadata: JSON.stringify({ avatar: portal.user.profile_picture_url ?? null }),
   });
 
   return NextResponse.json({
