@@ -10,6 +10,7 @@ interface PortalUser {
   username: string;
   full_name?: string | null;
   email?: string | null;
+  profile_picture_url?: string | null;
 }
 
 function userDisplayName(user: PortalUser | null): string {
