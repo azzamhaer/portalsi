@@ -8,7 +8,8 @@ return new class extends Migration
 {
     public function up()
     {
-        DB::statement("ALTER TABLE notifications MODIFY type ENUM(
+        $t = DB::getTablePrefix() . 'notifications';
+        DB::statement("ALTER TABLE {$t} MODIFY type ENUM(
             'like',
             'comment',
             'follow',
@@ -20,7 +21,8 @@ return new class extends Migration
 
     public function down()
     {
-        DB::statement("ALTER TABLE notifications MODIFY type ENUM(
+        $t = DB::getTablePrefix() . 'notifications';
+        DB::statement("ALTER TABLE {$t} MODIFY type ENUM(
             'like',
             'comment',
             'follow',

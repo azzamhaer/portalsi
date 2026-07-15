@@ -12,12 +12,14 @@ return new class extends Migration
      */
     public function up(): void
     {
+        $t = DB::getTablePrefix() . 'login_histories';
         // Cek apakah foreign key exists sebelum mencoba drop
         $foreignKeys = DB::select("
-            SELECT CONSTRAINT_NAME 
-            FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE 
-            WHERE TABLE_NAME = 'login_histories' 
-            AND COLUMN_NAME = 'token_id' 
+            SELECT CONSTRAINT_NAME
+            FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+            WHERE TABLE_NAME = '{$t}'
+            AND TABLE_SCHEMA = DATABASE()
+            AND COLUMN_NAME = 'token_id'
             AND CONSTRAINT_NAME != 'PRIMARY'
         ");
 
@@ -31,10 +33,10 @@ return new class extends Migration
         }
 
         // Ubah column menjadi nullable (tanpa constraint)
-        Schema::table('login_histories', function (Blueprint $table) {
+        Schema::table('login_histories', function (Blueprint $table) use ($t) {
             // Untuk MySQL, gunakan raw statement untuk avoid error
             if (DB::getDriverName() === 'mysql') {
-                DB::statement('ALTER TABLE login_histories MODIFY token_id BIGINT UNSIGNED NULL');
+                DB::statement("ALTER TABLE {$t} MODIFY token_id BIGINT UNSIGNED NULL");
             } else {
                 $table->unsignedBigInteger('token_id')->nullable()->change();
             }
@@ -46,10 +48,11 @@ return new class extends Migration
      */
     public function down(): void
     {
+        $t = DB::getTablePrefix() . 'login_histories';
         // Kembalikan ke not nullable (jika needed)
-        Schema::table('login_histories', function (Blueprint $table) {
+        Schema::table('login_histories', function (Blueprint $table) use ($t) {
             if (DB::getDriverName() === 'mysql') {
-                DB::statement('ALTER TABLE login_histories MODIFY token_id BIGINT UNSIGNED NOT NULL');
+                DB::statement("ALTER TABLE {$t} MODIFY token_id BIGINT UNSIGNED NOT NULL");
             } else {
                 $table->unsignedBigInteger('token_id')->nullable(false)->change();
             }

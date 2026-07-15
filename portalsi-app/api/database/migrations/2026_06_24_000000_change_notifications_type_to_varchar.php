@@ -15,12 +15,14 @@ return new class extends Migration {
      */
     public function up(): void
     {
-        DB::statement("ALTER TABLE notifications MODIFY COLUMN type VARCHAR(50) NOT NULL");
+        $t = DB::getTablePrefix() . 'notifications';
+        DB::statement("ALTER TABLE {$t} MODIFY COLUMN type VARCHAR(50) NOT NULL");
     }
 
     public function down(): void
     {
-        DB::statement("ALTER TABLE notifications MODIFY COLUMN type ENUM(
+        $t = DB::getTablePrefix() . 'notifications';
+        DB::statement("ALTER TABLE {$t} MODIFY COLUMN type ENUM(
             'like',
             'comment',
             'follow',
