@@ -414,10 +414,19 @@ export function App() {
 
   async function deleteContent(row: any) {
     const id = row.post_id || row.comment_id || row.story_id || row.id;
-    const ok = window.confirm(`Hapus item ${contentMode} #${id}?`);
-    if (!ok) return;
+    const notifiable = contentMode === 'posts' || contentMode === 'comments' || contentMode === 'stories';
+    let reason: string | null = null;
+    if (notifiable) {
+      reason = window.prompt(`Alasan menghapus ${contentMode} #${id} (dikirim sebagai notifikasi ke pemilik, boleh dikosongkan):`, '');
+      if (reason === null) return; // dibatalkan
+    } else if (!window.confirm(`Hapus item ${contentMode} #${id}?`)) {
+      return;
+    }
     await run('Konten dihapus.', async () => {
-      await portal(`/admin-panel/${contentMode}/${id}`, { method: 'DELETE' });
+      await portal(`/admin-panel/${contentMode}/${id}`, {
+        method: 'DELETE',
+        body: notifiable ? JSON.stringify({ reason: reason?.trim() || undefined }) : undefined,
+      });
       await loadContent();
     });
   }

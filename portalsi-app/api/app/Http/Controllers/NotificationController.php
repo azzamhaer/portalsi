@@ -128,6 +128,11 @@ class NotificationController extends Controller
     // 🔧 Pesan notifikasi dinamis
     private function generateMessage($notif)
     {
+        // Notifikasi berpesan kustom (mis. moderasi admin) — pakai apa adanya.
+        if (! empty($notif->message)) {
+            return $notif->message;
+        }
+
         $username = $notif->sender ? $notif->sender->username : 'Seseorang';
 
         // Ambil isi comment/reply kalau ada

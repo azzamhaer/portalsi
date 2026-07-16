@@ -7,6 +7,7 @@ use App\Models\Comment;
 use App\Models\DirectMessage;
 use App\Models\Group;
 use App\Models\GroupMessage;
+use App\Models\Notification;
 use App\Models\Post;
 use App\Models\Story;
 use App\Models\User;
@@ -490,9 +491,13 @@ class AdminPanelController extends Controller
 
     public function deletePost(Request $request, Post $post)
     {
+        $validated = $request->validate(['reason' => ['nullable', 'string', 'max:2000']]);
+        $reason = $validated['reason'] ?? null;
         $postId = $post->post_id;
+        $ownerId = $post->user_id;
         $post->delete();
-        $this->audit($request, 'post.deleted', 'post', $postId);
+        $this->audit($request, 'post.deleted', 'post', $postId, ['reason' => $reason]);
+        $this->notifyModeration($request, $ownerId, 'Postingan kamu', $reason);
 
         return response()->json(['message' => 'Post berhasil dihapus.']);
     }
@@ -528,9 +533,13 @@ class AdminPanelController extends Controller
 
     public function deleteComment(Request $request, Comment $comment)
     {
+        $validated = $request->validate(['reason' => ['nullable', 'string', 'max:2000']]);
+        $reason = $validated['reason'] ?? null;
         $commentId = $comment->comment_id;
+        $ownerId = $comment->user_id;
         $comment->delete();
-        $this->audit($request, 'comment.deleted', 'comment', $commentId);
+        $this->audit($request, 'comment.deleted', 'comment', $commentId, ['reason' => $reason]);
+        $this->notifyModeration($request, $ownerId, 'Komentar kamu', $reason);
 
         return response()->json(['message' => 'Komentar berhasil dihapus.']);
     }
@@ -570,11 +579,43 @@ class AdminPanelController extends Controller
 
     public function deleteStory(Request $request, Story $story)
     {
+        $validated = $request->validate(['reason' => ['nullable', 'string', 'max:2000']]);
+        $reason = $validated['reason'] ?? null;
         $storyId = $story->story_id;
+        $ownerId = $story->user_id;
         $story->delete();
-        $this->audit($request, 'story.deleted', 'story', $storyId);
+        $this->audit($request, 'story.deleted', 'story', $storyId, ['reason' => $reason]);
+        $this->notifyModeration($request, $ownerId, 'Cerita kamu', $reason);
 
         return response()->json(['message' => 'Story berhasil dihapus.']);
+    }
+
+    /**
+     * Kirim notifikasi in-app ke pemilik konten yang dimoderasi.
+     * Tidak menggagalkan aksi moderasi kalau pembuatan notifikasi gagal.
+     */
+    private function notifyModeration(Request $request, ?int $ownerId, string $subject, ?string $reason): void
+    {
+        $adminId = $request->user()->user_id;
+        if (! $ownerId || $ownerId === $adminId) {
+            return;
+        }
+        $message = $reason
+            ? "{$subject} dihapus oleh admin. Alasan: {$reason}"
+            : "{$subject} dihapus oleh admin karena melanggar aturan komunitas.";
+        try {
+            Notification::create([
+                'recipient_id' => $ownerId,
+                'type' => 'moderation',
+                'message' => $message,
+                'related_user_id' => $adminId,
+                'related_post_id' => null,
+                'created_at' => now(),
+                'is_read' => false,
+            ]);
+        } catch (Throwable $e) {
+            // abaikan — notifikasi bersifat pelengkap
+        }
     }
 
     public function groups(Request $request)
