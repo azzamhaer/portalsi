@@ -280,7 +280,7 @@ export function App() {
       const nextSession = { token: payload.token, user: payload.user };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(nextSession));
       setSession(nextSession);
-      setNotice('Login admin berhasil.');
+      setNotice('Login berhasil.');
     });
   }
 
