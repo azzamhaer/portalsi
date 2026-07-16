@@ -3,6 +3,7 @@
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AdminPanelController;
 use App\Http\Controllers\AnnouncementController;
+use App\Http\Controllers\AppealController;
 use App\Http\Controllers\BookmarkController;
 use App\Http\Controllers\CommentController;
 use App\Http\Controllers\DirectMessageController;
@@ -447,6 +448,9 @@ Route::middleware(['auth:sanctum', 'admin.panel'])->prefix('admin-panel')->group
     Route::get('/overview', [AdminPanelController::class, 'overview']);
     Route::get('/audit-logs', [AdminPanelController::class, 'auditLogs']);
 
+    Route::get('/appeals', [AdminPanelController::class, 'appeals']);
+    Route::post('/appeals/{appeal}/resolve', [AdminPanelController::class, 'resolveAppeal'])->whereNumber('appeal');
+
     Route::get('/users', [AdminPanelController::class, 'users']);
     Route::get('/users/{user}', [AdminPanelController::class, 'user'])->whereNumber('user');
     Route::patch('/users/{user}', [AdminPanelController::class, 'updateUser'])->whereNumber('user');
@@ -477,6 +481,16 @@ Route::middleware(['auth:sanctum', 'admin.panel'])->prefix('admin-panel')->group
     Route::get('/groups', [AdminPanelController::class, 'groups']);
     Route::patch('/groups/{group}', [AdminPanelController::class, 'updateGroup'])->whereNumber('group');
     Route::delete('/groups/{group}', [AdminPanelController::class, 'deleteGroup'])->whereNumber('group');
+});
+
+// ═══════════════════════════════════════════
+// BANDING (APPEAL) — auth tapi TANPA notBanned,
+// supaya akun yang diblokir tetap bisa mengajukan banding.
+// ═══════════════════════════════════════════
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/appeals', [AppealController::class, 'store']);
+    Route::get('/appeals/mine', [AppealController::class, 'mine']);
 });
 
 // ═══════════════════════════════════════════

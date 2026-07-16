@@ -32,7 +32,7 @@ const PORTAL_API = (import.meta.env.VITE_PORTALSI_API_URL || 'https://api-new.po
 const MEET_API = (import.meta.env.VITE_MEET_API_URL || 'https://meet.portalsi.com/api').replace(/\/+$/, '');
 const STORAGE_KEY = 'portalsi-admin-session';
 
-type Tab = 'dashboard' | 'users' | 'admins' | 'chats' | 'content' | 'meet' | 'audit';
+type Tab = 'dashboard' | 'users' | 'admins' | 'chats' | 'content' | 'meet' | 'appeals' | 'audit';
 type ChatMode = 'direct' | 'group';
 type ContentMode = 'posts' | 'comments' | 'stories' | 'groups';
 
@@ -82,6 +82,7 @@ const navGroups: Array<{ heading: string; items: NavItem[] }> = [
     heading: 'Sistem',
     items: [
       { id: 'admins', label: 'Admin', icon: ShieldCheck },
+      { id: 'appeals', label: 'Banding', icon: ShieldAlert },
       { id: 'audit', label: 'Audit', icon: ClipboardList },
     ],
   },
@@ -191,6 +192,8 @@ export function App() {
   const [auditAction, setAuditAction] = useState('');
   const [admins, setAdmins] = useState<PortalUser[]>([]);
   const [adminSearch, setAdminSearch] = useState('');
+  const [appeals, setAppeals] = useState<any[]>([]);
+  const [appealStatus, setAppealStatus] = useState('pending');
 
   const portal = useMemo(() => {
     return <T,>(path: string, init?: RequestInit) => apiRequest<T>(PORTAL_API, path, session?.token, init);
@@ -277,6 +280,30 @@ export function App() {
     setAdmins(page.data || []);
   }
 
+  async function loadAppeals() {
+    const query = new URLSearchParams({ per_page: '50' });
+    if (appealStatus) query.set('status', appealStatus);
+    const page = await portal<PageResult<any>>(`/admin-panel/appeals?${query}`);
+    setAppeals(page.data || []);
+  }
+
+  async function resolveAppeal(appeal: any, decision: 'approved' | 'rejected') {
+    const response = window.prompt(
+      decision === 'approved'
+        ? 'Catatan (opsional). Menyetujui akan membuka blokir user:'
+        : 'Alasan penolakan (opsional):',
+      '',
+    );
+    if (response === null) return;
+    await run(decision === 'approved' ? 'Banding disetujui, blokir dibuka.' : 'Banding ditolak.', async () => {
+      await portal(`/admin-panel/appeals/${appeal.appeal_id}/resolve`, {
+        method: 'POST',
+        body: JSON.stringify({ decision, admin_response: response.trim() || undefined }),
+      });
+      await loadAppeals();
+    });
+  }
+
   async function setAdminAccess(user: PortalUser, grant: boolean) {
     await run(grant ? `@${user.username} kini admin.` : `Akses admin @${user.username} dicabut.`, async () => {
       await portal(`/admin-panel/users/${user.user_id}`, {
@@ -295,6 +322,7 @@ export function App() {
       if (tab === 'chats') await loadChats();
       if (tab === 'content') await loadContent();
       if (tab === 'meet') await loadRooms();
+      if (tab === 'appeals') await loadAppeals();
       if (tab === 'audit') await loadAudit(true);
     });
   }
@@ -303,7 +331,7 @@ export function App() {
     if (!session) return;
     reloadCurrent();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.token, tab, chatMode, contentMode]);
+  }, [session?.token, tab, chatMode, contentMode, appealStatus]);
 
   async function handleLogin(login: string, password: string) {
     await run('', async () => {
@@ -611,6 +639,14 @@ export function App() {
             onEdit={setEditingUser}
             onGrant={(user) => setAdminAccess(user, true)}
             onRevoke={(user) => setAdminAccess(user, false)}
+          />
+        )}
+        {tab === 'appeals' && (
+          <AppealsPanel
+            appeals={appeals}
+            status={appealStatus}
+            setStatus={setAppealStatus}
+            onResolve={resolveAppeal}
           />
         )}
         {tab === 'audit' && (
@@ -960,6 +996,56 @@ function MeetPanel(props: {
           <p className="empty">Pilih room untuk melihat participant, permission, dan audit.</p>
         )}
       </aside>
+    </section>
+  );
+}
+
+function AppealsPanel(props: {
+  appeals: any[];
+  status: string;
+  setStatus: (value: string) => void;
+  onResolve: (appeal: any, decision: 'approved' | 'rejected') => void;
+}) {
+  return (
+    <section className="panel">
+      <Header title="Banding Akun" subtitle="Peninjauan banding dari user yang diblokir. Menyetujui akan otomatis membuka blokir." />
+      <Toolbar>
+        <Segmented
+          value={props.status}
+          onChange={props.setStatus}
+          options={[['pending', 'Menunggu'], ['approved', 'Disetujui'], ['rejected', 'Ditolak'], ['', 'Semua']]}
+        />
+      </Toolbar>
+      <Table>
+        <thead><tr><th>ID</th><th>User</th><th>Pesan Banding</th><th>Status</th><th>Diajukan</th><th>Aksi</th></tr></thead>
+        <tbody>
+          {props.appeals.map(a => (
+            <tr key={a.appeal_id}>
+              <td>{a.appeal_id}</td>
+              <td>{a.user?.username || a.user_id}</td>
+              <td className="wide-cell">
+                {short(a.message, 160)}
+                {a.admin_response ? <span className="detail-sub"> · admin: {a.admin_response}</span> : null}
+              </td>
+              <td><Badge ok={a.status === 'approved'} danger={a.status === 'rejected'}>{a.status}</Badge></td>
+              <td>{fmt(a.created_at)}</td>
+              <td><ActionBar>
+                {a.status === 'pending' ? (
+                  <>
+                    <IconAction title="Setujui — buka blokir" icon={ShieldCheck} onClick={() => props.onResolve(a, 'approved')} />
+                    <IconAction title="Tolak banding" icon={ShieldAlert} danger onClick={() => props.onResolve(a, 'rejected')} />
+                  </>
+                ) : (
+                  <span className="detail-sub">ditinjau {a.reviewer?.username ? `oleh ${a.reviewer.username}` : ''}</span>
+                )}
+              </ActionBar></td>
+            </tr>
+          ))}
+          {props.appeals.length === 0 && (
+            <tr><td colSpan={6} className="empty-cell">Tidak ada banding.</td></tr>
+          )}
+        </tbody>
+      </Table>
     </section>
   );
 }

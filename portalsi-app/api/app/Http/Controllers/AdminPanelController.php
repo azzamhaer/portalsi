@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AdminAuditLog;
+use App\Models\Appeal;
 use App\Models\Comment;
 use App\Models\DirectMessage;
 use App\Models\Group;
@@ -74,6 +75,45 @@ class AdminPanelController extends Controller
         }
 
         return response()->json($query->paginate($this->perPage($request)));
+    }
+
+    public function appeals(Request $request)
+    {
+        $query = Appeal::with(['user', 'reviewer'])->latest();
+        if ($request->filled('status')) {
+            $query->where('status', $request->query('status'));
+        }
+
+        return response()->json($query->paginate($this->perPage($request)));
+    }
+
+    public function resolveAppeal(Request $request, Appeal $appeal)
+    {
+        $validated = $request->validate([
+            'decision' => ['required', Rule::in(['approved', 'rejected'])],
+            'admin_response' => ['nullable', 'string', 'max:3000'],
+        ]);
+
+        $appeal->status = $validated['decision'];
+        $appeal->admin_response = $validated['admin_response'] ?? null;
+        $appeal->reviewed_by = $request->user()->user_id;
+        $appeal->reviewed_at = now();
+        $appeal->save();
+
+        // Banding disetujui → buka blokir user.
+        if ($validated['decision'] === 'approved' && $appeal->user) {
+            $this->applyBanState($appeal->user, false, $request->user()->user_id);
+            $appeal->user->save();
+        }
+
+        $this->audit($request, 'appeal.'.$validated['decision'], 'appeal', $appeal->appeal_id, [
+            'user_id' => $appeal->user_id,
+        ]);
+
+        return response()->json([
+            'message' => $validated['decision'] === 'approved' ? 'Banding disetujui, blokir dibuka.' : 'Banding ditolak.',
+            'appeal' => $appeal->fresh(['user', 'reviewer']),
+        ]);
     }
 
     public function users(Request $request)

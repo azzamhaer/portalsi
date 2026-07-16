@@ -272,7 +272,7 @@ public function bookmarkedPosts()
 
 public function loginHistories()
 {
-    return $this->hasMany(LoginHistory::class);
+    return $this->hasMany(LoginHistory::class, 'user_id', 'user_id');
 }
 
 public function commentLikes()
