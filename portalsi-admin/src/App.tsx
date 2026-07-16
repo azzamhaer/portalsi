@@ -194,6 +194,7 @@ export function App() {
   const [userSearch, setUserSearch] = useState('');
   const [editingUser, setEditingUser] = useState<PortalUser | null>(null);
   const [detailUser, setDetailUser] = useState<any | null>(null);
+  const [drill, setDrill] = useState<{ title: string; type: string; rows: any[] } | null>(null);
   const [dialog, setDialog] = useState<DialogOpts | null>(null);
   const dialogResolver = useRef<((v: string | null) => void) | null>(null);
   const [chatMode, setChatMode] = useState<ChatMode>('direct');
@@ -467,6 +468,24 @@ export function App() {
     await run('', async () => {
       const data = await portal<any>(`/admin-panel/users/${user.user_id}`);
       setDetailUser(data);
+    });
+  }
+
+  // Drill-down: buka data di balik statistik user (post, komentar, story, DM, grup).
+  async function openDrill(userId: number, key: string) {
+    const map: Record<string, { path: string; title: string }> = {
+      posts: { path: `/admin-panel/posts?user_id=${userId}&per_page=100`, title: 'Postingan' },
+      comments: { path: `/admin-panel/comments?user_id=${userId}&per_page=100`, title: 'Komentar' },
+      stories: { path: `/admin-panel/stories?user_id=${userId}&per_page=100`, title: 'Story' },
+      sent_direct_messages: { path: `/admin-panel/direct-messages?sender_id=${userId}&per_page=100`, title: 'DM Terkirim' },
+      received_direct_messages: { path: `/admin-panel/direct-messages?receiver_id=${userId}&per_page=100`, title: 'DM Diterima' },
+      groups_owned: { path: `/admin-panel/groups?owner_id=${userId}&per_page=100`, title: 'Grup Dimiliki' },
+    };
+    const cfg = map[key];
+    if (!cfg) return;
+    await run('', async () => {
+      const page = await portal<PageResult<any>>(cfg.path);
+      setDrill({ title: cfg.title, type: key, rows: page.data || [] });
     });
   }
 
@@ -819,8 +838,10 @@ export function App() {
           data={detailUser}
           onClose={() => setDetailUser(null)}
           onEdit={(user) => { setDetailUser(null); setEditingUser(user); }}
+          onDrill={(key) => openDrill(detailUser.user?.user_id, key)}
         />
       )}
+      {drill && <DrillModal drill={drill} onClose={() => setDrill(null)} />}
       {dialog && (
         <AppDialog
           opts={dialog}
@@ -1370,7 +1391,82 @@ function AdminsPanel(props: {
   );
 }
 
-function UserDetailModal({ data, onClose, onEdit }: { data: any; onClose: () => void; onEdit: (user: PortalUser) => void }) {
+function DrillModal({ drill, onClose }: { drill: { title: string; type: string; rows: any[] }; onClose: () => void }) {
+  const { type, rows } = drill;
+  const dmType = type === 'sent_direct_messages' || type === 'received_direct_messages';
+
+  function headCells() {
+    if (type === 'comments') return <tr><th>ID</th><th>Isi Komentar</th><th>Di Post</th><th>Waktu</th></tr>;
+    if (type === 'sent_direct_messages') return <tr><th>ID</th><th>Ke</th><th>Isi</th><th>Waktu</th></tr>;
+    if (type === 'received_direct_messages') return <tr><th>ID</th><th>Dari</th><th>Isi</th><th>Waktu</th></tr>;
+    if (type === 'groups_owned') return <tr><th>ID</th><th>Nama Grup</th><th>Anggota</th></tr>;
+    return <tr><th>ID</th><th>Konten</th><th>Waktu</th></tr>;
+  }
+
+  function rowCells(r: any) {
+    if (type === 'comments') {
+      return (
+        <>
+          <td>{r.comment_id || r.id}</td>
+          <td className="wide-cell">{short(r.content, 120)}</td>
+          <td>{r.post?.caption ? short(r.post.caption, 40) : (r.post_id ? `Post #${r.post_id}` : '-')}</td>
+          <td>{fmt(r.created_at)}</td>
+        </>
+      );
+    }
+    if (dmType) {
+      const other = type === 'sent_direct_messages' ? r.receiver : r.sender;
+      return (
+        <>
+          <td>{r.message_id || r.id}</td>
+          <td>{other?.username || (type === 'sent_direct_messages' ? r.receiver_id : r.sender_id) || '-'}</td>
+          <td className="wide-cell">{short(r.content, 120)}</td>
+          <td>{fmt(r.sent_at)}</td>
+        </>
+      );
+    }
+    if (type === 'groups_owned') {
+      return (
+        <>
+          <td>{r.id}</td>
+          <td>{r.name || '-'}</td>
+          <td>{r.members_count ?? r.members ?? '-'}</td>
+        </>
+      );
+    }
+    // posts / stories
+    return (
+      <>
+        <td>{r.post_id || r.story_id || r.id}</td>
+        <td className="wide-cell">{short(r.caption, 140)}</td>
+        <td>{fmt(r.created_at)}</td>
+      </>
+    );
+  }
+
+  return (
+    <div className="modal-backdrop drill-backdrop" onClick={onClose}>
+      <div className="modal detail-modal" onClick={e => e.stopPropagation()}>
+        <div className="detail-modal-head">
+          <h2>{drill.title} <span className="detail-sub">({rows.length})</span></h2>
+          <button className="ghost-button" onClick={onClose}><X size={16} /></button>
+        </div>
+        <Table>
+          <thead>{headCells()}</thead>
+          <tbody>
+            {rows.map((r, i) => <tr key={r.id ?? r.post_id ?? r.comment_id ?? r.story_id ?? r.message_id ?? i}>{rowCells(r)}</tr>)}
+            {rows.length === 0 && <tr><td colSpan={4} className="empty-cell">Tidak ada data.</td></tr>}
+          </tbody>
+        </Table>
+        <div className="modal-actions">
+          <button className="ghost-button" onClick={onClose}><X size={16} /> Tutup</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function UserDetailModal({ data, onClose, onEdit, onDrill }: { data: any; onClose: () => void; onEdit: (user: PortalUser) => void; onDrill: (key: string) => void }) {
   const user: PortalUser = data.user || {};
   const stats: Record<string, number> = data.stats || {};
   const statLabels: Record<string, string> = {
@@ -1385,6 +1481,7 @@ function UserDetailModal({ data, onClose, onEdit }: { data: any; onClose: () => 
     followers: 'Followers',
     following: 'Following',
   };
+  const drillable = new Set(['posts', 'comments', 'stories', 'sent_direct_messages', 'received_direct_messages', 'groups_owned']);
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal detail-modal" onClick={e => e.stopPropagation()}>
@@ -1412,14 +1509,23 @@ function UserDetailModal({ data, onClose, onEdit }: { data: any; onClose: () => 
           Dibuat {fmt(user.created_at)} · Aktivitas terakhir {fmt(user.last_activity)}
         </p>
 
-        <h3>Statistik</h3>
+        <h3>Statistik <span className="stat-hint">(klik untuk telusuri)</span></h3>
         <div className="stat-grid">
-          {Object.entries(statLabels).map(([key, label]) => (
-            <div className="stat-cell" key={key}>
-              <span>{label}</span>
-              <strong>{stats[key] ?? 0}</strong>
-            </div>
-          ))}
+          {Object.entries(statLabels).map(([key, label]) => {
+            const canDrill = drillable.has(key) && (stats[key] ?? 0) > 0;
+            return (
+              <button
+                type="button"
+                className={canDrill ? 'stat-cell drillable' : 'stat-cell'}
+                key={key}
+                disabled={!canDrill}
+                onClick={() => canDrill && onDrill(key)}
+              >
+                <span>{label}</span>
+                <strong>{stats[key] ?? 0}</strong>
+              </button>
+            );
+          })}
         </div>
 
         <h3>Riwayat Login Terakhir</h3>
