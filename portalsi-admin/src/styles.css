@@ -34,6 +34,11 @@ button {
   display: grid;
   grid-template-columns: 264px minmax(0, 1fr);
   min-height: 100vh;
+  transition: grid-template-columns 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.app-shell.nav-collapsed {
+  grid-template-columns: 76px minmax(0, 1fr);
 }
 
 .sidebar {
@@ -42,17 +47,84 @@ button {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  padding: 20px;
+  gap: 20px;
+  padding: 20px 16px;
   background: #172033;
   color: #f8fafc;
   border-right: 1px solid rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.nav-backdrop {
+  display: none;
 }
 
 .brand {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.brand-text {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.collapse-toggle {
+  flex: 0 0 auto;
+  width: 30px;
+  min-height: 30px;
+  height: 30px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #c9d3e3;
+}
+
+.collapse-toggle:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+}
+
+.nav-group {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.nav-heading {
+  margin: 4px 0 2px;
+  padding: 0 12px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6b7a94;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* Mode ciut: hanya ikon */
+.nav-collapsed .brand-text,
+.nav-collapsed .nav-heading,
+.nav-collapsed .nav-item span,
+.nav-collapsed .admin-chip span,
+.nav-collapsed .sidebar-footer .ghost-button span {
+  display: none;
+}
+
+.nav-collapsed .brand {
+  justify-content: center;
+}
+
+.nav-collapsed .collapse-toggle {
+  position: absolute;
+  top: 16px;
+  right: 10px;
+}
+
+.nav-collapsed .nav-item,
+.nav-collapsed .admin-chip,
+.nav-collapsed .sidebar-footer .ghost-button {
+  justify-content: center;
 }
 
 .brand.large {
@@ -149,6 +221,18 @@ nav {
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 16px;
+}
+
+.topbar-lead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.nav-hamburger {
+  display: none;
+  flex: 0 0 auto;
 }
 
 .eyebrow {
@@ -555,6 +639,76 @@ td small,
   color: inherit;
 }
 
+/* Toast mengambang — muncul di kanan atas, auto-hilang (lihat useEffect di App.tsx). */
+.toast-stack {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 240px;
+  max-width: min(360px, calc(100vw - 36px));
+  padding: 12px 14px;
+  border: 1px solid #bce8d1;
+  border-radius: 12px;
+  background: #e8f8f0;
+  color: #14734a;
+  font-weight: 700;
+  box-shadow: 0 12px 30px rgba(16, 24, 40, 0.16);
+  animation: toast-in 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.toast.error {
+  border-color: #ffd2d8;
+  background: #fff1f3;
+  color: #bc2636;
+}
+
+.toast button {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.6);
+  color: inherit;
+  cursor: pointer;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@media (max-width: 640px) {
+  .toast-stack {
+    top: 12px;
+    right: 12px;
+    left: 12px;
+  }
+  .toast {
+    max-width: none;
+  }
+}
+
 .spin {
   animation: spin 900ms linear infinite;
 }
@@ -681,27 +835,57 @@ textarea:focus {
 }
 
 @media (max-width: 760px) {
-  .app-shell {
+  .app-shell,
+  .app-shell.nav-collapsed {
     grid-template-columns: 1fr;
   }
 
+  /* Sidebar jadi drawer off-canvas */
   .sidebar {
-    position: static;
-    height: auto;
-    padding: 14px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 40;
+    width: min(82vw, 280px);
+    height: 100vh;
+    padding: 18px 16px;
+    transform: translateX(-100%);
+    transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
   }
 
-  nav {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+  .app-shell.nav-open .sidebar {
+    transform: translateX(0);
+  }
+
+  .app-shell.nav-open .nav-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    background: rgba(10, 15, 25, 0.5);
+    animation: toast-in 200ms ease;
+  }
+
+  /* Di drawer, selalu tampil penuh (abaikan mode ciut) */
+  .nav-collapsed .brand-text,
+  .nav-collapsed .nav-heading,
+  .nav-collapsed .nav-item span,
+  .nav-collapsed .admin-chip span,
+  .nav-collapsed .sidebar-footer .ghost-button span {
+    display: revert;
+  }
+
+  .collapse-toggle {
+    display: none;
+  }
+
+  .nav-hamburger {
+    display: grid;
   }
 
   .nav-item {
-    justify-content: center;
     min-height: 44px;
-  }
-
-  .nav-item span {
-    display: none;
   }
 
   .workspace {

@@ -3,11 +3,14 @@ import type { ElementType, ReactNode } from 'react';
 import {
   Activity,
   Ban,
+  ChevronsLeft,
+  ChevronsRight,
   ClipboardList,
   Eye,
   FileText,
   Lock,
   LogOut,
+  Menu,
   MessageSquare,
   Pencil,
   Radio,
@@ -62,14 +65,23 @@ interface PageResult<T> {
   total?: number;
 }
 
-const navItems: Array<{ id: Tab; label: string; icon: ElementType }> = [
-  { id: 'dashboard', label: 'Dashboard', icon: Activity },
-  { id: 'users', label: 'Users', icon: Users },
-  { id: 'chats', label: 'Chats', icon: MessageSquare },
-  { id: 'content', label: 'Content', icon: FileText },
-  { id: 'meet', label: 'Meet Rooms', icon: Video },
-  { id: 'audit', label: 'Audit', icon: ClipboardList },
+type NavItem = { id: Tab; label: string; icon: ElementType };
+
+const navGroups: Array<{ heading: string; items: NavItem[] }> = [
+  { heading: 'Ringkasan', items: [{ id: 'dashboard', label: 'Dashboard', icon: Activity }] },
+  {
+    heading: 'Manajemen',
+    items: [
+      { id: 'users', label: 'Users', icon: Users },
+      { id: 'chats', label: 'Chats', icon: MessageSquare },
+      { id: 'content', label: 'Content', icon: FileText },
+    ],
+  },
+  { heading: 'Meeting', items: [{ id: 'meet', label: 'Meet Rooms', icon: Video }] },
+  { heading: 'Sistem', items: [{ id: 'audit', label: 'Audit', icon: ClipboardList }] },
 ];
+
+const navItems: NavItem[] = navGroups.flatMap(g => g.items);
 
 function readStoredSession(): Session | null {
   try {
@@ -123,8 +135,34 @@ export function App() {
   const [session, setSession] = useState<Session | null>(() => readStoredSession());
   const [tab, setTab] = useState<Tab>('dashboard');
   const [loading, setLoading] = useState(false);
+  const [navOpen, setNavOpen] = useState(false); // drawer mobile
+  const [collapsed, setCollapsed] = useState(() => {
+    try { return localStorage.getItem('portalsi-admin-nav-collapsed') === '1'; } catch { return false; }
+  });
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
+
+  // Toast auto-dismiss: notice (sukses) 3.5s, error 6s. Reset timer tiap pesan baru.
+  useEffect(() => {
+    if (!notice) return;
+    const t = setTimeout(() => setNotice(''), 3500);
+    return () => clearTimeout(t);
+  }, [notice]);
+  useEffect(() => {
+    if (!error) return;
+    const t = setTimeout(() => setError(''), 6000);
+    return () => clearTimeout(t);
+  }, [error]);
+
+  useEffect(() => {
+    try { localStorage.setItem('portalsi-admin-nav-collapsed', collapsed ? '1' : '0'); } catch { /* ignore */ }
+  }, [collapsed]);
+
+  // Pilih tab lalu tutup drawer (mobile).
+  const selectTab = (id: Tab) => {
+    setTab(id);
+    setNavOpen(false);
+  };
 
   const [appOverview, setAppOverview] = useState<any>(null);
   const [meetOverview, setMeetOverview] = useState<any>(null);
@@ -385,25 +423,43 @@ export function App() {
   }
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell${collapsed ? ' nav-collapsed' : ''}${navOpen ? ' nav-open' : ''}`}>
+      {navOpen && <div className="nav-backdrop" onClick={() => setNavOpen(false)} />}
       <aside className="sidebar">
         <div className="brand">
           <div className="brand-mark"><ShieldCheck size={22} /></div>
-          <div>
+          <div className="brand-text">
             <strong>Portal SI</strong>
             <span>Admin Panel</span>
           </div>
+          <button
+            className="icon-button collapse-toggle"
+            onClick={() => setCollapsed(v => !v)}
+            title={collapsed ? 'Perluas sidebar' : 'Ciutkan sidebar'}
+          >
+            {collapsed ? <ChevronsRight size={16} /> : <ChevronsLeft size={16} />}
+          </button>
         </div>
         <nav>
-          {navItems.map(item => {
-            const Icon = item.icon;
-            return (
-              <button key={item.id} className={tab === item.id ? 'nav-item active' : 'nav-item'} onClick={() => setTab(item.id)} title={item.label}>
-                <Icon size={18} />
-                <span>{item.label}</span>
-              </button>
-            );
-          })}
+          {navGroups.map(group => (
+            <div key={group.heading} className="nav-group">
+              <p className="nav-heading">{group.heading}</p>
+              {group.items.map(item => {
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.id}
+                    className={tab === item.id ? 'nav-item active' : 'nav-item'}
+                    onClick={() => selectTab(item.id)}
+                    title={item.label}
+                  >
+                    <Icon size={18} />
+                    <span>{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ))}
         </nav>
         <div className="sidebar-footer">
           <div className="admin-chip">
@@ -419,9 +475,14 @@ export function App() {
 
       <main className="workspace">
         <header className="topbar">
-          <div>
-            <p className="eyebrow">admin.portalsi.com</p>
-            <h1>{navItems.find(item => item.id === tab)?.label}</h1>
+          <div className="topbar-lead">
+            <button className="icon-button nav-hamburger" onClick={() => setNavOpen(true)} title="Menu">
+              <Menu size={18} />
+            </button>
+            <div>
+              <p className="eyebrow">admin.portalsi.com</p>
+              <h1>{navItems.find(item => item.id === tab)?.label}</h1>
+            </div>
           </div>
           <button className="icon-button" onClick={reloadCurrent} disabled={loading} title="Refresh data">
             <RefreshCw size={18} className={loading ? 'spin' : ''} />
@@ -429,9 +490,11 @@ export function App() {
         </header>
 
         {(notice || error) && (
-          <div className={error ? 'alert error' : 'alert'}>
-            <span>{error || notice}</span>
-            <button onClick={() => { setNotice(''); setError(''); }} title="Tutup"><X size={16} /></button>
+          <div className="toast-stack">
+            <div className={error ? 'toast error' : 'toast'} role="status">
+              <span>{error || notice}</span>
+              <button onClick={() => { setNotice(''); setError(''); }} title="Tutup"><X size={16} /></button>
+            </div>
           </div>
         )}
 
