@@ -32,7 +32,7 @@ const PORTAL_API = (import.meta.env.VITE_PORTALSI_API_URL || 'https://api-new.po
 const MEET_API = (import.meta.env.VITE_MEET_API_URL || 'https://meet.portalsi.com/api').replace(/\/+$/, '');
 const STORAGE_KEY = 'portalsi-admin-session';
 
-type Tab = 'dashboard' | 'users' | 'chats' | 'content' | 'meet' | 'audit';
+type Tab = 'dashboard' | 'users' | 'admins' | 'chats' | 'content' | 'meet' | 'audit';
 type ChatMode = 'direct' | 'group';
 type ContentMode = 'posts' | 'comments' | 'stories' | 'groups';
 
@@ -78,7 +78,13 @@ const navGroups: Array<{ heading: string; items: NavItem[] }> = [
     ],
   },
   { heading: 'Meeting', items: [{ id: 'meet', label: 'Meet Rooms', icon: Video }] },
-  { heading: 'Sistem', items: [{ id: 'audit', label: 'Audit', icon: ClipboardList }] },
+  {
+    heading: 'Sistem',
+    items: [
+      { id: 'admins', label: 'Admin', icon: ShieldCheck },
+      { id: 'audit', label: 'Audit', icon: ClipboardList },
+    ],
+  },
 ];
 
 const navItems: NavItem[] = navGroups.flatMap(g => g.items);
@@ -179,6 +185,11 @@ export function App() {
   const [selectedRoom, setSelectedRoom] = useState<any | null>(null);
   const [roomAudit, setRoomAudit] = useState<any[]>([]);
   const [auditRows, setAuditRows] = useState<any[]>([]);
+  const [auditPage, setAuditPage] = useState(1);
+  const [auditHasMore, setAuditHasMore] = useState(false);
+  const [auditAction, setAuditAction] = useState('');
+  const [admins, setAdmins] = useState<PortalUser[]>([]);
+  const [adminSearch, setAdminSearch] = useState('');
 
   const portal = useMemo(() => {
     return <T,>(path: string, init?: RequestInit) => apiRequest<T>(PORTAL_API, path, session?.token, init);
@@ -246,19 +257,44 @@ export function App() {
     setRoomAudit(audit.audit || []);
   }
 
-  async function loadAudit() {
-    const page = await portal<PageResult<any>>('/admin-panel/audit-logs?per_page=50');
-    setAuditRows(page.data || []);
+  async function loadAudit(reset = true) {
+    const nextPage = reset ? 1 : auditPage + 1;
+    const query = new URLSearchParams({ per_page: '50', page: String(nextPage) });
+    if (auditAction.trim()) query.set('action', auditAction.trim());
+    const page = await portal<PageResult<any>>(`/admin-panel/audit-logs?${query}`);
+    const rows = page.data || [];
+    setAuditRows(reset ? rows : [...auditRows, ...rows]);
+    setAuditPage(page.current_page || nextPage);
+    setAuditHasMore((page.current_page || nextPage) < (page.last_page || nextPage));
+  }
+
+  async function loadAdmins() {
+    const query = new URLSearchParams({ per_page: '100' });
+    if (adminSearch.trim()) query.set('search', adminSearch.trim());
+    else query.set('is_verified', '1');
+    const page = await portal<PageResult<PortalUser>>(`/admin-panel/users?${query}`);
+    setAdmins(page.data || []);
+  }
+
+  async function setAdminAccess(user: PortalUser, grant: boolean) {
+    await run(grant ? `@${user.username} kini admin.` : `Akses admin @${user.username} dicabut.`, async () => {
+      await portal(`/admin-panel/users/${user.user_id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ is_verified: grant }),
+      });
+      await loadAdmins();
+    });
   }
 
   async function reloadCurrent() {
     await run('', async () => {
       if (tab === 'dashboard') await loadDashboard();
       if (tab === 'users') await loadUsers();
+      if (tab === 'admins') await loadAdmins();
       if (tab === 'chats') await loadChats();
       if (tab === 'content') await loadContent();
       if (tab === 'meet') await loadRooms();
-      if (tab === 'audit') await loadAudit();
+      if (tab === 'audit') await loadAudit(true);
     });
   }
 
@@ -547,7 +583,29 @@ export function App() {
             kickParticipant={kickParticipant}
           />
         )}
-        {tab === 'audit' && <AuditPanel rows={auditRows} />}
+        {tab === 'admins' && (
+          <AdminsPanel
+            admins={admins}
+            currentUserId={session.user.user_id}
+            search={adminSearch}
+            setSearch={setAdminSearch}
+            loadAdmins={() => run('', loadAdmins)}
+            onEdit={setEditingUser}
+            onGrant={(user) => setAdminAccess(user, true)}
+            onRevoke={(user) => setAdminAccess(user, false)}
+          />
+        )}
+        {tab === 'audit' && (
+          <AuditPanel
+            rows={auditRows}
+            action={auditAction}
+            setAction={setAuditAction}
+            onSearch={() => run('', () => loadAudit(true))}
+            onLoadMore={() => run('', () => loadAudit(false))}
+            hasMore={auditHasMore}
+            loading={loading}
+          />
+        )}
       </main>
 
       {editingUser && (
@@ -601,33 +659,61 @@ function LoginScreen({ loading, error, onLogin }: { loading: boolean; error: str
 }
 
 function Dashboard({ appOverview, meetOverview }: { appOverview: any; meetOverview: any }) {
+  const u = appOverview?.users || {};
+  const c = appOverview?.content || {};
+  const r = meetOverview?.rooms || {};
   return (
     <section className="stack">
       <div className="metric-grid">
-        <Metric label="Total User" value={appOverview?.users?.total} icon={Users} tone="green" />
-        <Metric label="Verified Admin Eligible" value={appOverview?.users?.verified} icon={ShieldCheck} tone="blue" />
-        <Metric label="User Banned" value={appOverview?.users?.banned} icon={Ban} tone="red" />
-        <Metric label="Room Meet Aktif" value={meetOverview?.rooms?.total} icon={Video} tone="amber" />
-        <Metric label="Room Locked" value={meetOverview?.rooms?.locked} icon={Lock} tone="red" />
-        <Metric label="Direct Messages" value={appOverview?.content?.direct_messages} icon={MessageSquare} tone="blue" />
+        <Metric label="Total User" value={u.total} icon={Users} tone="blue" />
+        <Metric label="Admin (verified)" value={u.verified} icon={ShieldCheck} tone="green" />
+        <Metric label="User Diblokir" value={u.banned} icon={Ban} tone="red" />
+        <Metric label="Online" value={u.online} icon={Activity} tone="green" />
+        <Metric label="Aktif 24 Jam" value={u.active_24h} icon={Activity} tone="amber" />
+        <Metric label="Room Meet" value={r.total} icon={Video} tone="blue" />
+        <Metric label="Room Terkunci" value={r.locked} icon={Lock} tone="amber" />
+        <Metric label="Direct Messages" value={c.direct_messages} icon={MessageSquare} tone="blue" />
+        <Metric label="Posts" value={c.posts} icon={FileText} tone="green" />
+        <Metric label="Groups" value={c.groups} icon={Users} tone="blue" />
       </div>
-      <section className="panel">
-        <Header title="Recent Users" subtitle="Akun terbaru dan status moderasinya." />
-        <Table>
-          <thead><tr><th>User</th><th>Role</th><th>Verified</th><th>Banned</th><th>Dibuat</th></tr></thead>
-          <tbody>
-            {(appOverview?.recent_users || []).map((user: PortalUser) => (
-              <tr key={user.user_id}>
-                <td><UserCell user={user} /></td>
-                <td>{user.role || '-'}</td>
-                <td><Badge ok={user.is_verified}>{user.is_verified ? 'verified' : 'no'}</Badge></td>
-                <td><Badge danger={user.is_banned}>{user.is_banned ? 'banned' : 'clear'}</Badge></td>
-                <td>{fmt(user.created_at)}</td>
-              </tr>
+      <div className="dashboard-columns">
+        <section className="panel">
+          <Header title="User Terbaru" subtitle="Akun terbaru dan status moderasinya." />
+          <Table>
+            <thead><tr><th>User</th><th>Role</th><th>Verified</th><th>Banned</th><th>Dibuat</th></tr></thead>
+            <tbody>
+              {(appOverview?.recent_users || []).map((user: PortalUser) => (
+                <tr key={user.user_id}>
+                  <td><UserCell user={user} /></td>
+                  <td>{user.role || '-'}</td>
+                  <td><Badge ok={user.is_verified}>{user.is_verified ? 'verified' : 'no'}</Badge></td>
+                  <td><Badge danger={user.is_banned}>{user.is_banned ? 'banned' : 'clear'}</Badge></td>
+                  <td>{fmt(user.created_at)}</td>
+                </tr>
+              ))}
+              {(appOverview?.recent_users || []).length === 0 && (
+                <tr><td colSpan={5} className="empty-cell">Belum ada data.</td></tr>
+              )}
+            </tbody>
+          </Table>
+        </section>
+        <section className="panel">
+          <Header title="Aktivitas Admin Terbaru" subtitle="12 aksi admin terakhir." />
+          <ul className="activity-feed">
+            {(appOverview?.recent_audit_logs || []).map((log: any) => (
+              <li key={log.id}>
+                <span className="activity-action">{log.action}</span>
+                <span className="activity-meta">
+                  {(log.actor?.username || 'sistem')} · {fmt(log.created_at)}
+                </span>
+              </li>
             ))}
-          </tbody>
-        </Table>
-      </section>
+            {(appOverview?.recent_audit_logs || []).length === 0 && (
+              <li className="empty-cell">Belum ada aktivitas.</li>
+            )}
+          </ul>
+        </section>
+      </div>
     </section>
   );
 }
@@ -851,22 +937,110 @@ function MeetPanel(props: {
   );
 }
 
-function AuditPanel({ rows }: { rows: any[] }) {
+function AuditPanel(props: {
+  rows: any[];
+  action: string;
+  setAction: (value: string) => void;
+  onSearch: () => void;
+  onLoadMore: () => void;
+  hasMore: boolean;
+  loading: boolean;
+}) {
   return (
     <section className="panel">
       <Header title="Audit Trail" subtitle="Jejak aksi admin dari Portal SI App API." />
+      <Toolbar>
+        <SearchBox value={props.action} onChange={props.setAction} onSubmit={props.onSearch} placeholder="Filter aksi (mis. user.viewed)" />
+      </Toolbar>
       <Table>
         <thead><tr><th>Waktu</th><th>Admin</th><th>Aksi</th><th>Target</th><th>IP</th></tr></thead>
         <tbody>
-          {rows.map(row => (
+          {props.rows.map(row => (
             <tr key={row.id}>
               <td>{fmt(row.created_at)}</td>
-              <td>{row.actor?.username || row.actor_user_id || '-'}</td>
+              <td>{row.actor?.username || row.actor_user_id || 'sistem'}</td>
               <td><Badge>{row.action}</Badge></td>
-              <td>{row.target_type || '-'} #{row.target_id || '-'}</td>
+              <td>{row.target_type ? `${row.target_type} #${row.target_id ?? '-'}` : '-'}</td>
               <td>{row.ip_address || '-'}</td>
             </tr>
           ))}
+          {props.rows.length === 0 && (
+            <tr><td colSpan={5} className="empty-cell">Belum ada log audit.</td></tr>
+          )}
+        </tbody>
+      </Table>
+      {props.hasMore && (
+        <div className="load-more">
+          <button className="secondary-button" onClick={props.onLoadMore} disabled={props.loading}>
+            {props.loading ? 'Memuat...' : 'Muat lebih banyak'}
+          </button>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function AdminsPanel(props: {
+  admins: PortalUser[];
+  currentUserId: number;
+  search: string;
+  setSearch: (value: string) => void;
+  loadAdmins: () => void;
+  onEdit: (user: PortalUser) => void;
+  onGrant: (user: PortalUser) => void;
+  onRevoke: (user: PortalUser) => void;
+}) {
+  const searching = props.search.trim().length > 0;
+  return (
+    <section className="panel">
+      <Header
+        title="Manajemen Admin"
+        subtitle="Akses admin panel = akun terverifikasi. Beri atau cabut akses, dan atur peran. Kamu tidak bisa mencabut akses akunmu sendiri."
+      />
+      <Toolbar>
+        <SearchBox
+          value={props.search}
+          onChange={props.setSearch}
+          onSubmit={props.loadAdmins}
+          placeholder="Cari user untuk dijadikan admin (username, nama, email)"
+        />
+      </Toolbar>
+      <p className="panel-hint">
+        {searching
+          ? 'Menampilkan hasil pencarian — beri akses admin ke akun mana pun.'
+          : 'Menampilkan admin aktif (akun terverifikasi). Cari untuk menambah admin baru.'}
+      </p>
+      <Table>
+        <thead><tr><th>ID</th><th>User</th><th>Peran</th><th>Status</th><th>Aktivitas</th><th>Aksi</th></tr></thead>
+        <tbody>
+          {props.admins.map(user => {
+            const isAdmin = user.is_verified;
+            const isSelf = user.user_id === props.currentUserId;
+            return (
+              <tr key={user.user_id}>
+                <td>{user.user_id}</td>
+                <td><UserCell user={user} /></td>
+                <td>{user.role || '-'}</td>
+                <td>
+                  <div className="badges">
+                    <Badge ok={isAdmin} danger={!isAdmin}>{isAdmin ? 'admin' : 'bukan admin'}</Badge>
+                    {isSelf && <Badge ok>kamu</Badge>}
+                    {user.is_banned && <Badge danger>banned</Badge>}
+                  </div>
+                </td>
+                <td>{fmt(user.last_activity)}</td>
+                <td><ActionBar>
+                  <IconAction title="Edit peran / profil" onClick={() => props.onEdit(user)} icon={Pencil} />
+                  {isAdmin
+                    ? <IconAction title={isSelf ? 'Tidak bisa mencabut akses sendiri' : 'Cabut akses admin'} onClick={() => !isSelf && props.onRevoke(user)} icon={ShieldAlert} danger />
+                    : <IconAction title="Jadikan admin" onClick={() => props.onGrant(user)} icon={ShieldCheck} />}
+                </ActionBar></td>
+              </tr>
+            );
+          })}
+          {props.admins.length === 0 && (
+            <tr><td colSpan={6} className="empty-cell">Tidak ada data.</td></tr>
+          )}
         </tbody>
       </Table>
     </section>
