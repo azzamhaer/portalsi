@@ -81,7 +81,14 @@ export async function listParticipants(roomId: string) {
 export async function deleteLiveKitRoom(roomId: string) {
   const svc = getRoomService();
   if (!svc) return;
-  await svc.deleteRoom(roomId);
+  try {
+    await svc.deleteRoom(roomId);
+  } catch (err: any) {
+    // Room mungkin belum pernah aktif / sudah tertutup — abaikan "does not exist".
+    if (!String(err?.message ?? '').toLowerCase().includes('does not exist')) {
+      throw err;
+    }
+  }
 }
 
 export async function mutePublishedTrack(

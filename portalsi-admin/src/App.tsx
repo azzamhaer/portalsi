@@ -737,8 +737,8 @@ function MeetPanel(props: {
                 <td>{fmt(room.scheduledFor)}</td>
                 <td><ActionBar>
                   <IconAction title="Detail room" onClick={() => props.loadRoomDetail(room.id)} icon={Eye} />
-                  <IconAction title={room.adminLocked ? 'Unlock room' : 'Lock room'} onClick={() => props.patchRoom(room.id, { adminLocked: !room.adminLocked })} icon={room.adminLocked ? Unlock : Lock} />
-                  <IconAction title="Masuk observer tercatat" onClick={() => props.observerRoom(room.id)} icon={Radio} />
+                  <IconAction title={room.adminLocked ? 'Buka kunci — izinkan peserta baru masuk' : 'Kunci room — cegah peserta baru masuk'} onClick={() => props.patchRoom(room.id, { adminLocked: !room.adminLocked })} icon={room.adminLocked ? Unlock : Lock} />
+                  <IconAction title="Tonton room sebagai admin (observer, tanpa mengganggu)" onClick={() => props.observerRoom(room.id)} icon={Radio} />
                   <IconAction title="Hapus room" onClick={() => props.deleteRoom(room.id)} icon={Trash2} danger />
                 </ActionBar></td>
               </tr>

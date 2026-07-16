@@ -43,7 +43,10 @@ export async function POST(
       createdAt: Date.now(),
     });
 
-    const joinUrl = new URL(`/room/${id}`, new URL(req.url).origin);
+    // Gunakan host publik (dari header proxy), bukan origin internal (localhost:3000).
+    const proto = req.headers.get('x-forwarded-proto') || 'https';
+    const host = req.headers.get('host') || new URL(req.url).host;
+    const joinUrl = new URL(`/room/${id}`, `${proto}://${host}`);
     joinUrl.searchParams.set('admin_handoff', handoffKey);
 
     await appendRoomAudit(id, {
