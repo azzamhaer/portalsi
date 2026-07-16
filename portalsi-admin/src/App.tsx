@@ -175,6 +175,7 @@ export function App() {
   const [users, setUsers] = useState<PortalUser[]>([]);
   const [userSearch, setUserSearch] = useState('');
   const [editingUser, setEditingUser] = useState<PortalUser | null>(null);
+  const [detailUser, setDetailUser] = useState<any | null>(null);
   const [chatMode, setChatMode] = useState<ChatMode>('direct');
   const [chatRows, setChatRows] = useState<any[]>([]);
   const [chatSearch, setChatSearch] = useState('');
@@ -354,6 +355,13 @@ export function App() {
         body: JSON.stringify({ mode: 'anonymize', reason: 'Dihapus dari admin panel.' }),
       });
       await loadUsers();
+    });
+  }
+
+  async function openUserDetail(user: PortalUser) {
+    await run('', async () => {
+      const data = await portal<any>(`/admin-panel/users/${user.user_id}`);
+      setDetailUser(data);
     });
   }
 
@@ -541,6 +549,7 @@ export function App() {
             userSearch={userSearch}
             setUserSearch={setUserSearch}
             loadUsers={() => run('', loadUsers)}
+            onView={openUserDetail}
             onEdit={setEditingUser}
             onBan={banUser}
             onUnban={unbanUser}
@@ -613,6 +622,13 @@ export function App() {
           user={editingUser}
           onClose={() => setEditingUser(null)}
           onSave={updateUser}
+        />
+      )}
+      {detailUser && (
+        <UserDetailModal
+          data={detailUser}
+          onClose={() => setDetailUser(null)}
+          onEdit={(user) => { setDetailUser(null); setEditingUser(user); }}
         />
       )}
     </div>
@@ -723,6 +739,7 @@ function UsersPanel(props: {
   userSearch: string;
   setUserSearch: (value: string) => void;
   loadUsers: () => void;
+  onView: (user: PortalUser) => void;
   onEdit: (user: PortalUser) => void;
   onBan: (user: PortalUser) => void;
   onUnban: (user: PortalUser) => void;
@@ -750,6 +767,7 @@ function UsersPanel(props: {
               </td>
               <td>{fmt(user.last_activity)}</td>
               <td><ActionBar>
+                <IconAction title="Lihat detail" onClick={() => props.onView(user)} icon={Eye} />
                 <IconAction title="Edit user" onClick={() => props.onEdit(user)} icon={Pencil} />
                 {user.is_banned
                   ? <IconAction title="Unban user" onClick={() => props.onUnban(user)} icon={Unlock} />
@@ -1044,6 +1062,83 @@ function AdminsPanel(props: {
         </tbody>
       </Table>
     </section>
+  );
+}
+
+function UserDetailModal({ data, onClose, onEdit }: { data: any; onClose: () => void; onEdit: (user: PortalUser) => void }) {
+  const user: PortalUser = data.user || {};
+  const stats: Record<string, number> = data.stats || {};
+  const statLabels: Record<string, string> = {
+    posts: 'Posts',
+    comments: 'Comments',
+    stories: 'Stories',
+    sent_direct_messages: 'DM Terkirim',
+    received_direct_messages: 'DM Diterima',
+    group_messages: 'Pesan Grup',
+    groups_owned: 'Grup Dimiliki',
+    groups_joined: 'Grup Diikuti',
+    followers: 'Followers',
+    following: 'Following',
+  };
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal detail-modal" onClick={e => e.stopPropagation()}>
+        <div className="detail-modal-head">
+          <div>
+            <h2>{user.full_name || user.username}</h2>
+            <p className="detail-sub">@{user.username} · ID {user.user_id} {user.email ? `· ${user.email}` : ''}</p>
+            <div className="badges">
+              <Badge ok={user.is_verified} danger={!user.is_verified}>{user.is_verified ? 'admin/verified' : 'belum verified'}</Badge>
+              {user.is_banned && <Badge danger>banned</Badge>}
+              {user.is_private && <Badge>private</Badge>}
+              <Badge>{user.role || 'no role'}</Badge>
+            </div>
+          </div>
+          <div className="detail-modal-actions">
+            <button className="secondary-button" onClick={() => onEdit(user)}><Pencil size={16} /> Edit</button>
+            <button className="ghost-button" onClick={onClose}><X size={16} /></button>
+          </div>
+        </div>
+
+        {user.bio && <p className="detail-bio">{user.bio}</p>}
+        {user.ban_reason && <p className="detail-warn">Alasan blokir: {user.ban_reason}</p>}
+        {user.admin_notes && <p className="detail-note">Catatan admin: {user.admin_notes}</p>}
+        <p className="detail-sub">
+          Dibuat {fmt(user.created_at)} · Aktivitas terakhir {fmt(user.last_activity)}
+        </p>
+
+        <h3>Statistik</h3>
+        <div className="stat-grid">
+          {Object.entries(statLabels).map(([key, label]) => (
+            <div className="stat-cell" key={key}>
+              <span>{label}</span>
+              <strong>{stats[key] ?? 0}</strong>
+            </div>
+          ))}
+        </div>
+
+        <h3>Riwayat Login Terakhir</h3>
+        <Table>
+          <thead><tr><th>Waktu</th><th>IP</th><th>Perangkat</th></tr></thead>
+          <tbody>
+            {(data.recent_login_histories || []).map((row: any) => (
+              <tr key={row.id}>
+                <td>{fmt(row.login_at)}</td>
+                <td>{row.ip_address || '-'}</td>
+                <td className="wide-cell">{short(row.user_agent, 60)}</td>
+              </tr>
+            ))}
+            {(data.recent_login_histories || []).length === 0 && (
+              <tr><td colSpan={3} className="empty-cell">Tidak ada riwayat.</td></tr>
+            )}
+          </tbody>
+        </Table>
+
+        <div className="modal-actions">
+          <button type="button" className="ghost-button" onClick={onClose}><X size={16} /> Tutup</button>
+        </div>
+      </div>
+    </div>
   );
 }
 
