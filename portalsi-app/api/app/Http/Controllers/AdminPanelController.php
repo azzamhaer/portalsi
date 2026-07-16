@@ -49,6 +49,9 @@ class AdminPanelController extends Controller
                 'direct_messages' => DirectMessage::count(),
                 'group_messages' => GroupMessage::count(),
             ],
+            'moderation' => [
+                'appeals_pending' => Appeal::where('status', 'pending')->count(),
+            ],
             'recent_users' => User::latest('created_at')
                 ->limit(8)
                 ->get()
@@ -598,6 +601,9 @@ class AdminPanelController extends Controller
             $request->boolean('expired')
                 ? $query->where('expires_at', '<=', now())
                 : $query->where('expires_at', '>', now());
+        }
+        if ($request->filled('search')) {
+            $query->where('caption', 'like', '%'.$request->query('search').'%');
         }
 
         return response()->json($query->paginate($this->perPage($request)));

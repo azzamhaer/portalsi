@@ -1,13 +1,15 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import type { ElementType, ReactNode } from 'react';
 import {
   Activity,
   Ban,
+  ChevronDown,
   ChevronsLeft,
   ChevronsRight,
   ClipboardList,
   Eye,
   FileText,
+  Gavel,
   Lock,
   LogOut,
   Menu,
@@ -17,6 +19,7 @@ import {
   RefreshCw,
   Save,
   Search,
+  Settings,
   ShieldAlert,
   ShieldCheck,
   Trash2,
@@ -33,6 +36,19 @@ const MEET_API = (import.meta.env.VITE_MEET_API_URL || 'https://meet.portalsi.co
 const STORAGE_KEY = 'portalsi-admin-session';
 
 type Tab = 'dashboard' | 'users' | 'admins' | 'chats' | 'content' | 'meet' | 'appeals' | 'audit';
+
+interface DialogOpts {
+  title: string;
+  message?: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  danger?: boolean;
+  input?: boolean;
+  inputLabel?: string;
+  inputValue?: string;
+  inputPlaceholder?: string;
+  inputRequired?: boolean;
+}
 type ChatMode = 'direct' | 'group';
 type ContentMode = 'posts' | 'comments' | 'stories' | 'groups';
 
@@ -65,27 +81,27 @@ interface PageResult<T> {
   total?: number;
 }
 
-type NavItem = { id: Tab; label: string; icon: ElementType };
+type NavItem = { id: Tab; label: string; icon: ElementType; badge?: 'appeals' };
 
 const navGroups: Array<{ heading: string; items: NavItem[] }> = [
   { heading: 'Ringkasan', items: [{ id: 'dashboard', label: 'Dashboard', icon: Activity }] },
   {
-    heading: 'Manajemen',
+    heading: 'Pengguna & Moderasi',
     items: [
-      { id: 'users', label: 'Users', icon: Users },
-      { id: 'chats', label: 'Chats', icon: MessageSquare },
-      { id: 'content', label: 'Content', icon: FileText },
+      { id: 'users', label: 'Pengguna', icon: Users },
+      { id: 'appeals', label: 'Banding', icon: Gavel, badge: 'appeals' },
+      { id: 'admins', label: 'Admin', icon: ShieldCheck },
+    ],
+  },
+  {
+    heading: 'Konten & Pesan',
+    items: [
+      { id: 'content', label: 'Konten', icon: FileText },
+      { id: 'chats', label: 'Direct Message', icon: MessageSquare },
     ],
   },
   { heading: 'Meeting', items: [{ id: 'meet', label: 'Meet Rooms', icon: Video }] },
-  {
-    heading: 'Sistem',
-    items: [
-      { id: 'admins', label: 'Admin', icon: ShieldCheck },
-      { id: 'appeals', label: 'Banding', icon: ShieldAlert },
-      { id: 'audit', label: 'Audit', icon: ClipboardList },
-    ],
-  },
+  { heading: 'Sistem', items: [{ id: 'audit', label: 'Log', icon: ClipboardList }] },
 ];
 
 const navItems: NavItem[] = navGroups.flatMap(g => g.items);
@@ -143,6 +159,7 @@ export function App() {
   const [tab, setTab] = useState<Tab>('dashboard');
   const [loading, setLoading] = useState(false);
   const [navOpen, setNavOpen] = useState(false); // drawer mobile
+  const [accountOpen, setAccountOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => {
     try { return localStorage.getItem('portalsi-admin-nav-collapsed') === '1'; } catch { return false; }
   });
@@ -177,11 +194,14 @@ export function App() {
   const [userSearch, setUserSearch] = useState('');
   const [editingUser, setEditingUser] = useState<PortalUser | null>(null);
   const [detailUser, setDetailUser] = useState<any | null>(null);
+  const [dialog, setDialog] = useState<DialogOpts | null>(null);
+  const dialogResolver = useRef<((v: string | null) => void) | null>(null);
   const [chatMode, setChatMode] = useState<ChatMode>('direct');
   const [chatRows, setChatRows] = useState<any[]>([]);
   const [chatSearch, setChatSearch] = useState('');
   const [contentMode, setContentMode] = useState<ContentMode>('posts');
   const [contentRows, setContentRows] = useState<any[]>([]);
+  const [contentSearch, setContentSearch] = useState('');
   const [rooms, setRooms] = useState<any[]>([]);
   const [roomSearch, setRoomSearch] = useState('');
   const [selectedRoom, setSelectedRoom] = useState<any | null>(null);
@@ -216,6 +236,20 @@ export function App() {
     }
   }
 
+  // Dialog modern berbasis promise — pengganti window.confirm/prompt.
+  // Resolusi: null = batal, string = konfirmasi (isi input, '' untuk konfirmasi biasa).
+  function askDialog(opts: DialogOpts): Promise<string | null> {
+    return new Promise((resolve) => {
+      dialogResolver.current = resolve;
+      setDialog(opts);
+    });
+  }
+  function resolveDialog(value: string | null) {
+    dialogResolver.current?.(value);
+    dialogResolver.current = null;
+    setDialog(null);
+  }
+
   async function loadDashboard() {
     const [app, meetStats] = await Promise.all([
       portal<any>('/admin-panel/overview'),
@@ -241,7 +275,9 @@ export function App() {
   }
 
   async function loadContent() {
-    const page = await portal<PageResult<any>>(`/admin-panel/${contentMode}?per_page=50`);
+    const query = new URLSearchParams({ per_page: '50' });
+    if (contentSearch.trim()) query.set('search', contentSearch.trim());
+    const page = await portal<PageResult<any>>(`/admin-panel/${contentMode}?${query}`);
     setContentRows(page.data || []);
   }
 
@@ -288,12 +324,17 @@ export function App() {
   }
 
   async function resolveAppeal(appeal: any, decision: 'approved' | 'rejected') {
-    const response = window.prompt(
-      decision === 'approved'
-        ? 'Catatan (opsional). Menyetujui akan membuka blokir user:'
-        : 'Alasan penolakan (opsional):',
-      '',
-    );
+    const response = await askDialog({
+      title: decision === 'approved' ? 'Setujui banding' : 'Tolak banding',
+      message: decision === 'approved'
+        ? 'Menyetujui akan otomatis membuka blokir user.'
+        : 'Banding akan ditolak dan user tetap diblokir.',
+      confirmLabel: decision === 'approved' ? 'Setujui & buka blokir' : 'Tolak banding',
+      danger: decision === 'rejected',
+      input: true,
+      inputLabel: 'Catatan untuk user (opsional)',
+      inputPlaceholder: 'Tulis tanggapan admin…',
+    });
     if (response === null) return;
     await run(decision === 'approved' ? 'Banding disetujui, blokir dibuka.' : 'Banding ditolak.', async () => {
       await portal(`/admin-panel/appeals/${appeal.appeal_id}/resolve`, {
@@ -333,6 +374,22 @@ export function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.token, tab, chatMode, contentMode, appealStatus]);
 
+  // Live search (debounce 300ms) untuk User.
+  useEffect(() => {
+    if (!session || tab !== 'users') return;
+    const t = setTimeout(() => run('', loadUsers), 300);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userSearch]);
+
+  // Live search (debounce 300ms) untuk Konten.
+  useEffect(() => {
+    if (!session || tab !== 'content') return;
+    const t = setTimeout(() => run('', loadContent), 300);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contentSearch]);
+
   async function handleLogin(login: string, password: string) {
     await run('', async () => {
       const payload = await apiRequest<{ token: string; user: PortalUser }>(PORTAL_API, '/login', undefined, {
@@ -356,7 +413,16 @@ export function App() {
   }
 
   async function banUser(user: PortalUser) {
-    const reason = window.prompt(`Alasan blokir untuk @${user.username}:`, user.ban_reason || '');
+    const reason = await askDialog({
+      title: `Blokir @${user.username}`,
+      message: 'User tetap bisa login, tetapi fiturnya dibatasi dan bisa mengajukan banding.',
+      confirmLabel: 'Blokir user',
+      danger: true,
+      input: true,
+      inputLabel: 'Alasan blokir',
+      inputValue: user.ban_reason || '',
+      inputPlaceholder: 'Jelaskan alasan pemblokiran…',
+    });
     if (reason === null) return;
     await run('User berhasil diblokir.', async () => {
       await portal(`/admin-panel/users/${user.user_id}/ban`, {
@@ -368,6 +434,12 @@ export function App() {
   }
 
   async function unbanUser(user: PortalUser) {
+    const ok = await askDialog({
+      title: `Buka blokir @${user.username}`,
+      message: 'User dapat mengakses semua fitur kembali.',
+      confirmLabel: 'Buka blokir',
+    });
+    if (ok === null) return;
     await run('Blokir user dibuka.', async () => {
       await portal(`/admin-panel/users/${user.user_id}/unban`, { method: 'POST' });
       await loadUsers();
@@ -375,12 +447,17 @@ export function App() {
   }
 
   async function deleteUser(user: PortalUser) {
-    const ok = window.confirm(`Anonimkan dan blokir permanen @${user.username}?`);
-    if (!ok) return;
-    await run('User dianonimkan.', async () => {
+    const ok = await askDialog({
+      title: `Hapus @${user.username}`,
+      message: 'Akun dan seluruh datanya dihapus permanen. Tindakan ini tidak dapat dibatalkan.',
+      confirmLabel: 'Hapus permanen',
+      danger: true,
+    });
+    if (ok === null) return;
+    await run('User dihapus.', async () => {
       await portal(`/admin-panel/users/${user.user_id}`, {
         method: 'DELETE',
-        body: JSON.stringify({ mode: 'anonymize', reason: 'Dihapus dari admin panel.' }),
+        body: JSON.stringify({ mode: 'force', reason: 'Dihapus dari admin panel.' }),
       });
       await loadUsers();
     });
@@ -406,7 +483,13 @@ export function App() {
 
   async function editMessage(row: any) {
     const id = chatMode === 'direct' ? row.message_id : row.id;
-    const next = window.prompt('Ubah isi pesan:', row.content || '');
+    const next = await askDialog({
+      title: 'Ubah isi pesan',
+      confirmLabel: 'Simpan',
+      input: true,
+      inputLabel: 'Isi pesan',
+      inputValue: row.content || '',
+    });
     if (next === null) return;
     await run('Pesan diperbarui.', async () => {
       const path = chatMode === 'direct' ? `/admin-panel/direct-messages/${id}` : `/admin-panel/group-messages/${id}`;
@@ -417,8 +500,13 @@ export function App() {
 
   async function deleteMessage(row: any) {
     const id = chatMode === 'direct' ? row.message_id : row.id;
-    const ok = window.confirm(chatMode === 'direct' ? 'Hapus direct message ini?' : 'Sembunyikan group message ini?');
-    if (!ok) return;
+    const ok = await askDialog({
+      title: chatMode === 'direct' ? 'Hapus direct message' : 'Sembunyikan group message',
+      message: chatMode === 'direct' ? 'Pesan akan dihapus permanen.' : 'Pesan grup akan disembunyikan.',
+      confirmLabel: chatMode === 'direct' ? 'Hapus' : 'Sembunyikan',
+      danger: true,
+    });
+    if (ok === null) return;
     await run('Pesan diproses.', async () => {
       const path = chatMode === 'direct' ? `/admin-panel/direct-messages/${id}` : `/admin-panel/group-messages/${id}`;
       await portal(path, { method: 'DELETE' });
@@ -429,7 +517,13 @@ export function App() {
   async function editContent(row: any) {
     const id = row.post_id || row.comment_id || row.story_id || row.id;
     const field = contentMode === 'groups' ? 'name' : contentMode === 'posts' ? 'caption' : contentMode === 'comments' ? 'content' : 'caption';
-    const next = window.prompt(`Ubah ${field}:`, row[field] || '');
+    const next = await askDialog({
+      title: `Ubah ${field}`,
+      confirmLabel: 'Simpan',
+      input: true,
+      inputLabel: field,
+      inputValue: row[field] || '',
+    });
     if (next === null) return;
     await run('Konten diperbarui.', async () => {
       await portal(`/admin-panel/${contentMode}/${id}`, {
@@ -445,10 +539,24 @@ export function App() {
     const notifiable = contentMode === 'posts' || contentMode === 'comments' || contentMode === 'stories';
     let reason: string | null = null;
     if (notifiable) {
-      reason = window.prompt(`Alasan menghapus ${contentMode} #${id} (dikirim sebagai notifikasi ke pemilik, boleh dikosongkan):`, '');
+      reason = await askDialog({
+        title: `Hapus ${contentMode} #${id}`,
+        message: 'Alasan akan dikirim sebagai notifikasi ke pemilik konten.',
+        confirmLabel: 'Hapus',
+        danger: true,
+        input: true,
+        inputLabel: 'Alasan (opsional)',
+        inputPlaceholder: 'Alasan penghapusan…',
+      });
       if (reason === null) return; // dibatalkan
-    } else if (!window.confirm(`Hapus item ${contentMode} #${id}?`)) {
-      return;
+    } else {
+      const ok = await askDialog({
+        title: `Hapus ${contentMode} #${id}`,
+        message: 'Item ini akan dihapus.',
+        confirmLabel: 'Hapus',
+        danger: true,
+      });
+      if (ok === null) return;
     }
     await run('Konten dihapus.', async () => {
       await portal(`/admin-panel/${contentMode}/${id}`, {
@@ -468,8 +576,13 @@ export function App() {
   }
 
   async function deleteRoom(roomId: string) {
-    const ok = window.confirm(`Hapus room ${roomId} dan tutup sesi LiveKit aktif?`);
-    if (!ok) return;
+    const ok = await askDialog({
+      title: `Hapus room ${roomId}`,
+      message: 'Room dihapus dan sesi LiveKit aktif ditutup.',
+      confirmLabel: 'Hapus room',
+      danger: true,
+    });
+    if (ok === null) return;
     await run('Room dihapus.', async () => {
       await meet(`/admin/rooms/${roomId}`, { method: 'DELETE' });
       setSelectedRoom(null);
@@ -488,8 +601,13 @@ export function App() {
   }
 
   async function kickParticipant(roomId: string, identity: string) {
-    const ok = window.confirm(`Keluarkan peserta ${identity}?`);
-    if (!ok) return;
+    const ok = await askDialog({
+      title: 'Keluarkan peserta',
+      message: `Peserta ${identity} akan dikeluarkan dari room.`,
+      confirmLabel: 'Keluarkan',
+      danger: true,
+    });
+    if (ok === null) return;
     await run('Peserta dikeluarkan.', async () => {
       await meet(`/admin/rooms/${roomId}/kick`, {
         method: 'POST',
@@ -527,6 +645,7 @@ export function App() {
               <p className="nav-heading">{group.heading}</p>
               {group.items.map(item => {
                 const Icon = item.icon;
+                const count = item.badge === 'appeals' ? (appOverview?.moderation?.appeals_pending ?? 0) : 0;
                 return (
                   <button
                     key={item.id}
@@ -536,6 +655,7 @@ export function App() {
                   >
                     <Icon size={18} />
                     <span>{item.label}</span>
+                    {count > 0 && <span className="nav-badge">{count > 99 ? '99+' : count}</span>}
                   </button>
                 );
               })}
@@ -547,10 +667,6 @@ export function App() {
             <UserCheck size={16} />
             <span>{session.user.full_name || session.user.username}</span>
           </div>
-          <button className="ghost-button" onClick={logout} title="Logout">
-            <LogOut size={16} />
-            <span>Logout</span>
-          </button>
         </div>
       </aside>
 
@@ -565,9 +681,36 @@ export function App() {
               <h1>{navItems.find(item => item.id === tab)?.label}</h1>
             </div>
           </div>
-          <button className="icon-button" onClick={reloadCurrent} disabled={loading} title="Refresh data">
-            <RefreshCw size={18} className={loading ? 'spin' : ''} />
-          </button>
+          <div className="topbar-actions">
+            <button className="icon-button" onClick={reloadCurrent} disabled={loading} title="Refresh data">
+              <RefreshCw size={18} className={loading ? 'spin' : ''} />
+            </button>
+            <div className="account">
+              <button className="account-trigger" onClick={() => setAccountOpen(v => !v)} title="Akun">
+                <span className="account-avatar">
+                  {(session.user.full_name || session.user.username || '?').charAt(0).toUpperCase()}
+                </span>
+                <span className="account-name">{session.user.full_name || session.user.username}</span>
+                <ChevronDown size={15} />
+              </button>
+              {accountOpen && (
+                <>
+                  <div className="account-overlay" onClick={() => setAccountOpen(false)} />
+                  <div className="account-menu">
+                    <button onClick={() => { setAccountOpen(false); openUserDetail(session.user); }}>
+                      <Eye size={15} /> Profil
+                    </button>
+                    <button onClick={() => { setAccountOpen(false); setNotice('Pengaturan admin akan hadir.'); }}>
+                      <Settings size={15} /> Pengaturan
+                    </button>
+                    <button className="danger" onClick={() => { setAccountOpen(false); logout(); }}>
+                      <LogOut size={15} /> Logout
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
         </header>
 
         {(notice || error) && (
@@ -610,6 +753,8 @@ export function App() {
             mode={contentMode}
             setMode={setContentMode}
             rows={contentRows}
+            search={contentSearch}
+            setSearch={setContentSearch}
             onEdit={editContent}
             onDelete={deleteContent}
           />
@@ -676,6 +821,61 @@ export function App() {
           onEdit={(user) => { setDetailUser(null); setEditingUser(user); }}
         />
       )}
+      {dialog && (
+        <AppDialog
+          opts={dialog}
+          onCancel={() => resolveDialog(null)}
+          onConfirm={(value) => resolveDialog(value)}
+        />
+      )}
+    </div>
+  );
+}
+
+function AppDialog({ opts, onCancel, onConfirm }: { opts: DialogOpts; onCancel: () => void; onConfirm: (value: string) => void }) {
+  const [value, setValue] = useState(opts.inputValue ?? '');
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onCancel();
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onCancel]);
+
+  function confirm() {
+    if (opts.input && opts.inputRequired && !value.trim()) return;
+    onConfirm(opts.input ? value : '');
+  }
+
+  return (
+    <div className="dialog-backdrop" onClick={onCancel}>
+      <div className="dialog" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+        <h3 className="dialog-title">{opts.title}</h3>
+        {opts.message && <p className="dialog-message">{opts.message}</p>}
+        {opts.input && (
+          <label className="dialog-field">
+            {opts.inputLabel && <span>{opts.inputLabel}</span>}
+            <textarea
+              autoFocus
+              rows={3}
+              value={value}
+              placeholder={opts.inputPlaceholder}
+              onChange={(e) => setValue(e.target.value)}
+            />
+          </label>
+        )}
+        <div className="dialog-actions">
+          <button className="secondary-button" onClick={onCancel}>{opts.cancelLabel ?? 'Batal'}</button>
+          <button
+            className={opts.danger ? 'danger-button' : 'primary-button'}
+            onClick={confirm}
+            disabled={opts.input && opts.inputRequired && !value.trim()}
+          >
+            {opts.confirmLabel ?? 'Konfirmasi'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -792,9 +992,9 @@ function UsersPanel(props: {
 }) {
   return (
     <section className="panel">
-      <Header title="User Control" subtitle="Ban, unban, edit profil, catatan admin, dan anonimisasi akun." />
+      <Header title="Manajemen Pengguna" subtitle="Lihat detail, edit, blokir, buka blokir, dan hapus akun. Pencarian langsung saat mengetik." />
       <Toolbar>
-        <SearchBox value={props.userSearch} onChange={props.setUserSearch} onSubmit={props.loadUsers} placeholder="Cari username, nama, email" />
+        <SearchBox value={props.userSearch} onChange={props.setUserSearch} onSubmit={props.loadUsers} placeholder="Cari username, nama, email (live)" />
       </Toolbar>
       <Table>
         <thead><tr><th>ID</th><th>User</th><th>Role</th><th>Status</th><th>Aktivitas</th><th>Aksi</th></tr></thead>
@@ -817,7 +1017,7 @@ function UsersPanel(props: {
                 {user.is_banned
                   ? <IconAction title="Unban user" onClick={() => props.onUnban(user)} icon={Unlock} />
                   : <IconAction title="Ban user" onClick={() => props.onBan(user)} icon={Ban} danger />}
-                <IconAction title="Anonimkan user" onClick={() => props.onDelete(user)} icon={UserX} danger />
+                <IconAction title="Hapus user" onClick={() => props.onDelete(user)} icon={Trash2} danger />
               </ActionBar></td>
             </tr>
           ))}
@@ -870,12 +1070,21 @@ function ContentPanel(props: {
   mode: ContentMode;
   setMode: (mode: ContentMode) => void;
   rows: any[];
+  search: string;
+  setSearch: (value: string) => void;
   onEdit: (row: any) => void;
   onDelete: (row: any) => void;
 }) {
+  const placeholder = props.mode === 'posts'
+    ? 'Cari caption post (live)'
+    : props.mode === 'comments'
+      ? 'Cari isi komentar (live)'
+      : props.mode === 'stories'
+        ? 'Cari caption story (live)'
+        : 'Cari nama/deskripsi grup (live)';
   return (
     <section className="panel">
-      <Header title="Content Control" subtitle="Moderasi post, comment, story, dan group dari API Portal SI." />
+      <Header title="Moderasi Konten" subtitle="Post, komentar, story, dan grup. Pencarian langsung berdasarkan isi konten." />
       <Toolbar>
         <Segmented value={props.mode} onChange={value => props.setMode(value as ContentMode)} options={[
           ['posts', 'Posts'],
@@ -883,6 +1092,7 @@ function ContentPanel(props: {
           ['stories', 'Stories'],
           ['groups', 'Groups'],
         ]} />
+        <SearchBox value={props.search} onChange={props.setSearch} onSubmit={() => { /* live */ }} placeholder={placeholder} />
       </Toolbar>
       <Table>
         <thead><tr><th>ID</th><th>Pemilik</th><th>Konten</th><th>Status</th><th>Waktu</th><th>Aksi</th></tr></thead>
@@ -1061,7 +1271,7 @@ function AuditPanel(props: {
 }) {
   return (
     <section className="panel">
-      <Header title="Audit Trail" subtitle="Jejak aksi admin dari Portal SI App API." />
+      <Header title="Log Aktivitas" subtitle="Jejak seluruh aksi admin di Portal SI." />
       <Toolbar>
         <SearchBox value={props.action} onChange={props.setAction} onSubmit={props.onSearch} placeholder="Filter aksi (mis. user.viewed)" />
       </Toolbar>

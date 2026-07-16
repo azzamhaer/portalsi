@@ -13,13 +13,15 @@ class EnsureUserNotBanned
         $user = $request->user();
 
         if ($user && (bool) ($user->is_banned ?? false)) {
-            // Jangan hapus token di sini: akun diblokir tetap butuh sesi aktif untuk
-            // mengakses halaman "akun diblokir" dan mengirim banding (rute /appeals).
-            return response()->json([
-                'message' => 'Akun ini sedang diblokir dari Portal SI.',
-                'banned' => true,
-                'ban_reason' => $user->ban_reason,
-            ], 403);
+            // Akun diblokir tetap boleh login & MEMBACA (GET), supaya bisa melihat
+            // pemberitahuan ban dan mengajukan banding. Aksi MENULIS diblokir.
+            if (! in_array($request->method(), ['GET', 'HEAD', 'OPTIONS'], true)) {
+                return response()->json([
+                    'message' => 'Akun kamu sedang diblokir, sehingga aksi ini tidak dapat dilakukan.',
+                    'banned' => true,
+                    'ban_reason' => $user->ban_reason,
+                ], 403);
+            }
         }
 
         return $next($request);

@@ -47,10 +47,6 @@ export const actions: Actions = {
 				}
 			});
 			setSessionCookie(cookies, response.token, parsed.data.remember);
-			// Akun diblokir tetap dapat token (untuk banding), tapi diarahkan ke halaman banned.
-			if (response.user.is_banned) {
-				redirect(303, '/banned');
-			}
 		} catch (error) {
 			if (error instanceof ApiError) {
 				return fail(error.status, {
