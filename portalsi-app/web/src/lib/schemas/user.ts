@@ -16,6 +16,8 @@ export const backendUserSchema = z
 		role: userRoleSchema.catch('other'),
 		is_verified: booleanishSchema.catch(false),
 		is_private: booleanishSchema.catch(false),
+		is_banned: booleanishSchema.catch(false),
+		ban_reason: z.string().nullish(),
 		email_verified: z.boolean().optional(),
 		email_verified_at: z.string().nullish()
 	})
@@ -35,6 +37,8 @@ export interface SessionUser {
 	badgeVerified: boolean;
 	emailVerified: boolean;
 	isPrivate: boolean;
+	isBanned: boolean;
+	banReason: string | null;
 }
 
 export function toSessionUser(user: BackendUser): SessionUser {
@@ -49,6 +53,8 @@ export function toSessionUser(user: BackendUser): SessionUser {
 		role: user.role,
 		badgeVerified: user.is_verified,
 		emailVerified: user.email_verified ?? Boolean(user.email_verified_at),
-		isPrivate: user.is_private
+		isPrivate: user.is_private,
+		isBanned: user.is_banned,
+		banReason: user.ban_reason ?? null
 	};
 }

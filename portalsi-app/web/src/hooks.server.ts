@@ -19,7 +19,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 	}
 
 	const requiresSessionUser =
-		!event.url.pathname.startsWith('/api/') && event.url.pathname !== '/logout';
+		!event.url.pathname.startsWith('/api/') &&
+		event.url.pathname !== '/logout' &&
+		event.url.pathname !== '/banned';
 	if (event.locals.token && requiresSessionUser) {
 		try {
 			event.locals.user = await fetchSessionUser(event.locals.token, event.locals.requestId);

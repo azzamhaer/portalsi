@@ -489,6 +489,16 @@ Route::middleware(['auth:sanctum', 'admin.panel'])->prefix('admin-panel')->group
 // ═══════════════════════════════════════════
 
 Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/me/ban-status', function (Request $request) {
+        $user = $request->user();
+
+        return response()->json([
+            'is_banned' => (bool) ($user->is_banned ?? false),
+            'ban_reason' => $user->ban_reason,
+            'banned_at' => $user->banned_at ?? null,
+            'username' => $user->username,
+        ]);
+    });
     Route::post('/appeals', [AppealController::class, 'store']);
     Route::get('/appeals/mine', [AppealController::class, 'mine']);
 });
