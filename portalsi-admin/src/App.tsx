@@ -200,6 +200,7 @@ export function App() {
   const [chatMode, setChatMode] = useState<ChatMode>('direct');
   const [chatRows, setChatRows] = useState<any[]>([]);
   const [chatSearch, setChatSearch] = useState('');
+  const [chatGroup, setChatGroup] = useState<{ id: number; name: string } | null>(null);
   const [contentMode, setContentMode] = useState<ContentMode>('posts');
   const [contentRows, setContentRows] = useState<any[]>([]);
   const [contentSearch, setContentSearch] = useState('');
@@ -270,6 +271,7 @@ export function App() {
   async function loadChats() {
     const query = new URLSearchParams({ per_page: '50' });
     if (chatSearch.trim()) query.set('search', chatSearch.trim());
+    if (chatMode === 'group' && chatGroup) query.set('group_id', String(chatGroup.id));
     const path = chatMode === 'direct' ? '/admin-panel/direct-messages' : '/admin-panel/group-messages';
     const page = await portal<PageResult<any>>(`${path}?${query}`);
     setChatRows(page.data || []);
@@ -373,7 +375,7 @@ export function App() {
     if (!session) return;
     reloadCurrent();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.token, tab, chatMode, contentMode, appealStatus]);
+  }, [session?.token, tab, chatMode, contentMode, appealStatus, chatGroup]);
 
   // Live search (debounce 300ms) untuk User.
   useEffect(() => {
@@ -390,6 +392,14 @@ export function App() {
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contentSearch]);
+
+  // Live search (debounce 300ms) untuk Chat.
+  useEffect(() => {
+    if (!session || tab !== 'chats') return;
+    const t = setTimeout(() => run('', loadChats), 300);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatSearch]);
 
   async function handleLogin(login: string, password: string) {
     await run('', async () => {
@@ -471,6 +481,13 @@ export function App() {
     });
   }
 
+  // Buka chat sebuah grup di tab Chat (mode group, terfilter group_id) — mendukung edit/hapus.
+  function viewGroupChat(group: any) {
+    setChatGroup({ id: group.id, name: group.name || `Grup #${group.id}` });
+    setChatMode('group');
+    setTab('chats');
+  }
+
   // Drill-down: buka data di balik statistik user (post, komentar, story, DM, grup).
   async function openDrill(userId: number, key: string) {
     const map: Record<string, { path: string; title: string }> = {
@@ -479,6 +496,7 @@ export function App() {
       stories: { path: `/admin-panel/stories?user_id=${userId}&per_page=100`, title: 'Story' },
       sent_direct_messages: { path: `/admin-panel/direct-messages?sender_id=${userId}&per_page=100`, title: 'DM Terkirim' },
       received_direct_messages: { path: `/admin-panel/direct-messages?receiver_id=${userId}&per_page=100`, title: 'DM Diterima' },
+      user_dms: { path: `/admin-panel/direct-messages?user_id=${userId}&per_page=200`, title: 'Semua Percakapan DM' },
       groups_owned: { path: `/admin-panel/groups?owner_id=${userId}&per_page=100`, title: 'Grup Dimiliki' },
     };
     const cfg = map[key];
@@ -749,6 +767,7 @@ export function App() {
             setUserSearch={setUserSearch}
             loadUsers={() => run('', loadUsers)}
             onView={openUserDetail}
+            onChat={(user) => openDrill(user.user_id, 'user_dms')}
             onEdit={setEditingUser}
             onBan={banUser}
             onUnban={unbanUser}
@@ -758,10 +777,12 @@ export function App() {
         {tab === 'chats' && (
           <ChatsPanel
             mode={chatMode}
-            setMode={setChatMode}
+            setMode={(m) => { setChatMode(m); if (m === 'direct') setChatGroup(null); }}
             rows={chatRows}
             search={chatSearch}
             setSearch={setChatSearch}
+            group={chatMode === 'group' ? chatGroup : null}
+            onClearGroup={() => setChatGroup(null)}
             loadChats={() => run('', loadChats)}
             onEdit={editMessage}
             onDelete={deleteMessage}
@@ -776,6 +797,7 @@ export function App() {
             setSearch={setContentSearch}
             onEdit={editContent}
             onDelete={deleteContent}
+            onGroupChat={viewGroupChat}
           />
         )}
         {tab === 'meet' && (
@@ -1006,6 +1028,7 @@ function UsersPanel(props: {
   setUserSearch: (value: string) => void;
   loadUsers: () => void;
   onView: (user: PortalUser) => void;
+  onChat: (user: PortalUser) => void;
   onEdit: (user: PortalUser) => void;
   onBan: (user: PortalUser) => void;
   onUnban: (user: PortalUser) => void;
@@ -1034,6 +1057,7 @@ function UsersPanel(props: {
               <td>{fmt(user.last_activity)}</td>
               <td><ActionBar>
                 <IconAction title="Lihat detail" onClick={() => props.onView(user)} icon={Eye} />
+                <IconAction title="Lihat percakapan DM" onClick={() => props.onChat(user)} icon={MessageSquare} />
                 <IconAction title="Edit user" onClick={() => props.onEdit(user)} icon={Pencil} />
                 {user.is_banned
                   ? <IconAction title="Unban user" onClick={() => props.onUnban(user)} icon={Unlock} />
@@ -1054,17 +1078,26 @@ function ChatsPanel(props: {
   rows: any[];
   search: string;
   setSearch: (value: string) => void;
+  group: { id: number; name: string } | null;
+  onClearGroup: () => void;
   loadChats: () => void;
   onEdit: (row: any) => void;
   onDelete: (row: any) => void;
 }) {
   return (
     <section className="panel">
-      <Header title="Chat Moderation" subtitle="Lihat, edit, dan hapus direct message maupun group message." />
+      <Header title="Manajemen Chat" subtitle="Lihat, cari, edit, dan hapus direct message maupun pesan grup." />
       <Toolbar>
         <Segmented value={props.mode} onChange={value => props.setMode(value as ChatMode)} options={[['direct', 'Direct'], ['group', 'Group']]} />
-        <SearchBox value={props.search} onChange={props.setSearch} onSubmit={props.loadChats} placeholder="Cari isi pesan" />
+        <SearchBox value={props.search} onChange={props.setSearch} onSubmit={props.loadChats} placeholder="Cari isi pesan (live)" />
       </Toolbar>
+      {props.group && (
+        <div className="filter-chip">
+          <MessageSquare size={14} />
+          <span>Chat grup: <strong>{props.group.name}</strong></span>
+          <button onClick={props.onClearGroup} title="Hapus filter grup"><X size={14} /></button>
+        </div>
+      )}
       <Table>
         <thead><tr><th>ID</th><th>Pengirim</th><th>Tujuan</th><th>Pesan</th><th>Waktu</th><th>Aksi</th></tr></thead>
         <tbody>
@@ -1095,6 +1128,7 @@ function ContentPanel(props: {
   setSearch: (value: string) => void;
   onEdit: (row: any) => void;
   onDelete: (row: any) => void;
+  onGroupChat: (row: any) => void;
 }) {
   const placeholder = props.mode === 'posts'
     ? 'Cari caption post (live)'
@@ -1133,6 +1167,9 @@ function ContentPanel(props: {
                 </td>
                 <td>{fmt(row.created_at || row.expires_at)}</td>
                 <td><ActionBar>
+                  {props.mode === 'groups' && (
+                    <IconAction title="Lihat chat grup" onClick={() => props.onGroupChat(row)} icon={MessageSquare} />
+                  )}
                   <IconAction title="Edit item" onClick={() => props.onEdit(row)} icon={Pencil} />
                   <IconAction title="Hapus item" onClick={() => props.onDelete(row)} icon={Trash2} danger />
                 </ActionBar></td>
@@ -1397,6 +1434,7 @@ function DrillModal({ drill, onClose }: { drill: { title: string; type: string; 
 
   function headCells() {
     if (type === 'comments') return <tr><th>ID</th><th>Isi Komentar</th><th>Di Post</th><th>Waktu</th></tr>;
+    if (type === 'user_dms') return <tr><th>ID</th><th>Dari</th><th>Ke</th><th>Isi</th><th>Waktu</th></tr>;
     if (type === 'sent_direct_messages') return <tr><th>ID</th><th>Ke</th><th>Isi</th><th>Waktu</th></tr>;
     if (type === 'received_direct_messages') return <tr><th>ID</th><th>Dari</th><th>Isi</th><th>Waktu</th></tr>;
     if (type === 'groups_owned') return <tr><th>ID</th><th>Nama Grup</th><th>Anggota</th></tr>;
@@ -1411,6 +1449,17 @@ function DrillModal({ drill, onClose }: { drill: { title: string; type: string; 
           <td className="wide-cell">{short(r.content, 120)}</td>
           <td>{r.post?.caption ? short(r.post.caption, 40) : (r.post_id ? `Post #${r.post_id}` : '-')}</td>
           <td>{fmt(r.created_at)}</td>
+        </>
+      );
+    }
+    if (type === 'user_dms') {
+      return (
+        <>
+          <td>{r.message_id || r.id}</td>
+          <td>{r.sender?.username || r.sender_id || '-'}</td>
+          <td>{r.receiver?.username || r.receiver_id || '-'}</td>
+          <td className="wide-cell">{short(r.content, 110)}</td>
+          <td>{fmt(r.sent_at)}</td>
         </>
       );
     }

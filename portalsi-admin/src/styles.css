@@ -1128,6 +1128,32 @@ textarea:focus {
 }
 
 /* Dialog modern (pengganti window.confirm/prompt) */
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 14px;
+  padding: 6px 8px 6px 12px;
+  border: 1px solid #f0d3bd;
+  border-radius: 999px;
+  background: #fff3e9;
+  color: #8f3500;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.filter-chip button {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(180, 71, 0, 0.12);
+  color: inherit;
+  cursor: pointer;
+}
+
 .dialog-backdrop {
   position: fixed;
   inset: 0;
