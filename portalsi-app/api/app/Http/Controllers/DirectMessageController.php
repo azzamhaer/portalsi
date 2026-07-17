@@ -128,6 +128,28 @@ class DirectMessageController extends Controller
         // Catatan: JANGAN memaksa is_read=true untuk pesan kita sendiri. Nilai is_read
         // harus mencerminkan apakah PENERIMA sudah membuka (centang biru vs putih).
 
+        // Status "cerita yang dibalas": expired bila story sudah tidak ada / lewat masa berlaku.
+        // Setelah expired, hanya PEMILIK cerita yang masih boleh melihat medianya.
+        $storyIds = $messages->where('is_story_response', true)->pluck('story_id')->filter()->unique();
+        $stories = $storyIds->isNotEmpty()
+            ? \App\Models\Story::whereIn('story_id', $storyIds)->get()->keyBy('story_id')
+            : collect();
+        $messages->each(function ($m) use ($stories, $auth_id) {
+            if (! $m->is_story_response) {
+                $m->story_expired = false;
+
+                return;
+            }
+            $story = $stories->get($m->story_id);
+            $expired = ! $story || ($story->expires_at && \Illuminate\Support\Carbon::parse($story->expires_at)->isPast());
+            $isOwner = $story ? ((int) $story->user_id === (int) $auth_id) : false;
+            $m->story_expired = (bool) $expired;
+            // Sembunyikan media dari NON-pemilik saat sudah expired.
+            if ($expired && ! $isOwner) {
+                $m->responded_media_url = null;
+            }
+        });
+
         return response()->json($messages);
     }
 

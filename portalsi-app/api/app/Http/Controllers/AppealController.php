@@ -23,9 +23,17 @@ class AppealController extends Controller
             'message' => ['required', 'string', 'min:10', 'max:3000'],
         ]);
 
-        $pending = Appeal::where('user_id', $user->user_id)->where('status', 'pending')->exists();
+        // Kalau masih ada banding PENDING, perbarui isinya (jangan tolak) — supaya user
+        // tidak pernah "stuck" dan banding terbaru selalu terlihat admin.
+        $pending = Appeal::where('user_id', $user->user_id)->where('status', 'pending')->latest()->first();
         if ($pending) {
-            return response()->json(['message' => 'Banding kamu sebelumnya masih menunggu peninjauan.'], 422);
+            $pending->message = $validated['message'];
+            $pending->save();
+
+            return response()->json([
+                'message' => 'Banding kamu diperbarui. Tim akan meninjau akunmu.',
+                'appeal' => $pending,
+            ], 200);
         }
 
         $appeal = Appeal::create([

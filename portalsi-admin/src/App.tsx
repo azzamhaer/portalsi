@@ -427,6 +427,17 @@ export function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chatSearch]);
 
+  // Auto-refresh ringan tab Banding & Keamanan (banding/IP baru muncul tanpa refresh manual).
+  useEffect(() => {
+    if (!session || (tab !== 'appeals' && tab !== 'security')) return;
+    const t = setInterval(() => {
+      if (tab === 'appeals') loadAppeals().catch(() => undefined);
+      if (tab === 'security') loadSecurity().catch(() => undefined);
+    }, 12000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, session?.token, appealStatus]);
+
   async function handleLogin(login: string, password: string) {
     await run('', async () => {
       const payload = await apiRequest<{ token: string; user: PortalUser }>(PORTAL_API, '/login', undefined, {

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { LoaderCircle, ShieldAlert } from '@lucide/svelte';
+	import { LoaderCircle, LogOut, ShieldAlert } from '@lucide/svelte';
 	import AuthShell from '$lib/components/auth/AuthShell.svelte';
 	import type { PageProps } from './$types';
 
@@ -73,13 +73,13 @@
 					bind:value={messageValue}
 				></textarea>
 			</label>
-			<button class="auth-primary" type="submit" disabled={submitting}>
+			<button class="submit" type="submit" disabled={submitting}>
 				{#if submitting}<LoaderCircle size={17} class="button-spin" /> Mengirim…{:else}Kirim banding{/if}
 			</button>
 		</form>
 	{/if}
 
-	<p class="switch"><a href="/logout" data-sveltekit-preload-data="off">Keluar dari akun</a></p>
+	<a class="logout" href="/logout" data-sveltekit-preload-data="off"><LogOut size={16} /> Keluar dari akun</a>
 </AuthShell>
 
 <style>
@@ -207,8 +207,49 @@
 		color: var(--color-danger);
 		font-size: 0.78rem;
 	}
-	.auth-primary {
+	.submit {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 7px;
+		width: 100%;
+		min-height: 48px;
 		margin-top: 14px;
+		background: var(--color-primary);
+		border: 1px solid var(--color-primary);
+		border-radius: 12px;
+		color: white;
+		font-size: 0.92rem;
+		font-weight: 750;
+		cursor: pointer;
+		transition: background 140ms ease;
+	}
+	.submit:hover:enabled {
+		background: var(--color-primary-strong);
+	}
+	.submit:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
+	.logout {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 7px;
+		width: 100%;
+		min-height: 46px;
+		margin-top: 12px;
+		background: transparent;
+		border: 1px solid var(--color-border-strong);
+		border-radius: 12px;
+		color: var(--color-muted);
+		font-size: 0.88rem;
+		font-weight: 700;
+		text-decoration: none;
+	}
+	.logout:hover {
+		border-color: var(--color-danger);
+		color: var(--color-danger);
 	}
 	.switch {
 		margin: 20px 0 0;

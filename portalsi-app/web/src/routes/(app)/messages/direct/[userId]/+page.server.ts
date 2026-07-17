@@ -33,6 +33,13 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 	const queryUsername = (url.searchParams.get('username') || '').trim().slice(0, 50);
 	const queryAvatar = (url.searchParams.get('avatar') || '').trim().slice(0, 2048);
 	const mediaBaseUrl = env.PUBLIC_MEDIA_BASE_URL?.trim() || 'https://api.portalsi.com/storage';
+	// Konteks "balas cerita" (dari story viewer): tampilkan pratinjau & kirim sebagai balasan story.
+	const replyStoryId = Number.parseInt(url.searchParams.get('reply_story') || '', 10);
+	const storyMedia = (url.searchParams.get('story_media') || '').trim().slice(0, 2048);
+	const storyReply =
+		Number.isSafeInteger(replyStoryId) && replyStoryId > 0
+			? { id: replyStoryId, media: normalizeMediaUrl(storyMedia, mediaBaseUrl) }
+			: null;
 	const title =
 		existing?.type === 'user'
 			? existing.conversation.name || existing.conversation.username
@@ -45,6 +52,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 		title: title || `Pengguna #${peerId}`,
 		subtitle: username ? `@${username}` : 'Pesan langsung',
 		peerUsername: username || '',
+		storyReply,
 		avatarUrl:
 			existing?.type === 'user'
 				? normalizeMediaUrl(existing.conversation.profile_picture_url, mediaBaseUrl)
@@ -62,7 +70,10 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 			mediaUrl: normalizeMediaUrl(message.media_url, mediaBaseUrl),
 			time: relativeTimeId(message.sent_at),
 			isRead: message.is_read,
-			isPinned: false
+			isPinned: false,
+			isStoryReply: message.is_story_response,
+			storyMedia: normalizeMediaUrl(message.responded_media_url, mediaBaseUrl),
+			storyExpired: message.story_expired
 		}))
 	};
 };

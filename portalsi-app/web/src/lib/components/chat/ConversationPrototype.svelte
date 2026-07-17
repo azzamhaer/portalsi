@@ -52,6 +52,9 @@
 		time: string;
 		isRead: boolean;
 		isPinned: boolean;
+		isStoryReply?: boolean;
+		storyMedia?: string | null;
+		storyExpired?: boolean;
 	};
 	let {
 		mode,
@@ -63,7 +66,8 @@
 		messages: initialMessages,
 		canPin = false,
 		peerUsername = '',
-		members = []
+		members = [],
+		storyReply = null
 	}: {
 		mode: 'direct' | 'group';
 		targetId: number;
@@ -75,7 +79,9 @@
 		canPin?: boolean;
 		peerUsername?: string;
 		members?: string[];
+		storyReply?: { id: number; media: string | null } | null;
 	} = $props();
+	let activeStoryReply = $state(storyReply);
 	const memberLine = $derived(members.length ? members.join(', ') : subtitle);
 	const mediaBaseUrl = env.PUBLIC_MEDIA_BASE_URL?.trim() || 'https://api.portalsi.com/storage';
 	let messages = $state(untrack(() => structuredClone(initialMessages)));
@@ -257,6 +263,13 @@
 		if (content.trim()) body.set('content', content.trim());
 		if (media) body.set('media', media);
 		if (mode === 'group' && replyingTo) body.set('reply_to', String(replyingTo.id));
+		// Balas cerita: sertakan konteks story (snapshot media disimpan di pesan).
+		const replyingToStory = mode === 'direct' ? activeStoryReply : null;
+		if (replyingToStory) {
+			body.set('is_story_response', '1');
+			body.set('story_id', String(replyingToStory.id));
+			if (replyingToStory.media) body.set('responded_media_url', replyingToStory.media);
+		}
 		try {
 			let created: ChatMessage;
 			if (mode === 'direct') {
@@ -275,8 +288,12 @@
 					mediaUrl: normalizeMediaUrl(response.data.media_url, mediaBaseUrl),
 					time: 'baru saja',
 					isRead: false,
-					isPinned: false
+					isPinned: false,
+					isStoryReply: Boolean(replyingToStory),
+					storyMedia: replyingToStory?.media ?? null,
+					storyExpired: false
 				};
+				activeStoryReply = null; // sudah terkirim sebagai balasan cerita
 			} else {
 				const response = await clientRequest(`groups/${targetId}/messages`, {
 					method: 'POST',
@@ -413,6 +430,13 @@
 					<div>
 						{#if !message.mine && mode === 'group'}<strong>{message.senderName}</strong>{/if}
 						{#if message.isPinned}<span class="pinned"><Pin size={11} /> Disematkan</span>{/if}
+						{#if message.isStoryReply}<div class="story-reply-chip">
+								{#if message.storyMedia}<img
+										src={message.storyMedia}
+										alt="Cerita yang dibalas"
+									/>{:else}<span class="story-expired">Cerita telah berakhir</span>{/if}
+								<em>{message.storyExpired ? 'Cerita berakhir' : 'Balasan cerita'}</em>
+							</div>{/if}
 						{#if message.text}<p><MentionText text={message.text} /></p>{/if}
 						{#if message.mediaUrl}
 						{#if mediaKind(message.mediaUrl) === 'image'}<a
@@ -466,7 +490,14 @@
 				><X size={15} /></button
 			>
 		</div>{/if}
-	<form class="composer" onsubmit={send} onkeydown={composerKeydown}>
+	{#if activeStoryReply}<div class="attachment story-reply-bar">
+			{#if activeStoryReply.media}<img src={activeStoryReply.media} alt="Cerita" />{/if}
+			<span>Membalas cerita</span><button
+				onclick={() => (activeStoryReply = null)}
+				aria-label="Batal balas cerita"><X size={15} /></button
+			>
+		</div>{/if}
+		<form class="composer" onsubmit={send} onkeydown={composerKeydown}>
 		<label class="media-button" aria-label="Pilih media"
 			><ImagePlus size={20} /><input
 				type="file"
@@ -833,6 +864,53 @@
 		background: var(--color-primary-soft);
 		color: var(--color-primary-strong);
 		font-size: 0.72rem;
+	}
+	.story-reply-bar {
+		gap: 10px;
+	}
+	.story-reply-bar img {
+		width: 34px;
+		height: 46px;
+		object-fit: cover;
+		border-radius: 7px;
+		flex: 0 0 auto;
+	}
+	.story-reply-bar span {
+		margin-right: auto;
+		font-weight: 700;
+	}
+	/* Pratinjau cerita di dalam gelembung pesan */
+	.story-reply-chip {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		margin-bottom: 5px;
+		padding: 5px 7px;
+		border-radius: 10px;
+		background: rgb(0 0 0 / 8%);
+	}
+	.story-reply-chip img {
+		width: 30px;
+		height: 42px;
+		object-fit: cover;
+		border-radius: 6px;
+	}
+	.story-reply-chip em {
+		font-size: 0.66rem;
+		font-style: normal;
+		font-weight: 700;
+		opacity: 0.75;
+	}
+	.story-expired {
+		display: grid;
+		place-items: center;
+		width: 30px;
+		height: 42px;
+		border-radius: 6px;
+		background: rgb(0 0 0 / 12%);
+		font-size: 0.5rem;
+		text-align: center;
+		padding: 2px;
 	}
 	.attachment button {
 		display: grid;

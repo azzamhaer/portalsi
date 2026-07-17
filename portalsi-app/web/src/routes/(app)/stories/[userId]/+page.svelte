@@ -221,25 +221,42 @@
 	/>
 	<!-- Transisi cube antar cerita user (View Transitions API) -->
 	<style>
+		/* Hanya FRAME cerita yang di-cube; latar hitam (root) tidak dianimasikan. */
+		::view-transition-group(root),
+		::view-transition-old(root),
+		::view-transition-new(root) {
+			animation: none;
+			mix-blend-mode: normal;
+		}
 		@keyframes psi-cube-out {
+			from {
+				transform: perspective(1600px) rotateY(0deg);
+				opacity: 1;
+			}
 			to {
-				transform: perspective(1400px) translateZ(-140px) rotateY(-90deg);
-				opacity: 0.35;
+				transform: perspective(1600px) rotateY(-92deg);
+				opacity: 0.5;
 			}
 		}
 		@keyframes psi-cube-in {
 			from {
-				transform: perspective(1400px) translateZ(-140px) rotateY(90deg);
-				opacity: 0.35;
+				transform: perspective(1600px) rotateY(92deg);
+				opacity: 0.5;
+			}
+			to {
+				transform: perspective(1600px) rotateY(0deg);
+				opacity: 1;
 			}
 		}
-		::view-transition-old(root) {
-			animation: psi-cube-out 400ms cubic-bezier(0.4, 0, 0.2, 1) both;
+		::view-transition-old(story-card) {
+			animation: psi-cube-out 460ms cubic-bezier(0.33, 0, 0.15, 1) both;
 			transform-origin: center right;
+			backface-visibility: hidden;
 		}
-		::view-transition-new(root) {
-			animation: psi-cube-in 400ms cubic-bezier(0.4, 0, 0.2, 1) both;
+		::view-transition-new(story-card) {
+			animation: psi-cube-in 460ms cubic-bezier(0.33, 0, 0.15, 1) both;
 			transform-origin: center left;
+			backface-visibility: hidden;
 		}
 	</style></svelte:head
 >
@@ -255,6 +272,7 @@
 	<article
 		style:width={`${frame.width}px`}
 		style:height={`${frame.height}px`}
+			style:view-transition-name="story-card"
 		onpointerdown={() => (holding = true)}
 		onpointerup={() => (holding = false)}
 		onpointercancel={() => (holding = false)}
@@ -368,9 +386,10 @@
 						event.stopPropagation();
 						void deleteStory();
 					}}><Trash2 size={18} /> Hapus</button
-				>{:else}<a href={`/messages/direct/${data.user.id}`}
-					><MessageCircle size={19} /> Kirim pesan</a
-				>{/if}
+				>{:else}<a
+						href={`/messages/direct/${data.user.id}?reply_story=${story?.id ?? ''}&story_media=${encodeURIComponent(story?.mediaUrl ?? '')}`}
+						><MessageCircle size={19} /> Balas cerita</a
+					>{/if}
 		</footer>
 		{#if viewersOpen}<aside class="viewer-panel" onpointerdown={(event) => event.stopPropagation()}>
 				<header>
