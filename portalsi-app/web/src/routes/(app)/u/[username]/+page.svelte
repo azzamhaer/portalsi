@@ -182,23 +182,28 @@
 			<div class="actions">
 				{#if data.isAuthenticated}
 					<button
+						class="follow-main"
 						class:following
 						onclick={toggleFollow}
 						disabled={!data.canFollow || connectionBusy || pending}
 					>
-						{#if following}<UserCheck size={17} /> Mengikuti{:else}<UserPlus size={17} />
-							{pending ? 'Menunggu' : 'Ikuti'}{/if}
+						{#if following}<UserCheck size={18} /> Following{:else}<UserPlus size={18} />
+							{pending ? 'Requested' : 'Follow'}{/if}
 					</button>
 					<a
+						class="icon-action"
+						aria-label="Kirim pesan"
 						href={`/messages/direct/${data.profile.id}?name=${encodeURIComponent(data.profile.fullName)}&username=${encodeURIComponent(data.profile.username)}${data.profile.avatarUrl ? `&avatar=${encodeURIComponent(data.profile.avatarUrl)}` : ''}`}
-						><MessageCircle size={17} /> Pesan</a
+						><MessageCircle size={19} /></a
 					>
 				{:else}
-					<a href={`/login?next=${encodeURIComponent(`/u/${data.profile.username}`)}`}
-						><UserPlus size={17} /> Masuk untuk mengikuti</a
+					<a class="follow-main" href={`/login?next=${encodeURIComponent(`/u/${data.profile.username}`)}`}
+						><UserPlus size={18} /> Follow</a
 					>
 				{/if}
-				<button onclick={shareProfile} aria-label="Bagikan profil"><Share2 size={18} /></button>
+				<button class="icon-action" onclick={shareProfile} aria-label="Bagikan profil"
+					><Share2 size={18} /></button
+				>
 			</div>
 			<h1>
 				{data.profile.fullName}<UserBadges
@@ -373,33 +378,51 @@
 		top: 14px;
 		right: 22px;
 		display: flex;
-		gap: 7px;
-	}
-	.actions button,
-	.actions a {
-		display: flex;
-		height: 40px;
 		align-items: center;
-		gap: 6px;
-		padding: 0 13px;
-		background: white;
-		border: 1px solid var(--color-border);
-		border-radius: 11px;
-		font-size: 0.76rem;
-		font-weight: 700;
+		gap: 9px;
 	}
-	.actions button:first-child {
+	/* Tombol utama Follow — besar & jelas. */
+	.follow-main {
+		display: inline-flex;
+		align-items: center;
+		gap: 7px;
+		height: 46px;
+		min-width: 128px;
+		justify-content: center;
+		padding: 0 22px;
 		background: var(--color-primary);
-		border-color: var(--color-primary);
+		border: 1px solid var(--color-primary);
+		border-radius: 14px;
 		color: white;
+		font-size: 0.9rem;
+		font-weight: 750;
+		box-shadow: 0 8px 20px rgba(180, 71, 0, 0.22);
 	}
-	.actions button.following {
+	.follow-main.following {
 		background: white;
 		color: var(--color-primary-strong);
+		box-shadow: none;
 	}
-	.actions button:disabled {
+	.follow-main:disabled {
 		cursor: not-allowed;
 		opacity: 0.68;
+	}
+	/* Tombol ikon (chat & share). */
+	.icon-action {
+		display: grid;
+		width: 46px;
+		height: 46px;
+		place-items: center;
+		background: white;
+		border: 1px solid var(--color-border-strong);
+		border-radius: 14px;
+		color: var(--color-ink, #172033);
+		transition: background 140ms ease, border-color 140ms ease;
+	}
+	.icon-action:hover {
+		background: var(--color-surface-soft);
+		border-color: var(--color-primary);
+		color: var(--color-primary-strong);
 	}
 	.body h1 {
 		display: flex;

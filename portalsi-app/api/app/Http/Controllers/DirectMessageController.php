@@ -175,6 +175,15 @@ class DirectMessageController extends Controller
             ->where('is_read', false)
             ->update(['is_read' => true]);
 
+        // Realtime: beri tahu pengirim agar centangnya jadi biru tanpa refresh.
+        if ($updated > 0) {
+            try {
+                broadcast(new \App\Events\MessageRead($auth_id, (int) $user_id));
+            } catch (\Throwable $e) {
+                // abaikan bila broadcaster tak tersedia
+            }
+        }
+
         return response()->json([
             'message' => "Semua pesan dari user {$user_id} ke {$auth_id} ditandai sebagai dibaca.",
             'updated_count' => $updated,

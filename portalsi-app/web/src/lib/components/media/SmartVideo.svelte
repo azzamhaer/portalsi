@@ -35,7 +35,10 @@
 	$effect(() => {
 		function sync() {
 			const doc = document as Document & { webkitFullscreenElement?: Element };
-			isFullscreen = Boolean(document.fullscreenElement || doc.webkitFullscreenElement);
+			const fs = Boolean(document.fullscreenElement || doc.webkitFullscreenElement);
+			isFullscreen = fs;
+			// Setelah keluar fullscreen, matikan lagi kontrol native (kembali ke kontrol kustom).
+			if (!fs) video?.removeAttribute('controls');
 		}
 		document.addEventListener('fullscreenchange', sync);
 		document.addEventListener('webkitfullscreenchange', sync);
@@ -84,15 +87,22 @@
 			else doc.webkitExitFullscreen?.();
 			return;
 		}
-		const el = video as HTMLVideoElement & { webkitEnterFullscreen?: () => void };
-		// iOS Safari tidak mendukung Fullscreen API pada elemen biasa — pakai native video.
-		if (el?.webkitEnterFullscreen && !('requestFullscreen' in root)) {
-			el.webkitEnterFullscreen();
-			return;
+		// Fullscreen pada ELEMEN VIDEO (bukan container): browser menjaga rasio asli
+		// (letterbox) + menyediakan kontrol native, termasuk tombol keluar.
+		const el = video as HTMLVideoElement & {
+			webkitEnterFullscreen?: () => void;
+			webkitRequestFullscreen?: () => void;
+		};
+		if (!el) return;
+		if (el.requestFullscreen) {
+			el.setAttribute('controls', 'controls'); // desktop: kontrol native (ada tombol keluar)
+			void el.requestFullscreen();
+		} else if (el.webkitEnterFullscreen) {
+			el.webkitEnterFullscreen(); // iOS: pakai native player
+		} else if (el.webkitRequestFullscreen) {
+			el.setAttribute('controls', 'controls');
+			el.webkitRequestFullscreen();
 		}
-		const container = root as HTMLDivElement & { webkitRequestFullscreen?: () => void };
-		if (container.requestFullscreen) void container.requestFullscreen();
-		else container.webkitRequestFullscreen?.();
 	}
 
 	// Autoplay ala Instagram: putar saat video masuk viewport, jeda saat digulir menjauh.

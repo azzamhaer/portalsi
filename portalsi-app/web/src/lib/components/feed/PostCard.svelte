@@ -164,16 +164,16 @@
 				>
 				<small>{post.createdLabel}</small>
 			</a>
-			{#if canShowFollow}
-				<button
-					class="follow-btn"
-					class:following
-					onclick={toggleFollow}
-					disabled={followBusy}
-					aria-pressed={following}>{following ? 'Mengikuti' : 'Ikuti'}</button
-				>
-			{/if}
 		</div>
+		{#if canShowFollow}
+			<button
+				class="follow-btn"
+				class:following
+				onclick={toggleFollow}
+				disabled={followBusy}
+				aria-pressed={following}>{following ? 'Mengikuti' : 'Ikuti'}</button
+			>
+		{/if}
 	</header>
 
 	{#if post.location || post.music}
@@ -346,8 +346,7 @@
 
 	.follow-btn {
 		flex: 0 0 auto;
-		margin-left: auto;
-		padding: 6px 15px;
+		padding: 7px 18px;
 		background: var(--color-primary);
 		border: 1px solid var(--color-primary);
 		border-radius: 999px;

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { clientRequest } from '$lib/api/client';
 	import { userSearchResponseSchema } from '$lib/schemas/post';
+	import Avatar from '$lib/components/ui/Avatar.svelte';
 
 	let {
 		value = $bindable(''),
@@ -18,7 +19,14 @@
 		onEnter?: () => void;
 	} = $props();
 	let textarea: HTMLTextAreaElement;
-	let results = $state<Array<{ user_id: number; username: string; full_name?: string | null }>>([]);
+	let results = $state<
+		Array<{
+			user_id: number;
+			username: string;
+			full_name?: string | null;
+			profile_picture_url?: string | null;
+		}>
+	>([]);
 	let loading = $state(false);
 	let request = 0;
 
@@ -81,8 +89,12 @@
 			{#each results as user (user.user_id)}<button
 					type="button"
 					onclick={() => select(user.username)}
-					><strong>{user.full_name || user.username}</strong><small>@{user.username}</small></button
-				>{/each}
+				>
+					<Avatar name={user.full_name || user.username} src={user.profile_picture_url ?? undefined} size="sm" />
+					<span class="mention-copy"
+						><strong>{user.full_name || user.username}</strong><small>@{user.username}</small></span
+					>
+				</button>{/each}
 		</div>{/if}
 </div>
 
@@ -110,18 +122,28 @@
 		box-shadow: var(--shadow-md);
 	}
 	.mention-menu button {
-		display: grid;
-		padding: 8px 10px;
+		display: flex;
+		align-items: center;
+		gap: 9px;
+		width: 100%;
+		padding: 7px 9px;
 		background: transparent;
 		border: 0;
-		border-radius: 8px;
+		border-radius: 10px;
 		text-align: left;
 	}
 	.mention-menu button:hover {
 		background: var(--color-primary-soft);
 	}
+	.mention-copy {
+		display: grid;
+		min-width: 0;
+	}
 	.mention-menu strong {
 		font-size: 0.75rem;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 	.mention-menu small,
 	.mention-menu > span {

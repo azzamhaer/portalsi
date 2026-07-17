@@ -206,11 +206,22 @@
 				if (status === 'connected') statusMessage = '';
 			}
 		);
+		// Read receipt realtime (DM): saat lawan membuka pesan kita, centang jadi biru.
+		let unsubRead: (() => void) | undefined;
+		if (mode === 'direct') {
+			unsubRead = subscribePrivate(channelName, 'dm.read', (payload) => {
+				const readerId = (payload as { reader_id?: number })?.reader_id;
+				if (readerId === targetId) {
+					messages = messages.map((m) => (m.mine && !m.isRead ? { ...m, isRead: true } : m));
+				}
+			});
+		}
 		const timer = window.setInterval(() => {
 			if (!realtimeConnected) void refresh();
 		}, 12_000);
 		return () => {
 			unsubscribe();
+			unsubRead?.();
 			window.clearInterval(timer);
 		};
 	});

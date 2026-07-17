@@ -66,7 +66,16 @@ class Notification extends Model
             $attributes['created_at'] = now();
         }
 
-        return static::create($attributes);
+        $notification = static::create($attributes);
+
+        // Siarkan realtime agar halaman notifikasi & badge terupdate tanpa refresh.
+        try {
+            broadcast(new \App\Events\NotificationCreated($notification));
+        } catch (\Throwable $e) {
+            // abaikan bila broadcaster tak tersedia
+        }
+
+        return $notification;
     }
 
     /*

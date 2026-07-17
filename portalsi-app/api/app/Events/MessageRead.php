@@ -2,35 +2,36 @@
 
 namespace App\Events;
 
-use Illuminate\Broadcasting\Channel;
-use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Broadcasting\PresenceChannel;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class MessageRead
+/**
+ * Disiarkan saat seseorang membuka & membaca pesan DM dari lawan bicara.
+ * Pengirim (otherId) memakai ini untuk mengubah centangnya jadi biru secara realtime.
+ */
+class MessageRead implements ShouldBroadcast
 {
-    use Dispatchable, InteractsWithSockets, SerializesModels;
+    use Dispatchable, SerializesModels;
 
-    /**
-     * Create a new event instance.
-     */
-    public function __construct()
-    {
-        //
-    }
+    public function __construct(public int $readerId, public int $otherId) {}
 
-    /**
-     * Get the channels the event should broadcast on.
-     *
-     * @return array<int, \Illuminate\Broadcasting\Channel>
-     */
     public function broadcastOn(): array
     {
-        return [
-            new PrivateChannel('channel-name'),
-        ];
+        $ids = [$this->readerId, $this->otherId];
+        sort($ids);
+
+        return [new PrivateChannel('dm.'.implode('-', $ids))];
+    }
+
+    public function broadcastAs(): string
+    {
+        return 'dm.read';
+    }
+
+    public function broadcastWith(): array
+    {
+        return ['reader_id' => $this->readerId];
     }
 }

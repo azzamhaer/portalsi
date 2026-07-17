@@ -1,10 +1,24 @@
 <script lang="ts">
 	import { Edit3, Plus, Search, Users, X } from '@lucide/svelte';
+	import { onMount } from 'svelte';
+	import { invalidateAll } from '$app/navigation';
 	import Avatar from '$lib/components/ui/Avatar.svelte';
 	import SectionPage from '$lib/components/layout/SectionPage.svelte';
+	import { subscribePrivate } from '$lib/realtime/client';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
+
+	// Realtime: chat baru masuk / status berubah → segarkan daftar tanpa refresh manual.
+	onMount(() => {
+		if (!data.user) return;
+		return subscribePrivate(
+			`App.Models.User.${data.user.id}`,
+			'chat.updated',
+			() => void invalidateAll()
+		);
+	});
+
 	let query = $state('');
 	let filter = $state<'all' | 'unread' | 'group'>('all');
 	const chats = $derived(
