@@ -431,10 +431,17 @@
 						{#if !message.mine && mode === 'group'}<strong>{message.senderName}</strong>{/if}
 						{#if message.isPinned}<span class="pinned"><Pin size={11} /> Disematkan</span>{/if}
 						{#if message.isStoryReply}<div class="story-reply-chip">
-								{#if message.storyMedia}<img
-										src={message.storyMedia}
-										alt="Cerita yang dibalas"
-									/>{:else}<span class="story-expired">Cerita telah berakhir</span>{/if}
+								{#if message.storyMedia}
+									{#if mediaKind(message.storyMedia) === 'video'}<video
+											src={message.storyMedia}
+											muted
+											playsinline
+											preload="metadata"
+										></video>{:else}<img
+											src={message.storyMedia}
+											alt="Cerita yang dibalas"
+										/>{/if}
+								{:else}<span class="story-expired">Cerita telah berakhir</span>{/if}
 								<em>{message.storyExpired ? 'Cerita berakhir' : 'Balasan cerita'}</em>
 							</div>{/if}
 						{#if message.text}<p><MentionText text={message.text} /></p>{/if}
@@ -491,7 +498,12 @@
 			>
 		</div>{/if}
 	{#if activeStoryReply}<div class="attachment story-reply-bar">
-			{#if activeStoryReply.media}<img src={activeStoryReply.media} alt="Cerita" />{/if}
+			{#if activeStoryReply.media}{#if mediaKind(activeStoryReply.media) === 'video'}<video
+						src={activeStoryReply.media}
+						muted
+						playsinline
+						preload="metadata"
+					></video>{:else}<img src={activeStoryReply.media} alt="Cerita" />{/if}{/if}
 			<span>Membalas cerita</span><button
 				onclick={() => (activeStoryReply = null)}
 				aria-label="Batal balas cerita"><X size={15} /></button
@@ -868,12 +880,14 @@
 	.story-reply-bar {
 		gap: 10px;
 	}
-	.story-reply-bar img {
+	.story-reply-bar img,
+	.story-reply-bar video {
 		width: 34px;
 		height: 46px;
 		object-fit: cover;
 		border-radius: 7px;
 		flex: 0 0 auto;
+		background: #000;
 	}
 	.story-reply-bar span {
 		margin-right: auto;
@@ -889,11 +903,13 @@
 		border-radius: 10px;
 		background: rgb(0 0 0 / 8%);
 	}
-	.story-reply-chip img {
+	.story-reply-chip img,
+	.story-reply-chip video {
 		width: 30px;
 		height: 42px;
 		object-fit: cover;
 		border-radius: 6px;
+		background: #000;
 	}
 	.story-reply-chip em {
 		font-size: 0.66rem;

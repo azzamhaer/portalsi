@@ -1129,7 +1129,7 @@
 								>{#if videoWillMute}<VolumeX size={16} />{:else}<Volume2 size={16} />{/if}
 								{videoWillMute ? 'Video dibisukan' : 'Suara video aktif'}</button
 							>
-							<div class="thumbnail-picker">
+							{#if kind !== 'story'}<div class="thumbnail-picker">
 								<div>
 									<strong>Thumbnail video</strong>
 									<small>Default detik pertama. Geser untuk memilih frame lain.</small>
@@ -1154,7 +1154,7 @@
 									<small>{thumbnailGenerating ? 'Mengambil frame…' : 'Frame ini otomatis menjadi thumbnail.'}</small>
 								</div>
 							</div>
-						{:else}<audio src={previewUrl} controls></audio>{/if}
+						{/if}{:else}<audio src={previewUrl} controls></audio>{/if}
 						<button onclick={() => (file = null)} aria-label="Hapus media"><X size={18} /></button>
 					</div>{/if}
 				{#if selectedFileKind === 'image'}<div class="crop-controls" aria-label="Framing gambar">

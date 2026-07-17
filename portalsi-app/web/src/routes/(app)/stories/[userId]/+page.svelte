@@ -60,7 +60,9 @@
 		const mobile = vw > 0 && vw < 768;
 		const maxW = mobile ? Math.max(180, vw - 106) : Math.min(500, vw - 140);
 		const maxH = mobile ? vh - 18 : vh - 40;
-		const aspect = Math.min(1.91, Math.max(0.42, frameAspect));
+		// Frame SELALU portrait 9:16. Media landscape/potrait di-"contain" di dalamnya
+		// (dengan blur backdrop), sehingga ukuran frame tidak berubah antar cerita → transisi mulus.
+		const aspect = 9 / 16;
 		let width = maxW;
 		let height = width / aspect;
 		if (height > maxH) {
@@ -219,44 +221,42 @@
 		name="robots"
 		content="noindex"
 	/>
-	<!-- Transisi cube antar cerita user (View Transitions API) -->
+	<!-- Transisi SLIDE antar cerita user (View Transitions API) -->
 	<style>
-		/* Hanya FRAME cerita yang di-cube; latar hitam (root) tidak dianimasikan. */
+		/* Hanya FRAME cerita yang dianimasikan; latar hitam (root) diam. */
 		::view-transition-group(root),
 		::view-transition-old(root),
 		::view-transition-new(root) {
 			animation: none;
 			mix-blend-mode: normal;
 		}
-		@keyframes psi-cube-out {
+		@keyframes psi-slide-out {
 			from {
-				transform: perspective(1600px) rotateY(0deg);
+				transform: translateX(0);
 				opacity: 1;
 			}
 			to {
-				transform: perspective(1600px) rotateY(-92deg);
-				opacity: 0.5;
+				transform: translateX(-38%);
+				opacity: 0;
 			}
 		}
-		@keyframes psi-cube-in {
+		@keyframes psi-slide-in {
 			from {
-				transform: perspective(1600px) rotateY(92deg);
-				opacity: 0.5;
+				transform: translateX(38%);
+				opacity: 0;
 			}
 			to {
-				transform: perspective(1600px) rotateY(0deg);
+				transform: translateX(0);
 				opacity: 1;
 			}
 		}
 		::view-transition-old(story-card) {
-			animation: psi-cube-out 460ms cubic-bezier(0.33, 0, 0.15, 1) both;
-			transform-origin: center right;
-			backface-visibility: hidden;
+			animation: psi-slide-out 300ms cubic-bezier(0.4, 0, 0.2, 1) both;
+			will-change: transform, opacity;
 		}
 		::view-transition-new(story-card) {
-			animation: psi-cube-in 460ms cubic-bezier(0.33, 0, 0.15, 1) both;
-			transform-origin: center left;
-			backface-visibility: hidden;
+			animation: psi-slide-in 300ms cubic-bezier(0.4, 0, 0.2, 1) both;
+			will-change: transform, opacity;
 		}
 	</style></svelte:head
 >
