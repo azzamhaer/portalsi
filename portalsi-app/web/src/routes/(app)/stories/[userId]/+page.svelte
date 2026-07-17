@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
+	import { goto, onNavigate } from '$app/navigation';
 	import {
 		ChevronLeft,
 		ChevronRight,
@@ -17,6 +17,21 @@
 	import type { PageProps } from './$types';
 	import { confirmAction } from '$lib/ui/confirm';
 	import MentionText from '$lib/components/ui/MentionText.svelte';
+
+	// Transisi 3D "cube" saat pindah cerita antar profil user (Chromium; fallback instan).
+	onNavigate((navigation) => {
+		const fromStory = navigation.from?.url.pathname.startsWith('/stories/');
+		const toStory = navigation.to?.url.pathname.startsWith('/stories/');
+		const startVT = (document as Document & { startViewTransition?: (cb: () => Promise<void>) => void })
+			.startViewTransition;
+		if (!fromStory || !toStory || !startVT) return;
+		return new Promise<void>((resolve) => {
+			startVT.call(document, async () => {
+				resolve();
+				await navigation.complete;
+			});
+		});
+	});
 
 	let { data }: PageProps = $props();
 	let stories = $state(untrack(() => structuredClone(data.stories)));
@@ -112,8 +127,9 @@
 	});
 
 	// Timer maju otomatis; gambar/musik memakai durasi tetap, video memakai event onended.
+	// JANGAN mulai selama media masih loading — supaya cerita tidak keburu terskip.
 	$effect(() => {
-		if (!story || effectivePaused || story.type === 'video') return;
+		if (!story || effectivePaused || mediaLoading || story.type === 'video') return;
 		const timer = window.setTimeout(next, segmentDuration);
 		return () => window.clearTimeout(timer);
 	});
@@ -202,8 +218,32 @@
 	><title>Cerita @{data.user.username} — Portal SI</title><meta
 		name="robots"
 		content="noindex"
-	/></svelte:head
+	/>
+	<!-- Transisi cube antar cerita user (View Transitions API) -->
+	<style>
+		@keyframes psi-cube-out {
+			to {
+				transform: perspective(1400px) translateZ(-140px) rotateY(-90deg);
+				opacity: 0.35;
+			}
+		}
+		@keyframes psi-cube-in {
+			from {
+				transform: perspective(1400px) translateZ(-140px) rotateY(90deg);
+				opacity: 0.35;
+			}
+		}
+		::view-transition-old(root) {
+			animation: psi-cube-out 400ms cubic-bezier(0.4, 0, 0.2, 1) both;
+			transform-origin: center right;
+		}
+		::view-transition-new(root) {
+			animation: psi-cube-in 400ms cubic-bezier(0.4, 0, 0.2, 1) both;
+			transform-origin: center left;
+		}
+	</style></svelte:head
 >
+
 
 <div class="story-viewer">
 	<button
@@ -223,7 +263,7 @@
 			{#each stories as item, itemIndex (item.id)}<span class:complete={itemIndex < index}
 					>{#if itemIndex === index}<i
 							style:animation-duration={`${segmentDuration}ms`}
-							class:paused={effectivePaused}
+							class:paused={effectivePaused || mediaLoading}
 						></i>{/if}</span
 				>{/each}
 		</div>

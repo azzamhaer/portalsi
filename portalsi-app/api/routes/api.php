@@ -250,13 +250,8 @@ Route::post('/login', function (Request $request) use ($sendVerificationEmail) {
         ], 401);
     }
 
-    if ((bool) ($user->is_banned ?? false)) {
-        return response()->json([
-            'code' => 2003,
-            'message' => 'Akun Anda sedang diblokir dari Portal SI.',
-            'ban_reason' => $user->ban_reason,
-        ], 403);
-    }
+    // Akun diblokir TETAP boleh login (dapat token). Frontend akan mengarahkan
+    // ke halaman "akun diblokir" (hanya banding / logout). Lihat guard (app) layout.
 
     if (! $user->hasVerifiedEmail()) {
         $cooldown = (int) config('auth.verification_resend_cooldown', 60);

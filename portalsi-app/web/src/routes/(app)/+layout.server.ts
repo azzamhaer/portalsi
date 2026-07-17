@@ -15,6 +15,10 @@ export const load: LayoutServerLoad = ({ locals, url }) => {
 		const next = `${url.pathname}${url.search}`;
 		redirect(303, `/login?next=${encodeURIComponent(next)}`);
 	}
+	// Akun diblokir: kunci ke halaman "akun diblokir" (hanya banding / logout).
+	if (locals.user?.isBanned) {
+		redirect(303, '/banned');
+	}
 	if (locals.user && !locals.user.emailVerified && !isLegal) {
 		redirect(303, '/verify-email');
 	}

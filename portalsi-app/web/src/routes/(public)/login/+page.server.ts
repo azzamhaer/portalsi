@@ -47,6 +47,10 @@ export const actions: Actions = {
 				}
 			});
 			setSessionCookie(cookies, response.token, parsed.data.remember);
+			// Akun diblokir tetap login, tapi langsung diarahkan ke halaman "akun diblokir".
+			if (response.user.is_banned) {
+				redirect(303, '/banned');
+			}
 		} catch (error) {
 			if (error instanceof ApiError) {
 				return fail(error.status, {

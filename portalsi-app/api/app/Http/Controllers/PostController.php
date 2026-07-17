@@ -79,8 +79,7 @@ class PostController extends Controller
                 ->take(100)
                 ->get()
                 ->map(function ($post) use ($authUser) {
-                    $post->is_liked = (bool) $post->likes()->where('user_id', $authUser->user_id)->exists();
-                    $post->is_bookmarked = (bool) $post->bookmarks()->where('user_id', $authUser->user_id)->exists();
+                    // is_liked / is_bookmarked diisi batch setelah semua sumber digabung (anti N+1).
                     $post->type = 'post';
                     $post->user = $this->attachStoryInfo($post->user, $authUser);
                     $post->user->is_verified = (bool) $post->user->is_verified;
@@ -173,8 +172,7 @@ class PostController extends Controller
                 ->merge($randomPosts)
                 ->merge($likedPosts)
                 ->map(function ($post) use ($authUser, $followingIds) {
-                    $post->is_liked = (bool) $post->likes()->where('user_id', $authUser->user_id)->exists();
-                    $post->is_bookmarked = (bool) $post->bookmarks()->where('user_id', $authUser->user_id)->exists();
+                    // is_liked / is_bookmarked diisi batch setelah semua sumber digabung (anti N+1).
                     $post->type = 'post';
                     $post->user = $this->attachStoryInfo($post->user, $authUser);
                     $post->user->is_verified = (bool) $post->user->is_verified;
@@ -205,8 +203,7 @@ class PostController extends Controller
                 ->take(100)
                 ->get()
                 ->map(function ($post) use ($authUser, $followingIds) {
-                    $post->is_liked = (bool) $post->likes()->where('user_id', $authUser->user_id)->exists();
-                    $post->is_bookmarked = (bool) $post->bookmarks()->where('user_id', $authUser->user_id)->exists();
+                    // is_liked / is_bookmarked diisi batch setelah semua sumber digabung (anti N+1).
                     $post->type = 'post';
                     $post->user = $this->attachStoryInfo($post->user, $authUser);
                     $post->user->is_verified = (bool) $post->user->is_verified;
@@ -223,6 +220,30 @@ class PostController extends Controller
                 })
                 ->shuffle()
                 ->values();
+        }
+
+        // Kurangi monoton ("akun itu-itu saja"): batasi maksimal 3 post per akun,
+        // dan selang-seling agar tidak beruntun dari akun yang sama.
+        $perAuthor = [];
+        $mainPosts = $mainPosts->filter(function ($post) use (&$perAuthor) {
+            $uid = $post->user_id;
+            $perAuthor[$uid] = ($perAuthor[$uid] ?? 0) + 1;
+
+            return $perAuthor[$uid] <= 3;
+        })->values();
+
+        // Batch is_liked / is_bookmarked untuk SEMUA post feed sekaligus (hindari N+1
+        // yang membuat home lambat/timeout → "postingan belum dapat dimuat").
+        $feedIds = $mainPosts->pluck('post_id')->filter()->values();
+        if ($feedIds->isNotEmpty()) {
+            $likedSet = \App\Models\Like::where('user_id', $authUser->user_id)
+                ->whereIn('post_id', $feedIds)->pluck('post_id')->flip();
+            $bookmarkedSet = \App\Models\Bookmark::where('user_id', $authUser->user_id)
+                ->whereIn('post_id', $feedIds)->pluck('post_id')->flip();
+            $mainPosts->each(function ($post) use ($likedSet, $bookmarkedSet) {
+                $post->is_liked = $likedSet->has($post->post_id);
+                $post->is_bookmarked = $bookmarkedSet->has($post->post_id);
+            });
         }
 
         // ========== SUGGESTIONS ==========

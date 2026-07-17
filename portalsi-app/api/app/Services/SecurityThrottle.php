@@ -21,13 +21,17 @@ class SecurityThrottle
     /** Status blokir IP saat ini (null bila tidak diblok). */
     public function loginBlock(string $ip): ?array
     {
-        $row = DB::table('ip_login_blocks')->where('ip', $ip)->first();
-        if (! $row || ! $row->blocked_until) {
-            return null;
-        }
-        $until = Carbon::parse($row->blocked_until);
-        if ($until->isFuture()) {
-            return ['until' => $until, 'seconds' => now()->diffInSeconds($until), 'level' => $row->block_level];
+        try {
+            $row = DB::table('ip_login_blocks')->where('ip', $ip)->first();
+            if (! $row || ! $row->blocked_until) {
+                return null;
+            }
+            $until = Carbon::parse($row->blocked_until);
+            if ($until->isFuture()) {
+                return ['until' => $until, 'seconds' => now()->diffInSeconds($until), 'level' => $row->block_level];
+            }
+        } catch (\Throwable $e) {
+            // Fail-open: jangan pernah menggagalkan login karena masalah throttle/DB.
         }
 
         return null;
@@ -36,6 +40,7 @@ class SecurityThrottle
     /** Catat kegagalan login. Mengembalikan info peringatan / blokir. */
     public function loginFailure(string $ip, ?string $username, ?int $userId, string $app): array
     {
+      try {
         $row = DB::table('ip_login_blocks')->where('ip', $ip)->first();
         $now = now();
 
@@ -83,27 +88,39 @@ class SecurityThrottle
             'remaining' => $remaining,
             'warn' => ! $blocked && $remaining <= self::WARN_WITHIN,
         ];
+      } catch (\Throwable $e) {
+        // Fail-open: kalau throttle/DB bermasalah, jangan blokir login.
+        return ['blocked' => false, 'seconds' => 0, 'level' => 0, 'remaining' => self::MAX_FAILS, 'warn' => false];
+      }
     }
 
     /** Login berhasil → reset streak (level tetap sebagai memori eskalasi). */
     public function loginSuccess(string $ip): void
     {
-        DB::table('ip_login_blocks')->where('ip', $ip)->update([
-            'fail_count' => 0,
-            'blocked_until' => null,
-            'updated_at' => now(),
-        ]);
+        try {
+            DB::table('ip_login_blocks')->where('ip', $ip)->update([
+                'fail_count' => 0,
+                'blocked_until' => null,
+                'updated_at' => now(),
+            ]);
+        } catch (\Throwable $e) {
+            // abaikan
+        }
     }
 
     /** Sisa kuota pendaftaran hari ini untuk IP. */
     public function registrationsLeft(string $ip): int
     {
-        $used = DB::table('ip_registrations')
-            ->where('ip', $ip)
-            ->where('created_at', '>=', now()->subDay())
-            ->count();
+        try {
+            $used = DB::table('ip_registrations')
+                ->where('ip', $ip)
+                ->where('created_at', '>=', now()->subDay())
+                ->count();
 
-        return max(0, self::REGISTER_MAX_PER_DAY - $used);
+            return max(0, self::REGISTER_MAX_PER_DAY - $used);
+        } catch (\Throwable $e) {
+            return self::REGISTER_MAX_PER_DAY; // fail-open
+        }
     }
 
     public function canRegister(string $ip): bool
@@ -113,12 +130,16 @@ class SecurityThrottle
 
     public function logRegistration(string $ip, string $app, ?string $username): void
     {
-        DB::table('ip_registrations')->insert([
-            'ip' => $ip,
-            'app' => $app,
-            'username' => $username ? mb_substr($username, 0, 190) : null,
-            'created_at' => now(),
-        ]);
+        try {
+            DB::table('ip_registrations')->insert([
+                'ip' => $ip,
+                'app' => $app,
+                'username' => $username ? mb_substr($username, 0, 190) : null,
+                'created_at' => now(),
+            ]);
+        } catch (\Throwable $e) {
+            // abaikan
+        }
     }
 
     /** IP asli klien: header dari SSR proxy > IP request. */

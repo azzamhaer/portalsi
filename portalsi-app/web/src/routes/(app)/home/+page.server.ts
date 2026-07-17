@@ -21,7 +21,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 	const mediaBaseUrl = env.PUBLIC_MEDIA_BASE_URL?.trim() || defaultMediaBaseUrl;
 	const requestOptions = { token: locals.token, requestId: locals.requestId };
 	const requests = [
-		backendRequest('posts', { ...requestOptions, schema: feedResponseSchema }),
+		backendRequest('posts', { ...requestOptions, schema: feedResponseSchema, timeoutMs: 15000 }),
 		backendRequest('stories/feed', { ...requestOptions, schema: storyFeedResponseSchema }),
 		backendRequest('announcements/pinned', {
 			...requestOptions,
