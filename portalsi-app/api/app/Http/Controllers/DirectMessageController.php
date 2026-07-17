@@ -124,15 +124,9 @@ class DirectMessageController extends Controller
                 $q->where('sender_id', $user_id)->where('receiver_id', $auth_id);
             })
             ->orderBy('sent_at', 'asc')
-            ->get()
-            ->map(function ($msg) use ($auth_id) {
-                // kalau message dari kita sendiri, selalu is_read = true
-                if ($msg->sender_id == $auth_id) {
-                    $msg->is_read = true;
-                }
-
-                return $msg;
-            });
+            ->get();
+        // Catatan: JANGAN memaksa is_read=true untuk pesan kita sendiri. Nilai is_read
+        // harus mencerminkan apakah PENERIMA sudah membuka (centang biru vs putih).
 
         return response()->json($messages);
     }

@@ -1,7 +1,7 @@
 import { browser, dev } from '$app/environment';
 import { PUBLIC_API_URL } from '$env/static/public';
 
-const DEFAULT_API_URL = 'https://api-marketplace.portalsi.com/api';
+const DEFAULT_API_URL = 'https://api.portalsi.com/api/marketplace';
 const LOCAL_API_PORT = '8000';
 
 function cleanBaseUrl(url: string): string {

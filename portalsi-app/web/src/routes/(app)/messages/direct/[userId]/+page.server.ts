@@ -44,6 +44,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 		targetId: peerId,
 		title: title || `Pengguna #${peerId}`,
 		subtitle: username ? `@${username}` : 'Pesan langsung',
+		peerUsername: username || '',
 		avatarUrl:
 			existing?.type === 'user'
 				? normalizeMediaUrl(existing.conversation.profile_picture_url, mediaBaseUrl)

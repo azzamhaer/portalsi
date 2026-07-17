@@ -131,9 +131,12 @@ class GroupMessageController extends Controller
             $messages = $messages->reverse()->values();
         }
 
+        // Jumlah anggota grup untuk menentukan "dibaca semua" (centang biru grup).
+        $memberCount = $group->members()->count();
+
         return response()->json([
             'group_id' => $group->id,
-            'messages' => $messages->map(fn($msg) => $this->formatMessage($msg, $user)),
+            'messages' => $messages->map(fn($msg) => $this->formatMessage($msg, $user, $memberCount)),
         ]);
     }
 
@@ -214,10 +217,19 @@ class GroupMessageController extends Controller
     /**
      * Helper: Format pesan untuk response JSON
      */
-    private function formatMessage(GroupMessage $msg, $currentUser)
+    private function formatMessage(GroupMessage $msg, $currentUser, $memberCount = null)
     {
         $isMentioned = $msg->mentions
             ? $msg->mentions->contains('mentioned_user_id', $currentUser->user_id)
+            : false;
+
+        // "Dibaca semua": jumlah pembaca (selain pengirim) >= jumlah anggota lain.
+        // Sebelum tahu memberCount (mis. saat kirim), anggap belum dibaca semua.
+        $readerCount = $msg->reads
+            ? $msg->reads->pluck('user_id')->unique()->reject(fn ($id) => (int) $id === (int) $msg->sender_id)->count()
+            : 0;
+        $readByAll = $memberCount !== null && $memberCount > 1
+            ? ($readerCount >= ($memberCount - 1))
             : false;
 
         return [
@@ -248,6 +260,7 @@ class GroupMessageController extends Controller
                 'is_verified'=> $mention->mentioned->is_verified,
             ]),
             'has_mention' => $isMentioned,
+            'read_by_all' => $readByAll,
             'reads'    => $msg->reads->map(fn($read) => [
                 'user_id'    => $read->user->user_id,
                 'username'   => $read->user->username,

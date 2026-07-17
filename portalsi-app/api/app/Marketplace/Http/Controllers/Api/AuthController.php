@@ -31,7 +31,7 @@ class AuthController extends Controller
         ]);
 
         try {
-            $portal = $this->portalSi->register($data);
+            $portal = $this->portalSi->register($data, $request);
             $user = $this->syncPortalUser($this->extractPortalUser($portal), $portal['token'] ?? null, $data['phone'] ?? null);
         } catch (PortalSiIdentityException $e) {
             return $this->portalError($e);

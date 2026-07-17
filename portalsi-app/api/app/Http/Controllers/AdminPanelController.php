@@ -80,6 +80,57 @@ class AdminPanelController extends Controller
         return response()->json($query->paginate($this->perPage($request)));
     }
 
+    public function securityBlocks(Request $request)
+    {
+        $rows = DB::table('ip_login_blocks')
+            ->orderByRaw('CASE WHEN blocked_until IS NOT NULL AND blocked_until > NOW() THEN 0 ELSE 1 END')
+            ->orderByDesc('updated_at')
+            ->limit(200)
+            ->get();
+
+        $userIds = $rows->pluck('last_user_id')->filter()->unique()->all();
+        $users = User::whereIn('user_id', $userIds)->get()->keyBy('user_id');
+
+        return response()->json([
+            'blocks' => $rows->map(function ($r) use ($users) {
+                $u = $r->last_user_id ? $users->get($r->last_user_id) : null;
+
+                return [
+                    'ip' => $r->ip,
+                    'fail_count' => $r->fail_count,
+                    'block_level' => $r->block_level,
+                    'blocked_until' => $r->blocked_until,
+                    'is_blocked' => $r->blocked_until && \Illuminate\Support\Carbon::parse($r->blocked_until)->isFuture(),
+                    'last_username' => $r->last_username,
+                    'last_app' => $r->last_app,
+                    'total_failures' => $r->total_failures,
+                    'updated_at' => $r->updated_at,
+                    'target_user' => $u ? [
+                        'user_id' => $u->user_id,
+                        'username' => $u->username,
+                        'full_name' => $u->full_name,
+                        'email' => $u->email,
+                        'is_banned' => (bool) $u->is_banned,
+                    ] : null,
+                ];
+            }),
+        ]);
+    }
+
+    public function clearSecurityBlock(Request $request)
+    {
+        $ip = (string) $request->input('ip');
+        DB::table('ip_login_blocks')->where('ip', $ip)->update([
+            'fail_count' => 0,
+            'block_level' => 0,
+            'blocked_until' => null,
+            'updated_at' => now(),
+        ]);
+        $this->audit($request, 'security.ip_unblocked', 'ip', null, ['ip' => $ip]);
+
+        return response()->json(['message' => 'Blokir IP dibuka.']);
+    }
+
     public function appeals(Request $request)
     {
         $query = Appeal::with(['user', 'reviewer'])->latest();

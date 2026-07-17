@@ -1,9 +1,34 @@
 <script lang="ts">
-	import { ChevronRight, Users } from '@lucide/svelte';
+	import { Users } from '@lucide/svelte';
 	import StoryAvatarLink from '$lib/components/story/StoryAvatarLink.svelte';
 	import UserBadges from '$lib/components/ui/UserBadges.svelte';
+	import { clientRequest } from '$lib/api/client';
 	import type { PortalUser } from '$lib/types/domain';
 	let { users }: { users: PortalUser[] } = $props();
+
+	let followed = $state<Set<number>>(new Set());
+	let busy = $state<Set<number>>(new Set());
+	async function toggleFollow(userId: number) {
+		if (busy.has(userId)) return;
+		const isNow = followed.has(userId);
+		busy = new Set(busy).add(userId);
+		const next = new Set(followed);
+		isNow ? next.delete(userId) : next.add(userId);
+		followed = next; // optimistic
+		try {
+			await clientRequest(isNow ? `unfollow/${userId}` : `follow/${userId}`, {
+				method: isNow ? 'DELETE' : 'POST'
+			});
+		} catch {
+			const rb = new Set(followed);
+			isNow ? rb.add(userId) : rb.delete(userId);
+			followed = rb;
+		} finally {
+			const b = new Set(busy);
+			b.delete(userId);
+			busy = b;
+		}
+	}
 </script>
 
 {#if users.length}<section class="friend-card" aria-label="Temukan teman">
@@ -31,8 +56,11 @@
 							>{user.fullName}<UserBadges verified={user.badgeVerified} role={user.role} /></strong
 						><small>@{user.username}</small></a
 					>
-					<a class="open" href={`/u/${user.username}`} aria-label={`Buka profil ${user.fullName}`}
-						><ChevronRight size={17} /></a
+					<button
+						class="follow"
+						class:on={followed.has(user.id)}
+						onclick={() => toggleFollow(user.id)}
+						disabled={busy.has(user.id)}>{followed.has(user.id) ? 'Mengikuti' : 'Ikuti'}</button
 					>
 				</article>{/each}
 		</div>
@@ -117,14 +145,24 @@
 		color: var(--color-muted);
 		font-size: 0.62rem;
 	}
-	.open {
-		display: grid;
-		width: 30px;
-		height: 28px;
-		place-items: center;
-		background: var(--color-primary-soft);
-		border-radius: 9px;
-		color: var(--color-primary-strong);
+	.follow {
+		width: 100%;
+		padding: 7px 10px;
+		background: var(--color-primary);
+		border: 1px solid var(--color-primary);
+		border-radius: 10px;
+		color: white;
+		font-size: 0.72rem;
+		font-weight: 750;
+		cursor: pointer;
+	}
+	.follow.on {
+		background: transparent;
+		color: var(--color-muted);
+		border-color: var(--color-border-strong);
+	}
+	.follow:disabled {
+		opacity: 0.6;
 	}
 	@media (max-width: 1199px) {
 		.friend-card {

@@ -28,7 +28,7 @@ class PortalSiIdentityService
         ], request: $request);
     }
 
-    public function register(array $data): array
+    public function register(array $data, ?Request $request = null): array
     {
         return $this->send('post', '/register', [
             'username' => $data['username'],
@@ -36,7 +36,7 @@ class PortalSiIdentityService
             'email' => $data['email'],
             'password' => $data['password'],
             'role' => 'student',
-        ]);
+        ], request: $request);
     }
 
     public function user(string $token): array

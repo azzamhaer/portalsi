@@ -35,7 +35,7 @@ const PORTAL_API = (import.meta.env.VITE_PORTALSI_API_URL || 'https://api-new.po
 const MEET_API = (import.meta.env.VITE_MEET_API_URL || 'https://meet.portalsi.com/api').replace(/\/+$/, '');
 const STORAGE_KEY = 'portalsi-admin-session';
 
-type Tab = 'dashboard' | 'users' | 'admins' | 'chats' | 'content' | 'meet' | 'appeals' | 'audit';
+type Tab = 'dashboard' | 'users' | 'admins' | 'chats' | 'content' | 'meet' | 'appeals' | 'security' | 'audit';
 
 interface DialogOpts {
   title: string;
@@ -101,7 +101,13 @@ const navGroups: Array<{ heading: string; items: NavItem[] }> = [
     ],
   },
   { heading: 'Meeting', items: [{ id: 'meet', label: 'Meet Rooms', icon: Video }] },
-  { heading: 'Sistem', items: [{ id: 'audit', label: 'Log', icon: ClipboardList }] },
+  {
+    heading: 'Sistem',
+    items: [
+      { id: 'security', label: 'Keamanan', icon: Lock },
+      { id: 'audit', label: 'Log', icon: ClipboardList },
+    ],
+  },
 ];
 
 const navItems: NavItem[] = navGroups.flatMap(g => g.items);
@@ -216,6 +222,7 @@ export function App() {
   const [adminSearch, setAdminSearch] = useState('');
   const [appeals, setAppeals] = useState<any[]>([]);
   const [appealStatus, setAppealStatus] = useState('pending');
+  const [securityBlocks, setSecurityBlocks] = useState<any[]>([]);
 
   const portal = useMemo(() => {
     return <T,>(path: string, init?: RequestInit) => apiRequest<T>(PORTAL_API, path, session?.token, init);
@@ -326,6 +333,24 @@ export function App() {
     setAppeals(page.data || []);
   }
 
+  async function loadSecurity() {
+    const data = await portal<{ blocks: any[] }>('/admin-panel/security/ip-blocks');
+    setSecurityBlocks(data.blocks || []);
+  }
+
+  async function clearIpBlock(ip: string) {
+    const ok = await askDialog({
+      title: `Buka blokir IP ${ip}`,
+      message: 'IP ini akan bisa mencoba login kembali.',
+      confirmLabel: 'Buka blokir',
+    });
+    if (ok === null) return;
+    await run('Blokir IP dibuka.', async () => {
+      await portal('/admin-panel/security/ip-blocks/clear', { method: 'POST', body: JSON.stringify({ ip }) });
+      await loadSecurity();
+    });
+  }
+
   async function resolveAppeal(appeal: any, decision: 'approved' | 'rejected') {
     const response = await askDialog({
       title: decision === 'approved' ? 'Setujui banding' : 'Tolak banding',
@@ -367,6 +392,7 @@ export function App() {
       if (tab === 'content') await loadContent();
       if (tab === 'meet') await loadRooms();
       if (tab === 'appeals') await loadAppeals();
+      if (tab === 'security') await loadSecurity();
       if (tab === 'audit') await loadAudit(true);
     });
   }
@@ -835,6 +861,7 @@ export function App() {
             onResolve={resolveAppeal}
           />
         )}
+        {tab === 'security' && <SecurityPanel blocks={securityBlocks} onClear={clearIpBlock} />}
         {tab === 'audit' && (
           <AuditPanel
             rows={auditRows}
@@ -1311,6 +1338,47 @@ function AppealsPanel(props: {
           ))}
           {props.appeals.length === 0 && (
             <tr><td colSpan={6} className="empty-cell">Tidak ada banding.</td></tr>
+          )}
+        </tbody>
+      </Table>
+    </section>
+  );
+}
+
+function SecurityPanel({ blocks, onClear }: { blocks: any[]; onClear: (ip: string) => void }) {
+  return (
+    <section className="panel">
+      <Header
+        title="Keamanan — Login per-IP"
+        subtitle="IP dengan kegagalan login berlebih. Blokir bertingkat: 5 menit → 30 menit → 1 jam → 1 hari lalu reset. Daftar 3 akun/hari/IP."
+      />
+      <Table>
+        <thead><tr><th>IP</th><th>Status</th><th>Akun yang Dicoba</th><th>Level</th><th>Total Gagal</th><th>Terakhir</th><th>Aksi</th></tr></thead>
+        <tbody>
+          {blocks.map(b => (
+            <tr key={b.ip}>
+              <td>{b.ip}</td>
+              <td>
+                {b.is_blocked
+                  ? <Badge danger>terblokir s/d {fmt(b.blocked_until)}</Badge>
+                  : <Badge>{b.fail_count}/10 gagal</Badge>}
+              </td>
+              <td>
+                {b.target_user
+                  ? <div className="user-cell"><strong>{b.target_user.full_name || b.target_user.username}</strong><span>@{b.target_user.username} · {b.target_user.email || '-'}{b.target_user.is_banned ? ' · banned' : ''}</span></div>
+                  : (b.last_username || '-')}
+                {b.last_app && <span className="detail-sub"> · via {b.last_app}</span>}
+              </td>
+              <td>{b.block_level}</td>
+              <td>{b.total_failures}</td>
+              <td>{fmt(b.updated_at)}</td>
+              <td><ActionBar>
+                {b.is_blocked && <IconAction title="Buka blokir IP" icon={Unlock} onClick={() => onClear(b.ip)} />}
+              </ActionBar></td>
+            </tr>
+          ))}
+          {blocks.length === 0 && (
+            <tr><td colSpan={7} className="empty-cell">Belum ada IP bermasalah.</td></tr>
           )}
         </tbody>
       </Table>

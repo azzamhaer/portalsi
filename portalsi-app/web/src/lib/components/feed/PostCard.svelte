@@ -32,6 +32,27 @@
 	let shareOpen = $state(false);
 	let openingPost = $state(false);
 
+	// Tombol follow di header: hanya muncul kalau BELUM mengikuti saat load.
+	// Setelah dipencet, berubah jadi "Mengikuti" (bisa di-unfollow di halaman itu).
+	const canShowFollow = post.user.isFollowing !== true && post.user.id !== undefined;
+	let following = $state(false);
+	let followBusy = $state(false);
+	async function toggleFollow() {
+		if (followBusy) return;
+		followBusy = true;
+		const was = following;
+		following = !was; // optimistic
+		try {
+			await clientRequest(was ? `unfollow/${post.user.id}` : `follow/${post.user.id}`, {
+				method: was ? 'DELETE' : 'POST'
+			});
+		} catch {
+			following = was; // rollback bila gagal
+		} finally {
+			followBusy = false;
+		}
+	}
+
 	// Galeri multi-foto (Instagram-style). Video selalu tunggal.
 	const gallery = $derived(post.media && post.media.length > 0 ? post.media : [post.mediaUrl]);
 	const isGallery = $derived(!post.isVideo && gallery.length > 1);
@@ -138,11 +159,20 @@
 			/>
 			<a href={`/u/${post.user.username}`} class="author-copy">
 				<strong id={`post-${post.id}-author`}
-					>{post.user.fullName}
+					>{post.user.username}
 					<UserBadges verified={post.user.badgeVerified} role={post.user.role} /></strong
 				>
-				<small>@{post.user.username} · {post.createdLabel}</small>
+				<small>{post.createdLabel}</small>
 			</a>
+			{#if canShowFollow}
+				<button
+					class="follow-btn"
+					class:following
+					onclick={toggleFollow}
+					disabled={followBusy}
+					aria-pressed={following}>{following ? 'Mengikuti' : 'Ikuti'}</button
+				>
+			{/if}
 		</div>
 	</header>
 
@@ -254,7 +284,7 @@
 			<a href={`/posts/${post.id}#comments`}>{post.commentsCount} komentar</a>
 		</p>
 		<p class="caption">
-			<a href={`/u/${post.user.username}`}>@{post.user.username}</a>
+			<a href={`/u/${post.user.username}`}>{post.user.username}</a>
 			<MentionText text={post.caption} />
 		</p>
 		<a class="comments" href={`/posts/${post.id}#comments`}>Lihat percakapan</a>
@@ -312,6 +342,28 @@
 	.author small {
 		color: var(--color-muted);
 		font-size: 0.76rem;
+	}
+
+	.follow-btn {
+		flex: 0 0 auto;
+		margin-left: auto;
+		padding: 6px 15px;
+		background: var(--color-primary);
+		border: 1px solid var(--color-primary);
+		border-radius: 999px;
+		color: white;
+		font-size: 0.76rem;
+		font-weight: 720;
+		cursor: pointer;
+		transition: all 140ms ease;
+	}
+	.follow-btn.following {
+		background: transparent;
+		color: var(--color-muted);
+		border-color: var(--color-border-strong);
+	}
+	.follow-btn:disabled {
+		opacity: 0.6;
 	}
 
 	.actions button,

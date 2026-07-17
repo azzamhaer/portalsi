@@ -82,7 +82,8 @@ export const groupMessageSchema = z
 		is_deleted: booleanish.catch(false),
 		sent_at: z.string().nullish(),
 		reply_to: z.unknown().nullable(),
-		has_mention: booleanish.catch(false)
+		has_mention: booleanish.catch(false),
+		read_by_all: booleanish.catch(false)
 	})
 	.passthrough();
 

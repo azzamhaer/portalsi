@@ -69,31 +69,41 @@ public function store(Request $request)
         'is_muted' => false,
     ]);
 
-    // Jika ada members dari request
+    // Jika ada members dari request — proses BULK (hindari N+1 yang bisa timeout
+    // saat memilih banyak anggota sekaligus).
     if ($request->filled('members')) {
-        foreach ($request->members as $identifier) {
-            $target = User::where('username', $identifier)
-                ->orWhere('email', $identifier)
-                ->when(is_numeric($identifier), fn($query) => $query->orWhere('user_id', (int) $identifier))
-                ->first();
+        $identifiers = collect($request->members)
+            ->filter(fn ($v) => filled($v))
+            ->map(fn ($v) => (string) $v)
+            ->unique()
+            ->values();
+        $numericIds = $identifiers->filter(fn ($v) => is_numeric($v))->map(fn ($v) => (int) $v)->all();
 
-            if (!$target) {
-                continue; // skip kalau user tidak ditemukan
-            }
+        // Ambil semua calon anggota dalam SATU query.
+        $targets = User::query()
+            ->where(function ($q) use ($identifiers, $numericIds) {
+                $q->whereIn('username', $identifiers)
+                    ->orWhereIn('email', $identifiers);
+                if (! empty($numericIds)) {
+                    $q->orWhereIn('user_id', $numericIds);
+                }
+            })
+            ->where('user_id', '!=', $user->user_id) // owner sudah ditambahkan
+            ->get()
+            ->unique('user_id');
 
-            if (GroupMember::where('group_id', $group->id)
-                ->where('user_id', $target->user_id)
-                ->exists()) {
-                continue;
-            }
+        $now = now();
+        $rows = $targets->map(fn ($target) => [
+            'group_id' => $group->id,
+            'user_id' => $target->user_id,
+            'role' => 'member',
+            'joined_at' => $now,
+            'is_muted' => false,
+        ])->all();
 
-            GroupMember::create([
-                'group_id' => $group->id,
-                'user_id' => $target->user_id,
-                'role' => 'member',
-                'joined_at' => now(),
-                'is_muted' => false,
-            ]);
+        if (! empty($rows)) {
+            // Satu bulk insert; unique(group_id,user_id) mencegah duplikat owner.
+            GroupMember::insert($rows);
         }
     }
 

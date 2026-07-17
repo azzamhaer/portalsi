@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Expand, LoaderCircle, Pause, Play, Volume2, VolumeX } from '@lucide/svelte';
+	import { Expand, LoaderCircle, Pause, Play, Shrink, Volume2, VolumeX } from '@lucide/svelte';
 	let {
 		src,
 		poster,
@@ -29,6 +29,21 @@
 	let current = $state(0);
 	let duration = $state(0);
 	let mediaAspect = $state('16 / 9');
+	let isFullscreen = $state(false);
+
+	// Lacak status fullscreen agar tombol bisa toggle & keluar (termasuk WebKit).
+	$effect(() => {
+		function sync() {
+			const doc = document as Document & { webkitFullscreenElement?: Element };
+			isFullscreen = Boolean(document.fullscreenElement || doc.webkitFullscreenElement);
+		}
+		document.addEventListener('fullscreenchange', sync);
+		document.addEventListener('webkitfullscreenchange', sync);
+		return () => {
+			document.removeEventListener('fullscreenchange', sync);
+			document.removeEventListener('webkitfullscreenchange', sync);
+		};
+	});
 
 	function playWithFallback() {
 		if (!video) return;
@@ -59,7 +74,25 @@
 	}
 	function fullscreen(event: MouseEvent) {
 		event.stopPropagation();
-		void root.requestFullscreen?.();
+		const doc = document as Document & {
+			webkitFullscreenElement?: Element;
+			webkitExitFullscreen?: () => void;
+		};
+		// Sudah fullscreen → keluar.
+		if (document.fullscreenElement || doc.webkitFullscreenElement) {
+			if (document.exitFullscreen) void document.exitFullscreen();
+			else doc.webkitExitFullscreen?.();
+			return;
+		}
+		const el = video as HTMLVideoElement & { webkitEnterFullscreen?: () => void };
+		// iOS Safari tidak mendukung Fullscreen API pada elemen biasa — pakai native video.
+		if (el?.webkitEnterFullscreen && !('requestFullscreen' in root)) {
+			el.webkitEnterFullscreen();
+			return;
+		}
+		const container = root as HTMLDivElement & { webkitRequestFullscreen?: () => void };
+		if (container.requestFullscreen) void container.requestFullscreen();
+		else container.webkitRequestFullscreen?.();
 	}
 
 	// Autoplay ala Instagram: putar saat video masuk viewport, jeda saat digulir menjauh.
@@ -180,7 +213,9 @@
 				aria-label={muted ? 'Nyalakan suara' : 'Bisukan'}
 				>{#if muted}<VolumeX size={18} />{:else}<Volume2 size={18} />{/if}</button
 			>{/if}
-		<button onclick={fullscreen} aria-label="Layar penuh"><Expand size={17} /></button>
+		<button onclick={fullscreen} aria-label={isFullscreen ? 'Keluar layar penuh' : 'Layar penuh'}
+			>{#if isFullscreen}<Shrink size={17} />{:else}<Expand size={17} />{/if}</button
+		>
 	</div>
 </div>
 
@@ -197,6 +232,23 @@
 		height: 100%;
 		max-height: none;
 		aspect-ratio: auto;
+	}
+	/* Saat fullscreen: isi layar penuh & abaikan aspect-ratio inline supaya video
+	   (object-fit: contain) tampil dengan rasio aslinya, terpusat, dengan bar hitam. */
+	.smart-video:fullscreen,
+	.smart-video:-webkit-full-screen {
+		width: 100vw;
+		height: 100vh;
+		max-height: none;
+		aspect-ratio: auto !important;
+		background: #000;
+		cursor: default;
+	}
+	.smart-video:fullscreen video,
+	.smart-video:-webkit-full-screen video {
+		width: 100%;
+		height: 100%;
+		object-fit: contain;
 	}
 	video {
 		width: 100%;

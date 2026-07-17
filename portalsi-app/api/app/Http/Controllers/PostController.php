@@ -84,6 +84,8 @@ class PostController extends Controller
                     $post->type = 'post';
                     $post->user = $this->attachStoryInfo($post->user, $authUser);
                     $post->user->is_verified = (bool) $post->user->is_verified;
+                    // Belum follow siapa pun → hanya post sendiri yang "tanpa tombol".
+                    $post->user->is_following = ($post->user_id == $authUser->user_id);
 
                     // musik fields (safe)
                     $post->music_track_name = $post->music_track_name ?? null;
@@ -170,12 +172,13 @@ class PostController extends Controller
                 ->merge($relasiPosts)
                 ->merge($randomPosts)
                 ->merge($likedPosts)
-                ->map(function ($post) use ($authUser) {
+                ->map(function ($post) use ($authUser, $followingIds) {
                     $post->is_liked = (bool) $post->likes()->where('user_id', $authUser->user_id)->exists();
                     $post->is_bookmarked = (bool) $post->bookmarks()->where('user_id', $authUser->user_id)->exists();
                     $post->type = 'post';
                     $post->user = $this->attachStoryInfo($post->user, $authUser);
                     $post->user->is_verified = (bool) $post->user->is_verified;
+                    $post->user->is_following = ($post->user_id == $authUser->user_id) || $followingIds->contains($post->user_id);
 
                     $post->music_track_name = $post->music_track_name ?? null;
                     $post->music_artist_name = $post->music_artist_name ?? null;
@@ -201,12 +204,13 @@ class PostController extends Controller
                 ->orderByDesc('created_at')
                 ->take(100)
                 ->get()
-                ->map(function ($post) use ($authUser) {
+                ->map(function ($post) use ($authUser, $followingIds) {
                     $post->is_liked = (bool) $post->likes()->where('user_id', $authUser->user_id)->exists();
                     $post->is_bookmarked = (bool) $post->bookmarks()->where('user_id', $authUser->user_id)->exists();
                     $post->type = 'post';
                     $post->user = $this->attachStoryInfo($post->user, $authUser);
                     $post->user->is_verified = (bool) $post->user->is_verified;
+                    $post->user->is_following = ($post->user_id == $authUser->user_id) || $followingIds->contains($post->user_id);
                     $post->music_track_name = $post->music_track_name ?? null;
                     $post->music_artist_name = $post->music_artist_name ?? null;
                     $post->music_preview_url = $post->music_preview_url ?? null;

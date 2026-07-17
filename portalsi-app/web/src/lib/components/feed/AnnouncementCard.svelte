@@ -79,6 +79,13 @@
 	.announcement-carousel {
 		position: relative;
 		min-width: 0;
+		/* Beri sedikit jarak dari tepi layar di mobile agar lebih rapi. */
+		margin: 2px 6px 4px;
+	}
+	@media (min-width: 768px) {
+		.announcement-carousel {
+			margin: 0;
+		}
 	}
 	.track {
 		display: flex;

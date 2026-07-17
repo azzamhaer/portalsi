@@ -29,6 +29,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 		title: detail.group.name,
 		subtitle: `${detail.members.length.toLocaleString('id-ID')} anggota`,
 		avatarUrl: normalizeMediaUrl(detail.group.avatar_url, mediaBaseUrl),
+		members: detail.members.map((m) => m.username),
 		currentUserId: locals.user.id,
 		canPin: detail.group.owner.user_id === locals.user.id,
 		messages: response.messages.map((message) => ({
@@ -39,7 +40,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 			text: message.content || '',
 			mediaUrl: normalizeMediaUrl(message.media_url, mediaBaseUrl),
 			time: message.sent_at ? relativeTimeId(message.sent_at) : '',
-			isRead: message.reads ? true : false,
+			isRead: Boolean(message.read_by_all),
 			isPinned: message.is_pinned
 		}))
 	};

@@ -40,11 +40,13 @@
 	]);
 	// Halaman yang sudah punya tombol back sendiri → jangan tampilkan back global (hindari double).
 	const hasOwnBack = $derived(
-		/^\/(create\/|messages\/(direct|groups|new)|stories\/|groups\/|profile\/edit|portfolio\/new|settings\/(password|preferences|email|privacy|delete-account))/.test(
+		/^\/(create\/|messages\/(direct|groups|new)|stories\/|groups\/|u\/|profile\/edit|portfolio\/new|settings\/(password|preferences|email|privacy|delete-account))/.test(
 			page.url.pathname
 		)
 	);
 	const showBack = $derived(!topLevel.has(page.url.pathname) && !hasOwnBack);
+	// Loading bar global saat membuka post (feedback klik dari halaman mana pun).
+	let postOpening = $state(false);
 	// Sembunyikan bottom-nav di halaman percakapan agar tidak menghalangi kotak pesan & tombol kirim.
 	const hideBottomNav = $derived(/^\/messages\/(direct|groups)\/[^/]+/.test(page.url.pathname));
 
@@ -130,6 +132,7 @@
 		// Sudah di halaman/URL post yang sama → biarkan default.
 		if (page.url.pathname === url.pathname) return;
 		event.preventDefault();
+		postOpening = true;
 		window.dispatchEvent(new CustomEvent('portal:post-opening', { detail: { href: url.pathname } }));
 		try {
 			const result = await preloadData(url.pathname);
@@ -141,6 +144,7 @@
 		} catch {
 			await goto(url.pathname);
 		} finally {
+			postOpening = false;
 			window.dispatchEvent(new CustomEvent('portal:post-opened', { detail: { href: url.pathname } }));
 		}
 	}
@@ -217,6 +221,8 @@
 			>
 		</div>
 	</header>
+
+	{#if postOpening}<div class="post-loading-bar" role="progressbar" aria-label="Membuka postingan"></div>{/if}
 
 	<!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events -->
 	<main class="app-main" id="main-content" onclick={handleContentClick}>
@@ -508,6 +514,26 @@
 	}
 	.app-shell.no-bottom-nav .app-main {
 		padding-bottom: 0;
+	}
+	.post-loading-bar {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		height: 3px;
+		z-index: 1000;
+		background: linear-gradient(90deg, transparent, var(--color-primary), transparent);
+		background-size: 42% 100%;
+		background-repeat: no-repeat;
+		animation: post-loading 900ms linear infinite;
+	}
+	@keyframes post-loading {
+		0% {
+			background-position: -42% 0;
+		}
+		100% {
+			background-position: 142% 0;
+		}
 	}
 	.page-back {
 		position: relative;

@@ -66,6 +66,16 @@ $sendVerificationEmail = function (User $user, string $context): array {
 };
 
 Route::post('/register', function (Request $request) use ($sendVerificationEmail) {
+    // Batasi pendaftaran maksimal 3 akun/hari/IP.
+    $throttle = app(\App\Services\SecurityThrottle::class);
+    $regIp = $throttle->clientIp($request);
+    if (! $throttle->canRegister($regIp)) {
+        return response()->json([
+            'message' => 'Batas pendaftaran tercapai. Maksimal 3 akun per hari dari satu jaringan/IP. Coba lagi besok.',
+            'code' => 2006,
+        ], 429);
+    }
+
     $validator = Validator::make($request->all(), [
         'username' => ['required', 'string', 'unique:users,username', 'regex:/^[a-zA-Z0-9._]+$/'],
         'full_name' => 'required|string',
@@ -102,6 +112,8 @@ Route::post('/register', function (Request $request) use ($sendVerificationEmail
         'profile_picture_url' => null,
         'banner_url' => null,
     ]);
+
+    $throttle->logRegistration($regIp, $request->header('X-Client-App', 'app'), $user->username);
 
     $verificationEmail = $sendVerificationEmail($user, 'register');
     $token = $user->createToken('api-token')->plainTextToken;
@@ -193,13 +205,49 @@ Route::post('/register-parent', function (Request $request) {
 
 Route::post('/login', function (Request $request) use ($sendVerificationEmail) {
     $request->validate(['login' => 'required|string', 'password' => 'required|string']);
+
+    // Rate limit login per-IP (lintas app).
+    $throttle = app(\App\Services\SecurityThrottle::class);
+    $ip = $throttle->clientIp($request);
+    $appLabel = $request->header('X-Client-App', 'app');
+    if ($block = $throttle->loginBlock($ip)) {
+        $mins = (int) ceil($block['seconds'] / 60);
+        return response()->json([
+            'code' => 2005,
+            'message' => "Terlalu banyak percobaan login gagal. Coba lagi dalam {$mins} menit.",
+            'blocked' => true,
+            'retry_after_seconds' => $block['seconds'],
+        ], 429);
+    }
+
     $login = strtolower(trim($request->login));
     $user = User::where(function ($query) use ($login) {
         $query->whereRaw('LOWER(TRIM(email)) = ?', [$login])->orWhere('username', $login);
     })->first();
 
     if (! $user || ! Hash::check($request->password, $user->password_hash)) {
-        return response()->json(['code' => 2001, 'message' => 'Username/email atau password salah!'], 401);
+        $fail = $throttle->loginFailure($ip, $login, $user?->user_id, $appLabel);
+        if ($fail['blocked']) {
+            $mins = (int) ceil($fail['seconds'] / 60);
+            return response()->json([
+                'code' => 2005,
+                'message' => "Terlalu banyak percobaan gagal. IP kamu diblokir sementara. Coba lagi dalam {$mins} menit.",
+                'blocked' => true,
+                'retry_after_seconds' => $fail['seconds'],
+            ], 429);
+        }
+
+        $msg = 'Username/email atau password salah!';
+        if ($fail['warn']) {
+            $msg .= " Peringatan: tersisa {$fail['remaining']} percobaan lagi sebelum IP kamu diblokir sementara.";
+        }
+
+        return response()->json([
+            'code' => 2001,
+            'message' => $msg,
+            'remaining_attempts' => $fail['remaining'],
+            'warn' => $fail['warn'],
+        ], 401);
     }
 
     if ((bool) ($user->is_banned ?? false)) {
@@ -232,6 +280,9 @@ Route::post('/login', function (Request $request) use ($sendVerificationEmail) {
 
         return response()->json(['code' => 2002, 'message' => "Link verifikasi baru dikirim. Cek email atau login lagi dalam {$cooldown} detik.", 'verification_email_status' => 'sent', 'resend_cooldown_seconds' => $cooldown], 403);
     }
+
+    // Login sukses → reset streak gagal IP ini.
+    $throttle->loginSuccess($ip);
 
     $tokenResult = $user->createToken('api-token');
     $plainTextToken = $tokenResult->plainTextToken;
@@ -450,6 +501,9 @@ Route::middleware(['auth:sanctum', 'admin.panel'])->prefix('admin-panel')->group
 
     Route::get('/appeals', [AdminPanelController::class, 'appeals']);
     Route::post('/appeals/{appeal}/resolve', [AdminPanelController::class, 'resolveAppeal'])->whereNumber('appeal');
+
+    Route::get('/security/ip-blocks', [AdminPanelController::class, 'securityBlocks']);
+    Route::post('/security/ip-blocks/clear', [AdminPanelController::class, 'clearSecurityBlock']);
 
     Route::get('/users', [AdminPanelController::class, 'users']);
     Route::get('/users/{user}', [AdminPanelController::class, 'user'])->whereNumber('user');

@@ -1,7 +1,8 @@
 <script lang="ts">
-	import { ChevronRight, Circle } from '@lucide/svelte';
+	import { Circle } from '@lucide/svelte';
 	import StoryAvatarLink from '$lib/components/story/StoryAvatarLink.svelte';
 	import UserBadges from '$lib/components/ui/UserBadges.svelte';
+	import { clientRequest } from '$lib/api/client';
 	import type { PortalUser } from '$lib/types/domain';
 	let {
 		suggestions,
@@ -13,6 +14,30 @@
 		onlineCount?: number | null;
 	} = $props();
 	const currentYear = new Date().getFullYear();
+
+	let followed = $state<Set<number>>(new Set());
+	let busy = $state<Set<number>>(new Set());
+	async function toggleFollow(userId: number) {
+		if (busy.has(userId)) return;
+		const isNow = followed.has(userId);
+		busy = new Set(busy).add(userId);
+		const next = new Set(followed);
+		isNow ? next.delete(userId) : next.add(userId);
+		followed = next;
+		try {
+			await clientRequest(isNow ? `unfollow/${userId}` : `follow/${userId}`, {
+				method: isNow ? 'DELETE' : 'POST'
+			});
+		} catch {
+			const rb = new Set(followed);
+			isNow ? rb.add(userId) : rb.delete(userId);
+			followed = rb;
+		} finally {
+			const b = new Set(busy);
+			b.delete(userId);
+			busy = b;
+		}
+	}
 </script>
 
 <aside class="right-rail" aria-label="Konteks dan saran">
@@ -61,8 +86,11 @@
 					>
 					<small>@{user.username}</small>
 				</a>
-				<a href={`/u/${user.username}`} aria-label={`Lihat profil ${user.fullName}`}
-					><ChevronRight size={18} /></a
+				<button
+					class="follow"
+					class:on={followed.has(user.id)}
+					onclick={() => toggleFollow(user.id)}
+					disabled={busy.has(user.id)}>{followed.has(user.id) ? 'Mengikuti' : 'Ikuti'}</button
 				>
 			</div>
 		{/each}
@@ -160,6 +188,26 @@
 	.user-copy small {
 		color: var(--color-muted);
 		font-size: 0.72rem;
+	}
+
+	.follow {
+		flex: 0 0 auto;
+		padding: 6px 14px;
+		background: var(--color-primary);
+		border: 1px solid var(--color-primary);
+		border-radius: 999px;
+		color: white;
+		font-size: 0.74rem;
+		font-weight: 720;
+		cursor: pointer;
+	}
+	.follow.on {
+		background: transparent;
+		color: var(--color-muted);
+		border-color: var(--color-border-strong);
+	}
+	.follow:disabled {
+		opacity: 0.6;
 	}
 
 	footer {

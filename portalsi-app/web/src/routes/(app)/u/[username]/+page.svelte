@@ -16,6 +16,7 @@
 	import { replaceState } from '$app/navigation';
 	import { untrack } from 'svelte';
 	import { ClientApiError, clientRequest } from '$lib/api/client';
+	import BackButton from '$lib/components/ui/BackButton.svelte';
 	import StoryAvatarLink from '$lib/components/story/StoryAvatarLink.svelte';
 	import UserBadges from '$lib/components/ui/UserBadges.svelte';
 	import InfiniteScrollTrigger from '$lib/components/ui/InfiniteScrollTrigger.svelte';
@@ -163,6 +164,7 @@
 
 <div class="other-profile">
 	<section class="hero surface">
+		<div class="profile-back"><BackButton /></div>
 		<div class="banner">
 			{#if data.profile.bannerUrl}<img src={data.profile.bannerUrl} alt="" />{/if}
 		</div>
@@ -339,7 +341,15 @@
 		margin: 28px auto 50px;
 	}
 	.hero {
+		position: relative;
 		overflow: hidden;
+	}
+	/* Tombol back mengambang di pojok banner — tidak lagi memotong banner. */
+	.profile-back {
+		position: absolute;
+		top: max(env(safe-area-inset-top, 0px), 12px);
+		left: 12px;
+		z-index: 5;
 	}
 	.banner {
 		aspect-ratio: 5 / 1;

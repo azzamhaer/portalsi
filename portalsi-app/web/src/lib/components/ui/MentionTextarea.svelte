@@ -95,13 +95,14 @@
 	}
 	.mention-menu {
 		position: absolute;
-		z-index: 40;
+		z-index: 200;
 		right: 0;
 		left: 0;
+		/* Buka ke ATAS input agar tidak terpotong composer/keyboard di dasar layar. */
+		bottom: calc(100% + 6px);
 		display: grid;
-		max-height: 220px;
+		max-height: 240px;
 		overflow: auto;
-		margin-top: 4px;
 		padding: 5px;
 		background: white;
 		border: 1px solid var(--color-border);

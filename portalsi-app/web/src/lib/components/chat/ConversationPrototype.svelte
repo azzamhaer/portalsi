@@ -61,7 +61,9 @@
 		avatarUrl,
 		currentUserId,
 		messages: initialMessages,
-		canPin = false
+		canPin = false,
+		peerUsername = '',
+		members = []
 	}: {
 		mode: 'direct' | 'group';
 		targetId: number;
@@ -71,7 +73,10 @@
 		currentUserId: number;
 		messages: ChatMessage[];
 		canPin?: boolean;
+		peerUsername?: string;
+		members?: string[];
 	} = $props();
+	const memberLine = $derived(members.length ? members.join(', ') : subtitle);
 	const mediaBaseUrl = env.PUBLIC_MEDIA_BASE_URL?.trim() || 'https://api.portalsi.com/storage';
 	let messages = $state(untrack(() => structuredClone(initialMessages)));
 	// Penanda "belum dibaca": pesan pertama dari lawan yang belum saya baca (dihitung sekali
@@ -331,17 +336,22 @@
 <div class="conversation-page surface">
 	<header>
 		<a href="/messages" aria-label="Kembali ke inbox"><ArrowLeft size={20} /></a>
-		{#if mode === 'group' && !avatarUrl}<span class="group-avatar"><Users size={20} /></span
-			>{:else}<Avatar name={title} src={avatarUrl ?? undefined} size="md" />{/if}
-		<div>
-			<h1>{title}</h1>
-			<p>{subtitle}</p>
-		</div>
-		{#if mode === 'group'}<a
-				class="info-link"
-				href={`/groups/${targetId}/info`}
-				aria-label="Info grup"><Info size={19} /></a
-			>{/if}
+		{#if mode === 'group'}
+			{#if !avatarUrl}<span class="group-avatar"><Users size={20} /></span
+				>{:else}<Avatar name={title} src={avatarUrl ?? undefined} size="md" />{/if}
+			<div class="peer-meta">
+				<h1>{title}</h1>
+				<p class="members">{memberLine}</p>
+			</div>
+			<a class="info-link" href={`/groups/${targetId}/info`} aria-label="Info grup"
+				><Info size={19} /></a
+			>
+		{:else}
+			<a class="peer-link" href={peerUsername ? `/u/${peerUsername}` : undefined}>
+				<Avatar name={title} src={avatarUrl ?? undefined} size="md" />
+				<div class="peer-meta"><h1>{peerUsername || title}</h1></div>
+			</a>
+		{/if}
 	</header>
 	<div class="messages" bind:this={messagePane} aria-label={`Percakapan dengan ${title}`}>
 		<div class="date">Percakapan</div>
@@ -530,10 +540,28 @@
 		place-items: center;
 		border-radius: 50%;
 	}
-	header > div {
+	.peer-link {
+		display: flex;
+		align-items: center;
+		gap: 9px;
+		min-width: 0;
+		margin-right: auto;
+		color: inherit;
+		text-decoration: none;
+	}
+	.peer-meta {
 		display: grid;
 		min-width: 0;
 		margin-right: auto;
+	}
+	.peer-link .peer-meta {
+		margin-right: 0;
+	}
+	.members {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		max-width: 62vw;
 	}
 	.info-link {
 		display: grid;

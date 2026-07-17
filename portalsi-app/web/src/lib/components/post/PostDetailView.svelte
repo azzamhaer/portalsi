@@ -36,6 +36,19 @@
 	let editing = $state<{ id: number; reply: boolean; text: string } | null>(null);
 	let savingEdit = $state(false);
 
+	// Mulai membalas. Balasan selalu menempel ke komentar INDUK (topCommentId) agar
+	// kedalaman maksimal 2 level. Untuk balas-ke-balasan, prefill "@username " sehingga
+	// orang yang dibalas tetap dapat notifikasi mention.
+	function startReply(topCommentId: number, displayName: string, mentionUsername?: string) {
+		replyTo = { id: topCommentId, name: displayName };
+		if (mentionUsername) content = `@${mentionUsername} `;
+		queueMicrotask(() => {
+			const el = document.querySelector<HTMLTextAreaElement>('.comment-form textarea');
+			el?.focus();
+			el?.setSelectionRange(el.value.length, el.value.length);
+		});
+	}
+
 	function toggleReplies(id: number) {
 		const next = new Set(expandedReplies);
 		if (next.has(id)) next.delete(id);
@@ -251,7 +264,7 @@
 									onclick={() => toggleCommentLike(comment.id)}
 									><Heart size={13} fill={comment.isLiked ? 'currentColor' : 'none'} />
 									{comment.likesCount}</button
-								><button onclick={() => (replyTo = { id: comment.id, name: comment.user.fullName })}
+								><button onclick={() => startReply(comment.id, comment.user.fullName)}
 									>Balas</button
 								>
 								{#if comment.user.id === data.currentUser.id}{#if !comment.gifUrl}<button
@@ -296,7 +309,7 @@
 												><Heart size={13} fill={reply.isLiked ? 'currentColor' : 'none'} />
 												{reply.likesCount}</button
 											>
-											{#if reply.user.id === data.currentUser.id}{#if !reply.gifUrl}<button
+											<button class="reply-btn" onclick={() => startReply(comment.id, reply.user.username, reply.user.username)}>Balas</button>{#if reply.user.id === data.currentUser.id}{#if !reply.gifUrl}<button
 														onclick={() => editComment(reply.id, true)}>Edit</button
 													>{/if}<button onclick={() => deleteComment(reply.id, true)}>Hapus</button
 												>{/if}
