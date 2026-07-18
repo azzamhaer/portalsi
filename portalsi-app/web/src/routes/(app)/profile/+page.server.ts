@@ -33,6 +33,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 			bannerUrl: normalizeMediaUrl(profile.banner_url, mediaBaseUrl),
 			role: profile.role,
 			badgeVerified: profile.is_verified,
+			isPrivate: profile.is_private,
 			followersCount: profile.followers_count,
 			followingCount: profile.following_count,
 			postsCount: profile.posts_count,

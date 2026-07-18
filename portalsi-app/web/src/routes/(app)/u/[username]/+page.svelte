@@ -214,7 +214,7 @@
 			<p class="handle">
 				@{data.profile.username}{#if data.profile.role !== 'student'}
 					· {roleLabels[data.profile.role]}{/if}{#if data.profile.isPrivate}
-					· <span class="private-tag"><Lock size={12} /> Akun privat</span>{/if}
+					· <span class="private-tag"><Lock size={11} /> Private</span>{/if}
 			</p>
 			<p class="bio"><MentionText text={data.profile.bio || 'Belum ada bio.'} /></p>
 			<div class="stats">
@@ -440,12 +440,9 @@
 	.private-tag {
 		display: inline-flex;
 		align-items: center;
-		gap: 3px;
-		padding: 1px 8px;
-		border-radius: 999px;
-		background: var(--color-secondary-soft, #eef1f6);
-		color: var(--color-secondary, #4b5563);
-		font-weight: 700;
+		gap: 2px;
+		color: var(--color-muted, #6b7280);
+		font-weight: 600;
 	}
 	.private-tag :global(svg) {
 		flex: 0 0 auto;
