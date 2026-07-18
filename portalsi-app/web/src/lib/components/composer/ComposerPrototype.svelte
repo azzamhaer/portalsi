@@ -89,6 +89,9 @@
 	let thumbnailSecond = $state(1);
 	let thumbnailPreviewUrl = $state('');
 	let thumbnailGenerating = $state(false);
+	let thumbnailAttempted = $state(false);
+	let thumbnailFile: File | null = null;
+	let thumbnailFileSecond = -1;
 	let thumbnailPreviewTimer: ReturnType<typeof setTimeout> | undefined;
 	let thumbnailPreviewRun = 0;
 	let uploadProgress = $state(0);
@@ -153,7 +156,8 @@
 	);
 	// Kunci tombol upload sampai video & thumbnail-nya benar-benar ter-render (hindari thumbnail hitam).
 	const videoNotReady = $derived(
-		selectedFileKind === 'video' && (thumbnailGenerating || !thumbnailPreviewUrl)
+		selectedFileKind === 'video' &&
+			(thumbnailGenerating || (!thumbnailPreviewUrl && !thumbnailAttempted))
 	);
 	const galleryMode = $derived(kind === 'post' && galleryItems.length > 1);
 	const editingItem = $derived(galleryItems.find((item) => item.id === editingId) ?? null);
@@ -354,6 +358,9 @@
 		thumbnailSecond = 1;
 		thumbnailPreviewUrl = '';
 		thumbnailGenerating = false;
+		thumbnailAttempted = false;
+		thumbnailFile = null;
+		thumbnailFileSecond = -1;
 		if (thumbnailPreviewTimer) clearTimeout(thumbnailPreviewTimer);
 	}
 
@@ -664,7 +671,11 @@
 				await goto('/home');
 			} else {
 				if (selectedFileKind === 'video') {
-					const thumbnail = await generateVideoThumbnail(file, thumbnailSecond);
+					// Pakai ulang thumbnail hasil preview kalau detiknya sama (lebih cepat & konsisten).
+					const thumbnail =
+						thumbnailFile && thumbnailFileSecond === thumbnailSecond
+							? thumbnailFile
+							: await generateVideoThumbnail(file, thumbnailSecond);
 					if (thumbnail) body.set('thumbnail', thumbnail);
 				}
 				if (location.trim()) body.set('location', location.trim());
@@ -835,66 +846,139 @@
 	// Thumbnail video dibuat di sisi klien HANYA sebagai optimasi. Di HP/iOS event video
 	// sering tidak terpicu sehingga bisa menggantung — maka seluruh proses dibatasi waktu,
 	// dan jika gagal kita lewati saja (server tetap membuat thumbnail lewat queue).
+	// Deteksi frame hampir hitam (video besar di iOS kadang belum ter-decode saat digambar).
+	function canvasIsMostlyBlack(canvas: HTMLCanvasElement): boolean {
+		try {
+			const ctx = canvas.getContext('2d');
+			if (!ctx) return false;
+			const w = canvas.width;
+			const h = canvas.height;
+			if (!w || !h) return false;
+			const data = ctx.getImageData(0, 0, w, h).data;
+			let sum = 0;
+			let count = 0;
+			// Ambil sampel bertahap supaya murah untuk canvas besar.
+			const step = Math.max(4, Math.floor((w * h) / 4000)) * 4;
+			for (let i = 0; i < data.length; i += step) {
+				sum += 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+				count++;
+			}
+			return count > 0 && sum / count < 8;
+		} catch {
+			// getImageData bisa gagal (tainted); anggap tidak hitam agar tetap dipakai.
+			return false;
+		}
+	}
+
+	function seekVideo(video: HTMLVideoElement, target: number, timeout = 4000): Promise<void> {
+		return new Promise<void>((resolve) => {
+			let settled = false;
+			const finish = () => {
+				if (settled) return;
+				settled = true;
+				clearTimeout(timer);
+				video.removeEventListener('seeked', onSeeked);
+				resolve();
+			};
+			const rvfc = (
+				video as HTMLVideoElement & {
+					requestVideoFrameCallback?: (cb: () => void) => number;
+				}
+			).requestVideoFrameCallback;
+			const onSeeked = () => {
+				// Pastikan frame sudah ter-paint sebelum digambar ke canvas.
+				if (rvfc) rvfc.call(video, () => finish());
+				else requestAnimationFrame(() => requestAnimationFrame(() => finish()));
+			};
+			const timer = setTimeout(finish, timeout);
+			video.addEventListener('seeked', onSeeked);
+			try {
+				video.currentTime = target;
+			} catch {
+				finish();
+			}
+		});
+	}
+
 	async function generateVideoThumbnail(source: File, atSeconds = 1): Promise<File | null> {
 		const url = URL.createObjectURL(source);
 		const video = document.createElement('video');
 		try {
 			video.preload = 'auto';
 			video.muted = true;
+			video.defaultMuted = true;
 			video.playsInline = true;
-			video.crossOrigin = 'anonymous';
+			video.setAttribute('muted', '');
 			video.setAttribute('playsinline', '');
 			video.src = url;
 
-			// Tunggu sampai FRAME benar-benar ter-decode (loadeddata), bukan sekadar metadata,
-			// supaya thumbnail tidak hitam karena video masih loading.
-			const dataReady = await new Promise<boolean>((resolve) => {
+			// iOS Safari TIDAK selalu memicu 'loadeddata'/'canplay' untuk video off-screen
+			// yang besar sampai video di-play. 'loadedmetadata' reliable → cukup untuk
+			// dapat dimensi & durasi. Jangan bail ke null hanya karena timeout.
+			await new Promise<void>((resolve) => {
 				let settled = false;
-				const finish = (ok: boolean) => {
+				const finish = () => {
 					if (settled) return;
 					settled = true;
 					clearTimeout(timer);
-					resolve(ok);
+					resolve();
 				};
-				const timer = setTimeout(() => finish(video.readyState >= 2), 8000);
-				video.onloadeddata = () => finish(true);
-				video.oncanplay = () => finish(true);
-				video.onerror = () => finish(false);
+				const timer = setTimeout(finish, 6000);
+				if (video.readyState >= 1) finish();
+				video.onloadedmetadata = finish;
+				video.onerror = finish;
 			});
-			if (!dataReady) return null;
 
-			const duration = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : 1;
-			const targetSecond = Math.min(Math.max(0.1, atSeconds), Math.max(0.1, duration - 0.05));
+			const duration =
+				Number.isFinite(video.duration) && video.duration > 0 ? video.duration : 0;
+			const target = duration
+				? Math.min(Math.max(0.1, atSeconds), Math.max(0.1, duration - 0.1))
+				: Math.max(0.1, atSeconds);
+
+			// Priming: play() muted+inline diizinkan tanpa gesture di iOS dan memaksa
+			// decoder aktif supaya frame tersedia (mencegah thumbnail hitam).
 			try {
-				video.currentTime = targetSecond;
-				await new Promise<void>((resolve) => {
-					let settled = false;
-					const finish = () => {
-						if (settled) return;
-						settled = true;
-						clearTimeout(timer);
-						resolve();
-					};
-					const timer = setTimeout(finish, 3500);
-					const rvfc = (video as HTMLVideoElement & {
-						requestVideoFrameCallback?: (cb: () => void) => number;
-					}).requestVideoFrameCallback;
-					video.onseeked = () => {
-						// Pastikan frame sudah ter-paint sebelum digambar ke canvas.
-						if (rvfc) rvfc.call(video, () => finish());
-						else requestAnimationFrame(() => finish());
-					};
-				});
+				await video.play();
 			} catch {
-				// abaikan; pakai frame apa pun yang tersedia
+				// autoplay bisa diblok; tetap lanjut coba seek.
 			}
-			if (!video.videoWidth || !video.videoHeight) return null;
+			await seekVideo(video, target);
+			try {
+				video.pause();
+			} catch {
+				// abaikan
+			}
 
-			const scale = Math.min(1, 1280 / Math.max(video.videoWidth, video.videoHeight));
-			const canvas = document.createElement('canvas');
-			canvas.width = Math.max(1, Math.round(video.videoWidth * scale));
-			canvas.height = Math.max(1, Math.round(video.videoHeight * scale));
-			canvas.getContext('2d')?.drawImage(video, 0, 0, canvas.width, canvas.height);
+			if (!video.videoWidth || !video.videoHeight) {
+				// Metadata belum sempat termuat — beri kesempatan sekali lagi.
+				await new Promise((r) => setTimeout(r, 400));
+				if (!video.videoWidth || !video.videoHeight) return null;
+			}
+
+			const drawFrame = (): HTMLCanvasElement | null => {
+				const scale = Math.min(1, 1280 / Math.max(video.videoWidth, video.videoHeight));
+				const canvas = document.createElement('canvas');
+				canvas.width = Math.max(1, Math.round(video.videoWidth * scale));
+				canvas.height = Math.max(1, Math.round(video.videoHeight * scale));
+				const ctx = canvas.getContext('2d');
+				if (!ctx) return null;
+				ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+				return canvas;
+			};
+
+			let canvas = drawFrame();
+			// Kalau frame hitam (belum ter-decode di detik itu), geser sedikit lalu ulangi.
+			if (canvas && duration && canvasIsMostlyBlack(canvas)) {
+				const retryAt = Math.min(
+					Math.max(0.1, duration - 0.1),
+					target + Math.max(0.6, duration * 0.12)
+				);
+				await seekVideo(video, retryAt, 3000);
+				const retry = drawFrame();
+				if (retry && !canvasIsMostlyBlack(retry)) canvas = retry;
+			}
+			if (!canvas) return null;
+
 			const blob = await new Promise<Blob | null>((resolve) =>
 				canvas.toBlob(resolve, 'image/jpeg', 0.84)
 			);
@@ -924,10 +1008,16 @@
 			const thumb = await generateVideoThumbnail(file, thumbnailSecond);
 			if (!thumb) return;
 			const url = URL.createObjectURL(thumb);
-			if (run === thumbnailPreviewRun) thumbnailPreviewUrl = url;
-			else URL.revokeObjectURL(url);
+			if (run === thumbnailPreviewRun) {
+				thumbnailPreviewUrl = url;
+				thumbnailFile = thumb;
+				thumbnailFileSecond = thumbnailSecond;
+			} else URL.revokeObjectURL(url);
 		} finally {
-			if (run === thumbnailPreviewRun) thumbnailGenerating = false;
+			if (run === thumbnailPreviewRun) {
+				thumbnailGenerating = false;
+				thumbnailAttempted = true;
+			}
 		}
 	}
 
