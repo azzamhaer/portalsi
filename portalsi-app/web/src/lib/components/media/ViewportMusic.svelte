@@ -54,16 +54,52 @@
 		// Ikat pemutaran ke visibilitas POSTINGAN (kartu), bukan baris detail musik ini.
 		// Aktif saat kartu melintasi pita tengah layar (bekerja untuk kartu tinggi maupun pendek).
 		const target = root.closest('.post-card') ?? root.closest('.media') ?? root;
+		// Kalau kartu punya video, JANGAN mulai musik saat video masih loading.
+		// Musik baru main ketika video benar-benar mulai ('playing'), dan ikut jeda
+		// saat video buffering ('waiting') / dijeda — supaya audio & video sinkron.
+		const videoEl = target.querySelector('video') as HTMLVideoElement | null;
+		let inView = false;
+
+		const videoActive = () =>
+			!!videoEl && !videoEl.paused && !videoEl.ended && videoEl.readyState >= 3;
+
+		const onVideoPlaying = () => {
+			if (inView) void play();
+		};
+		const onVideoStall = () => pause();
+
+		if (videoEl) {
+			videoEl.addEventListener('playing', onVideoPlaying);
+			videoEl.addEventListener('waiting', onVideoStall);
+			videoEl.addEventListener('pause', onVideoStall);
+			videoEl.addEventListener('ended', onVideoStall);
+		}
+
 		const observer = new IntersectionObserver(
 			([entry]) => {
-				if (entry.isIntersecting) void play();
-				else pause();
+				inView = entry.isIntersecting;
+				if (!inView) {
+					pause();
+					return;
+				}
+				if (!videoEl) {
+					void play(); // post gambar/audio: langsung main
+				} else if (videoActive()) {
+					void play(); // video sudah berjalan: sinkronkan sekarang
+				}
+				// selain itu: tunggu event 'playing' dari video.
 			},
 			{ rootMargin: '-45% 0px -45% 0px', threshold: 0 }
 		);
 		observer.observe(target);
 		return () => {
 			observer.disconnect();
+			if (videoEl) {
+				videoEl.removeEventListener('playing', onVideoPlaying);
+				videoEl.removeEventListener('waiting', onVideoStall);
+				videoEl.removeEventListener('pause', onVideoStall);
+				videoEl.removeEventListener('ended', onVideoStall);
+			}
 			pause();
 		};
 	});
