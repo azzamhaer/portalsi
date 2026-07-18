@@ -334,6 +334,8 @@ class StoryController extends Controller
         if ($target->is_private && ! $isSelf && ! $isAcceptedFollower) {
             return response()->json([
                 'message' => 'Akun ini privat. Ikuti dan tunggu persetujuan untuk melihat ceritanya.',
+                'owner_username' => $target->username,
+                'owner_id' => $target->user_id,
                 'data' => [],
             ], 403);
         }

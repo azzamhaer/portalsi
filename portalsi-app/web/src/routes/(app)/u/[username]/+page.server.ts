@@ -85,8 +85,10 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 			profile.pagination && profile.pagination.current_page < profile.pagination.last_page
 		),
 		isFollowing:
-			followingResult.status === 'fulfilled' &&
-			Boolean(followingResult.value?.following.some((user) => user.user_id === profile.user_id)),
+			profile.follow_status === 'accepted' ||
+			(followingResult.status === 'fulfilled' &&
+				Boolean(followingResult.value?.following.some((user) => user.user_id === profile.user_id))),
+		isRequested: profile.follow_status === 'pending',
 		connectionUnavailable: Boolean(locals.user && followingResult.status === 'rejected'),
 		canFollow: locals.user?.emailVerified ?? false,
 		isAuthenticated: Boolean(locals.user)

@@ -115,6 +115,15 @@ class ProfileController extends Controller
             ->where('expires_at', '>', now())
             ->exists();
 
+        // Status relasi follow viewer -> user ini: 'accepted' | 'pending' | null.
+        $followStatus = null;
+        if ($authUser && $authUser->user_id !== $user->user_id) {
+            $rel = $user->followers()
+                ->where('users.user_id', $authUser->user_id)
+                ->first();
+            $followStatus = $rel?->pivot?->status ?: null;
+        }
+
         return response()->json([
             'user_id' => $user->user_id,
             'username' => $user->username,
@@ -127,6 +136,7 @@ class ProfileController extends Controller
             'role' => $user->role,
             'is_private' => $user->is_private,
             'has_story' => $hasStory,
+            'follow_status' => $followStatus,
             'followers_count' => $user->followers_count,
             'following_count' => $user->following_count,
             'posts_count' => $user->posts_count,

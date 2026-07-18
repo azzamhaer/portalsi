@@ -53,23 +53,33 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 		};
 	}
 
-	const [post, comments, likes] = await Promise.all([
-		backendRequest(`posts/${postId}`, {
-			token: locals.token,
-			requestId: locals.requestId,
-			schema: postSchema
-		}),
-		backendRequest(`posts/${postId}/comments`, {
-			token: locals.token,
-			requestId: locals.requestId,
-			schema: commentsResponseSchema
-		}),
-		backendRequest(`posts/${postId}/likes`, {
-			token: locals.token,
-			requestId: locals.requestId,
-			schema: postLikesSchema
-		})
-	]);
+	let post, comments, likes;
+	try {
+		[post, comments, likes] = await Promise.all([
+			backendRequest(`posts/${postId}`, {
+				token: locals.token,
+				requestId: locals.requestId,
+				schema: postSchema
+			}),
+			backendRequest(`posts/${postId}/comments`, {
+				token: locals.token,
+				requestId: locals.requestId,
+				schema: commentsResponseSchema
+			}),
+			backendRequest(`posts/${postId}/likes`, {
+				token: locals.token,
+				requestId: locals.requestId,
+				schema: postLikesSchema
+			})
+		]);
+	} catch (cause) {
+		// Akun privat & belum di-follow: jangan 500 — arahkan ke profil pemiliknya.
+		if (cause instanceof ApiError && cause.status === 403) {
+			const owner = cause.payload?.owner_username;
+			if (typeof owner === 'string' && owner) redirect(307, `/u/${owner}`);
+		}
+		throw cause;
+	}
 	const mediaBaseUrl = env.PUBLIC_MEDIA_BASE_URL?.trim() || 'https://api.portalsi.com/storage';
 	const mapComment = (comment: (typeof comments.comments)[number]['replies'][number]) => ({
 		id: comment.comment_id,

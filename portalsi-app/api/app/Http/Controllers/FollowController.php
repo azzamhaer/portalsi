@@ -6,6 +6,7 @@ use App\Events\Followed;
 use App\Events\NotificationCreated;
 use App\Events\UserUnfollowed;
 use App\Models\Notification;
+use App\Models\Story;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -109,7 +110,7 @@ class FollowController extends Controller
         // 🗑️ Hapus notifikasi terkait follow
         Notification::where('recipient_id', $userToUnfollow->user_id)
             ->where('related_user_id', $authUser->user_id)
-            ->whereIn('type', ['follow', 'follow_accepted'])
+            ->whereIn('type', ['follow', 'follow_accepted', 'follow_request'])
             ->delete();
 
         // Broadcast event unfollow
@@ -281,8 +282,18 @@ class FollowController extends Controller
 
         $pending = $authUser->followers()
             ->wherePivot('status', 'pending')
-            ->select('users.user_id', 'users.username', 'users.full_name')
+            ->select('users.user_id', 'users.username', 'users.full_name', 'users.profile_picture_url', 'users.is_verified', 'users.role')
             ->get();
+
+        // Tandai siapa yang punya story aktif (untuk lingkaran story).
+        $storyUserIds = Story::whereIn('user_id', $pending->pluck('user_id'))
+            ->where('expires_at', '>', now())
+            ->pluck('user_id')
+            ->unique()
+            ->flip();
+        $pending->each(function ($u) use ($storyUserIds) {
+            $u->has_story = $storyUserIds->has($u->user_id);
+        });
 
         return response()->json([
             'pending_requests_count' => $pending->count(),

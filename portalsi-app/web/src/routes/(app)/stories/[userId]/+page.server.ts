@@ -1,9 +1,10 @@
 import { env } from '$env/dynamic/public';
+import { ApiError } from '$lib/api/errors';
 import { storyViewerResponseSchema } from '$lib/schemas/story';
 import { backendRequest } from '$lib/server/api';
 import { normalizeMediaUrl } from '$lib/utils/media';
 import { relativeTimeId } from '$lib/utils/time';
-import { error } from '@sveltejs/kit';
+import { error, redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals, params, url }) => {
@@ -19,12 +20,22 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 		)
 	].slice(0, 30);
 	const validOrder = storyOrder.includes(userId) ? storyOrder : [];
-	const response = await backendRequest(`stories/feed/user/${userId}`, {
-		token: locals.token,
-		requestId: locals.requestId,
-		schema: storyViewerResponseSchema,
-		query: validOrder.length > 0 ? { order: validOrder.join(',') } : undefined
-	});
+	let response;
+	try {
+		response = await backendRequest(`stories/feed/user/${userId}`, {
+			token: locals.token,
+			requestId: locals.requestId,
+			schema: storyViewerResponseSchema,
+			query: validOrder.length > 0 ? { order: validOrder.join(',') } : undefined
+		});
+	} catch (cause) {
+		// Akun privat & belum di-follow: jangan 500 — arahkan ke profil pemiliknya.
+		if (cause instanceof ApiError && cause.status === 403) {
+			const owner = cause.payload?.owner_username;
+			if (typeof owner === 'string' && owner) redirect(307, `/u/${owner}`);
+		}
+		throw cause;
+	}
 	const mediaBaseUrl = env.PUBLIC_MEDIA_BASE_URL?.trim() || 'https://api.portalsi.com/storage';
 	const orderIndex = validOrder.indexOf(userId);
 	const previousUserId = orderIndex > 0 ? validOrder[orderIndex - 1] : null;

@@ -13,13 +13,6 @@
 
 	let { data }: PageProps = $props();
 	const mediaBaseUrl = env.PUBLIC_MEDIA_BASE_URL?.trim() || 'https://api.portalsi.com/storage';
-	const roleLabels = {
-		student: 'Siswa',
-		parent: 'Orang tua',
-		teacher: 'Guru',
-		dev: 'Pengembang',
-		other: 'Anggota'
-	};
 	let posts = $state(untrack(() => [...data.posts]));
 	let hasMore = $state(untrack(() => data.hasMore));
 	let nextPage = $state(2);
@@ -106,12 +99,10 @@
 						role={data.profile.role}
 					/>
 				</h1>
-				<p>
-					@{data.profile.username}{#if data.profile.role !== 'student'} · {roleLabels[
-							data.profile.role
-						]}{/if}{#if data.profile.isPrivate} · <span class="private-tag"
-							><Lock size={11} /> Private</span
-						>{/if}
+				<p class="handle">
+					<span class="uname">@{data.profile.username}</span>{#if data.profile.isPrivate}<span
+							class="dot">·</span
+						><span class="private-tag"><Lock size={12} /> Private</span>{/if}
 				</p>
 			</div>
 			<p class="bio"><MentionText text={data.profile.bio || 'Belum ada bio.'} /></p>
@@ -308,10 +299,18 @@
 		margin: 14px 0 7px;
 		font-size: 0.88rem;
 	}
+	.handle {
+		display: flex;
+		align-items: center;
+		gap: 5px;
+	}
+	.handle .dot {
+		opacity: 0.6;
+	}
 	.private-tag {
 		display: inline-flex;
 		align-items: center;
-		gap: 2px;
+		gap: 3px;
 		color: var(--color-muted, #6b7280);
 		font-weight: 600;
 	}

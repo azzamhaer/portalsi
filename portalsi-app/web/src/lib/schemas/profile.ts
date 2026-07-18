@@ -38,6 +38,7 @@ export const profileResponseSchema = z
 		role: userRoleSchema.catch('other'),
 		is_private: booleanish.catch(false),
 		has_story: booleanish.optional().catch(false),
+		follow_status: z.enum(['accepted', 'pending']).nullish().catch(null),
 		followers_count: z.coerce.number().int().nonnegative().catch(0),
 		following_count: z.coerce.number().int().nonnegative().catch(0),
 		posts_count: z.coerce.number().int().nonnegative().catch(0),
@@ -68,7 +69,8 @@ export const pendingFollowersResponseSchema = z.object({
 			full_name: z.string().nullish(),
 			profile_picture_url: z.string().nullish(),
 			role: z.enum(['student', 'parent', 'teacher', 'dev', 'other']).catch('other'),
-			is_verified: booleanish.catch(false)
+			is_verified: booleanish.catch(false),
+			has_story: booleanish.optional().catch(false)
 		})
 	)
 });

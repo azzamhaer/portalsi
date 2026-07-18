@@ -461,6 +461,8 @@ class PostController extends Controller
         if (! $canView) {
             return response()->json([
                 'message' => 'Post ini hanya bisa dilihat oleh followers yang telah diterima.',
+                'owner_username' => $owner->username,
+                'owner_id' => $owner->user_id,
             ], 403);
         }
 

@@ -2,7 +2,7 @@
 	import { Check, X } from '@lucide/svelte';
 	import { untrack } from 'svelte';
 	import { clientRequest } from '$lib/api/client';
-	import Avatar from '$lib/components/ui/Avatar.svelte';
+	import StoryAvatarLink from '$lib/components/story/StoryAvatarLink.svelte';
 	import SectionPage from '$lib/components/layout/SectionPage.svelte';
 	import { confirmAction } from '$lib/ui/confirm';
 	import type { PageProps } from './$types';
@@ -40,14 +40,21 @@
 		{#if !data.isPrivate}<p>
 				Akun Anda tidak privat, sehingga tidak ada antrean persetujuan.
 			</p>{:else}{#each requests as user (user.id)}<article>
-					<Avatar name={user.fullName} size="md" /><a href={`/u/${user.username}`}
-						><strong>{user.fullName}</strong><small>@{user.username}</small></a
-					><button onclick={() => decide(user, true)} aria-label={`Terima ${user.fullName}`}
+					<StoryAvatarLink
+						userId={user.id}
+						username={user.username}
+						name={user.fullName}
+						avatarUrl={user.avatarUrl ?? undefined}
+						hasStory={user.hasStory}
+						size="md"
+						previewable
+					/><a class="uname" href={`/u/${user.username}`}>@{user.username}</a
+					><button onclick={() => decide(user, true)} aria-label={`Terima @${user.username}`}
 						><Check size={17} /></button
 					><button
 						class="reject"
 						onclick={() => decide(user, false)}
-						aria-label={`Tolak ${user.fullName}`}><X size={17} /></button
+						aria-label={`Tolak @${user.username}`}><X size={17} /></button
 					>
 				</article>{/each}{#if requests.length === 0}<p>
 					Tidak ada permintaan menunggu.
@@ -67,15 +74,14 @@
 		padding: 12px 15px;
 		border-bottom: 1px solid var(--color-border);
 	}
-	article > a {
-		display: grid;
-	}
-	article strong {
-		font-size: 0.82rem;
-	}
-	article small {
-		color: var(--color-muted);
-		font-size: 0.7rem;
+	.uname {
+		min-width: 0;
+		overflow: hidden;
+		font-size: 0.86rem;
+		font-weight: 700;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		color: var(--color-text);
 	}
 	article button {
 		display: grid;

@@ -28,16 +28,9 @@
 
 	let { data }: PageProps = $props();
 	const mediaBaseUrl = env.PUBLIC_MEDIA_BASE_URL?.trim() || 'https://api.portalsi.com/storage';
-	const roleLabels = {
-		student: 'Siswa',
-		parent: 'Orang tua',
-		teacher: 'Guru',
-		dev: 'Pengembang',
-		other: 'Anggota'
-	};
 	let posts = $state(untrack(() => [...data.posts]));
 	let following = $state(untrack(() => data.isFollowing));
-	let pending = $state(false);
+	let pending = $state(untrack(() => data.isRequested));
 	let connectionBusy = $state(false);
 	let statusMessage = $state(
 		untrack(() => (data.connectionUnavailable ? 'Status pertemanan belum dapat diperiksa.' : ''))
@@ -84,7 +77,7 @@
 	}
 
 	async function toggleFollow() {
-		if (!data.canFollow || connectionBusy || pending) return;
+		if (!data.canFollow || connectionBusy) return;
 		connectionBusy = true;
 		statusMessage = '';
 		try {
@@ -98,7 +91,10 @@
 				if (!confirmed) return;
 				await clientRequest(`unfollow/${data.profile.id}`, { method: 'DELETE' });
 				following = false;
-				statusMessage = 'Berhenti mengikuti.';
+			} else if (pending) {
+				// Batalkan permintaan mengikuti (unrequest) — langsung, tanpa dialog.
+				await clientRequest(`unfollow/${data.profile.id}`, { method: 'DELETE' });
+				pending = false;
 			} else {
 				const confirmed = await confirmAction({
 					title: `Ikuti ${data.profile.fullName}?`,
@@ -114,13 +110,12 @@
 				);
 				pending = response.status === 'pending';
 				following = response.status === 'accepted';
-				statusMessage =
-					response.message || (pending ? 'Permintaan mengikuti dikirim.' : 'Sekarang mengikuti.');
 			}
 		} catch (error) {
 			if (error instanceof ClientApiError && error.status === 409) {
-				pending = true;
-				statusMessage = 'Sudah mengikuti atau permintaan masih menunggu.';
+				// Sudah follow / permintaan sudah ada — sinkronkan state diam-diam.
+				if (data.profile.isPrivate) pending = true;
+				else following = true;
 			} else statusMessage = 'Perubahan belum dapat disimpan.';
 		} finally {
 			connectionBusy = false;
@@ -185,7 +180,7 @@
 						class="follow-main"
 						class:following
 						onclick={toggleFollow}
-						disabled={!data.canFollow || connectionBusy || pending}
+						disabled={!data.canFollow || connectionBusy}
 					>
 						{#if following}<UserCheck size={18} /> Following{:else}<UserPlus size={18} />
 							{pending ? 'Requested' : 'Follow'}{/if}
@@ -212,9 +207,9 @@
 				/>
 			</h1>
 			<p class="handle">
-				@{data.profile.username}{#if data.profile.role !== 'student'}
-					· {roleLabels[data.profile.role]}{/if}{#if data.profile.isPrivate}
-					· <span class="private-tag"><Lock size={11} /> Private</span>{/if}
+				<span class="uname">@{data.profile.username}</span>{#if data.profile.isPrivate}<span
+						class="dot">·</span
+					><span class="private-tag"><Lock size={12} /> Private</span>{/if}
 			</p>
 			<p class="bio"><MentionText text={data.profile.bio || 'Belum ada bio.'} /></p>
 			<div class="stats">
@@ -433,14 +428,20 @@
 		font-size: 1.25rem;
 	}
 	.handle {
+		display: flex;
+		align-items: center;
+		gap: 5px;
 		margin: 1px 0 12px;
 		color: var(--color-muted);
 		font-size: 0.77rem;
 	}
+	.handle .dot {
+		opacity: 0.6;
+	}
 	.private-tag {
 		display: inline-flex;
 		align-items: center;
-		gap: 2px;
+		gap: 3px;
 		color: var(--color-muted, #6b7280);
 		font-weight: 600;
 	}

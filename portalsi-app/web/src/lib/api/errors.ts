@@ -20,6 +20,7 @@ export class ApiError extends Error {
 	readonly requestId?: string;
 	readonly verificationStatus?: string;
 	readonly retryAfterSeconds?: number;
+	readonly payload?: Record<string, unknown>;
 
 	constructor(options: {
 		status: number;
@@ -29,6 +30,7 @@ export class ApiError extends Error {
 		requestId?: string;
 		verificationStatus?: string;
 		retryAfterSeconds?: number;
+		payload?: Record<string, unknown>;
 	}) {
 		super(options.message);
 		this.name = 'ApiError';
@@ -38,6 +40,7 @@ export class ApiError extends Error {
 		this.requestId = options.requestId;
 		this.verificationStatus = options.verificationStatus;
 		this.retryAfterSeconds = options.retryAfterSeconds;
+		this.payload = options.payload;
 	}
 }
 
@@ -71,7 +74,8 @@ export function parseBackendError(
 		requestId,
 		verificationStatus: data.verification_email_status,
 		retryAfterSeconds:
-			data.resend_cooldown_seconds ?? (Number.isFinite(headerSeconds) ? headerSeconds : undefined)
+			data.resend_cooldown_seconds ?? (Number.isFinite(headerSeconds) ? headerSeconds : undefined),
+		payload: parsed.success ? (data as Record<string, unknown>) : undefined
 	});
 }
 
