@@ -73,7 +73,9 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 			isPinned: false,
 			isStoryReply: message.is_story_response,
 			storyMedia: normalizeMediaUrl(message.responded_media_url, mediaBaseUrl),
-			storyExpired: message.story_expired
+			storyExpired: message.story_expired,
+			isStoryOwner: message.is_story_owner,
+			storyOwnerId: message.story_owner_id ?? null
 		}))
 	};
 };

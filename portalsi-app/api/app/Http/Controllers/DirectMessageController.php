@@ -144,6 +144,8 @@ class DirectMessageController extends Controller
             $expired = ! $story || ($story->expires_at && \Illuminate\Support\Carbon::parse($story->expires_at)->isPast());
             $isOwner = $story ? ((int) $story->user_id === (int) $auth_id) : false;
             $m->story_expired = (bool) $expired;
+            $m->is_story_owner = (bool) $isOwner;
+            $m->story_owner_id = $story ? (int) $story->user_id : null;
             // Sembunyikan media dari NON-pemilik saat sudah expired.
             if ($expired && ! $isOwner) {
                 $m->responded_media_url = null;

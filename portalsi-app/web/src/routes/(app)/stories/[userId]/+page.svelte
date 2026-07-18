@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goto, onNavigate } from '$app/navigation';
+	import { goto, onNavigate, preloadData } from '$app/navigation';
 	import {
 		ChevronLeft,
 		ChevronRight,
@@ -18,13 +18,15 @@
 	import { confirmAction } from '$lib/ui/confirm';
 	import MentionText from '$lib/components/ui/MentionText.svelte';
 
-	// Transisi 3D "cube" saat pindah cerita antar profil user (Chromium; fallback instan).
+	// Transisi SLIDE saat pindah cerita antar profil user (Chromium; fallback instan).
+	// Arah mengikuti navDir: maju (next) geser kiri, mundur (prev) geser kanan (reverse).
 	onNavigate((navigation) => {
 		const fromStory = navigation.from?.url.pathname.startsWith('/stories/');
 		const toStory = navigation.to?.url.pathname.startsWith('/stories/');
 		const startVT = (document as Document & { startViewTransition?: (cb: () => Promise<void>) => void })
 			.startViewTransition;
 		if (!fromStory || !toStory || !startVT) return;
+		document.documentElement.classList.toggle('story-back', navDir === 'back');
 		return new Promise<void>((resolve) => {
 			startVT.call(document, async () => {
 				resolve();
@@ -98,17 +100,31 @@
 		if (width > 0 && height > 0) frameAspect = width / height;
 	}
 
+	// Preload rute cerita user berikutnya & sebelumnya → pindah antar user tanpa jeda.
+	$effect(() => {
+		void data.user.id; // jalankan ulang saat user berganti
+		if (data.nextUserId) void preloadData(storyHref(data.nextUserId)).catch(() => undefined);
+		if (data.previousUserId) void preloadData(storyHref(data.previousUserId)).catch(() => undefined);
+	});
+
+	let navDir: 'forward' | 'back' = 'forward';
+
 	function next() {
 		viewersOpen = false;
 		if (index < stories.length - 1) index += 1;
-		else if (data.nextUserId) void goto(storyHref(data.nextUserId));
-		else closeStory();
+		else if (data.nextUserId) {
+			navDir = 'forward';
+			void goto(storyHref(data.nextUserId));
+		} else closeStory();
 	}
 
 	function previous() {
 		viewersOpen = false;
 		if (index > 0) index -= 1;
-		else if (data.previousUserId) void goto(storyHref(data.previousUserId));
+		else if (data.previousUserId) {
+			navDir = 'back';
+			void goto(storyHref(data.previousUserId));
+		}
 	}
 
 	function closeStory() {
@@ -257,6 +273,33 @@
 		::view-transition-new(story-card) {
 			animation: psi-slide-in 300ms cubic-bezier(0.4, 0, 0.2, 1) both;
 			will-change: transform, opacity;
+		}
+		/* Arah MUNDUR (prev): geser terbalik. */
+		@keyframes psi-slide-out-back {
+			from {
+				transform: translateX(0);
+				opacity: 1;
+			}
+			to {
+				transform: translateX(38%);
+				opacity: 0;
+			}
+		}
+		@keyframes psi-slide-in-back {
+			from {
+				transform: translateX(-38%);
+				opacity: 0;
+			}
+			to {
+				transform: translateX(0);
+				opacity: 1;
+			}
+		}
+		:root.story-back::view-transition-old(story-card) {
+			animation-name: psi-slide-out-back;
+		}
+		:root.story-back::view-transition-new(story-card) {
+			animation-name: psi-slide-in-back;
 		}
 	</style></svelte:head
 >

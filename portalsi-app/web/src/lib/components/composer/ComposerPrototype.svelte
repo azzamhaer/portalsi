@@ -151,6 +151,10 @@
 	const videoWillMute = $derived(
 		selectedFileKind === 'video' && (videoMuted || Boolean(selectedMusic))
 	);
+	// Kunci tombol upload sampai video & thumbnail-nya benar-benar ter-render (hindari thumbnail hitam).
+	const videoNotReady = $derived(
+		selectedFileKind === 'video' && (thumbnailGenerating || !thumbnailPreviewUrl)
+	);
 	const galleryMode = $derived(kind === 'post' && galleryItems.length > 1);
 	const editingItem = $derived(galleryItems.find((item) => item.id === editingId) ?? null);
 	const editCropAspect = $derived(
@@ -842,7 +846,9 @@
 			video.setAttribute('playsinline', '');
 			video.src = url;
 
-			const metadataReady = await new Promise<boolean>((resolve) => {
+			// Tunggu sampai FRAME benar-benar ter-decode (loadeddata), bukan sekadar metadata,
+			// supaya thumbnail tidak hitam karena video masih loading.
+			const dataReady = await new Promise<boolean>((resolve) => {
 				let settled = false;
 				const finish = (ok: boolean) => {
 					if (settled) return;
@@ -850,14 +856,15 @@
 					clearTimeout(timer);
 					resolve(ok);
 				};
-				const timer = setTimeout(() => finish(false), 4000);
-				video.onloadedmetadata = () => finish(true);
+				const timer = setTimeout(() => finish(video.readyState >= 2), 8000);
+				video.onloadeddata = () => finish(true);
+				video.oncanplay = () => finish(true);
 				video.onerror = () => finish(false);
 			});
-			if (!metadataReady) return null;
+			if (!dataReady) return null;
 
 			const duration = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : 1;
-			const targetSecond = Math.min(Math.max(0.05, atSeconds), Math.max(0.05, duration - 0.05));
+			const targetSecond = Math.min(Math.max(0.1, atSeconds), Math.max(0.1, duration - 0.05));
 			try {
 				video.currentTime = targetSecond;
 				await new Promise<void>((resolve) => {
@@ -868,10 +875,15 @@
 						clearTimeout(timer);
 						resolve();
 					};
-					const timer = setTimeout(finish, 1400);
-					video.onseeked = finish;
-					video.oncanplay = finish;
-					video.onloadeddata = finish;
+					const timer = setTimeout(finish, 3500);
+					const rvfc = (video as HTMLVideoElement & {
+						requestVideoFrameCallback?: (cb: () => void) => number;
+					}).requestVideoFrameCallback;
+					video.onseeked = () => {
+						// Pastikan frame sudah ter-paint sebelum digambar ke canvas.
+						if (rvfc) rvfc.call(video, () => finish());
+						else requestAnimationFrame(() => finish());
+					};
 				});
 			} catch {
 				// abaikan; pakai frame apa pun yang tersedia
@@ -1016,12 +1028,18 @@
 			<p class="eyebrow">{copy.eyebrow}</p>
 			<h1>{copy.title}</h1>
 		</div>
-		<button onclick={publish} disabled={(!file && galleryItems.length === 0) || submitting}
+		<button
+			onclick={publish}
+			disabled={(!file && galleryItems.length === 0) ||
+				submitting ||
+				videoNotReady}
 			>{submitting
 				? uploadProgress >= 100
 					? 'Memproses di server…'
 					: `Mengunggah ${uploadProgress}%`
-				: 'Bagikan'}</button
+				: videoNotReady
+					? 'Menyiapkan video…'
+					: 'Bagikan'}</button
 		>
 	</header>
 	<div class="composer-grid">

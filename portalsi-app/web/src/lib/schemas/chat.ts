@@ -59,7 +59,9 @@ export const directMessageSchema = z
 		is_story_response: booleanish.catch(false),
 		story_id: z.coerce.number().int().positive().nullish(),
 		responded_media_url: z.string().nullish(),
-		story_expired: booleanish.catch(false)
+		story_expired: booleanish.catch(false),
+		is_story_owner: booleanish.catch(false),
+		story_owner_id: z.coerce.number().int().positive().nullish()
 	})
 	.passthrough();
 

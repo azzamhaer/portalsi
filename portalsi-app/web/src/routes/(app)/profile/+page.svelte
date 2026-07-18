@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { env } from '$env/dynamic/public';
-	import { Bookmark, Copy, Grid3X3, Maximize2, Play, Settings, Share2, X } from '@lucide/svelte';
+	import { Bookmark, Copy, Grid3X3, Lock, Maximize2, Play, Settings, Share2, X } from '@lucide/svelte';
 	import { untrack } from 'svelte';
 	import { clientRequest } from '$lib/api/client';
 	import StoryAvatarLink from '$lib/components/story/StoryAvatarLink.svelte';
@@ -109,7 +109,9 @@
 				<p>
 					@{data.profile.username}{#if data.profile.role !== 'student'} · {roleLabels[
 							data.profile.role
-						]}{/if}
+						]}{/if}{#if data.profile.isPrivate} · <span class="private-tag"
+							><Lock size={12} /> Akun privat</span
+						>{/if}
 				</p>
 			</div>
 			<p class="bio"><MentionText text={data.profile.bio || 'Belum ada bio.'} /></p>
@@ -305,6 +307,16 @@
 		max-width: 38rem;
 		margin: 14px 0 7px;
 		font-size: 0.88rem;
+	}
+	.private-tag {
+		display: inline-flex;
+		align-items: center;
+		gap: 3px;
+		padding: 1px 8px;
+		border-radius: 999px;
+		background: var(--color-secondary-soft, #eef1f6);
+		color: var(--color-secondary, #4b5563);
+		font-weight: 700;
 	}
 	.stats {
 		display: flex;

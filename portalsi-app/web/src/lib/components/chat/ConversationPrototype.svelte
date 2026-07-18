@@ -55,6 +55,8 @@
 		isStoryReply?: boolean;
 		storyMedia?: string | null;
 		storyExpired?: boolean;
+		isStoryOwner?: boolean;
+		storyOwnerId?: number | null;
 	};
 	let {
 		mode,
@@ -291,7 +293,9 @@
 					isPinned: false,
 					isStoryReply: Boolean(replyingToStory),
 					storyMedia: replyingToStory?.media ?? null,
-					storyExpired: false
+					storyExpired: false,
+					isStoryOwner: false,
+					storyOwnerId: targetId
 				};
 				activeStoryReply = null; // sudah terkirim sebagai balasan cerita
 			} else {
@@ -430,20 +434,31 @@
 					<div>
 						{#if !message.mine && mode === 'group'}<strong>{message.senderName}</strong>{/if}
 						{#if message.isPinned}<span class="pinned"><Pin size={11} /> Disematkan</span>{/if}
-						{#if message.isStoryReply}<div class="story-reply-chip">
-								{#if message.storyMedia}
+						{#if message.isStoryReply}
+							{#if message.storyExpired && !message.isStoryOwner}
+								<div class="story-reply-chip expired-note">Story ini telah kadaluarsa</div>
+							{:else if !message.storyExpired && message.storyMedia && message.storyOwnerId}
+								<a href={`/stories/${message.storyOwnerId}`} class="story-reply-chip clickable">
 									{#if mediaKind(message.storyMedia) === 'video'}<video
 											src={message.storyMedia}
 											muted
 											playsinline
 											preload="metadata"
-										></video>{:else}<img
+										></video>{:else}<img src={message.storyMedia} alt="Cerita yang dibalas" />{/if}
+									<em>Balasan cerita</em>
+								</a>
+							{:else if message.storyMedia}
+								<div class="story-reply-chip">
+									{#if mediaKind(message.storyMedia) === 'video'}<video
 											src={message.storyMedia}
-											alt="Cerita yang dibalas"
-										/>{/if}
-								{:else}<span class="story-expired">Cerita telah berakhir</span>{/if}
-								<em>{message.storyExpired ? 'Cerita berakhir' : 'Balasan cerita'}</em>
-							</div>{/if}
+											muted
+											playsinline
+											preload="metadata"
+										></video>{:else}<img src={message.storyMedia} alt="Cerita yang dibalas" />{/if}
+									<em>{message.storyExpired ? 'Cerita berakhir' : 'Balasan cerita'}</em>
+								</div>
+							{/if}
+						{/if}
 						{#if message.text}<p><MentionText text={message.text} /></p>{/if}
 						{#if message.mediaUrl}
 						{#if mediaKind(message.mediaUrl) === 'image'}<a
@@ -902,6 +917,19 @@
 		padding: 5px 7px;
 		border-radius: 10px;
 		background: rgb(0 0 0 / 8%);
+		color: inherit;
+		text-decoration: none;
+	}
+	.story-reply-chip.clickable {
+		cursor: pointer;
+	}
+	.story-reply-chip.clickable:hover {
+		background: rgb(0 0 0 / 14%);
+	}
+	.story-reply-chip.expired-note {
+		font-size: 0.72rem;
+		font-style: italic;
+		opacity: 0.75;
 	}
 	.story-reply-chip img,
 	.story-reply-chip video {
