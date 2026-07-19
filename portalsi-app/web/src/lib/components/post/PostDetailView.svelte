@@ -1,9 +1,27 @@
 <script lang="ts">
-	import { Check, CornerDownRight, Heart, Pencil, Send, Trash2, Users, X } from '@lucide/svelte';
+	import {
+		Bookmark,
+		Check,
+		ChevronLeft,
+		ChevronRight,
+		CornerDownRight,
+		Heart,
+		MapPin,
+		MessageCircle,
+		MoreHorizontal,
+		Music2,
+		Send,
+		Trash2,
+		Users,
+		X
+	} from '@lucide/svelte';
 	import { untrack } from 'svelte';
 	import { clientRequest } from '$lib/api/client';
 	import Avatar from '$lib/components/ui/Avatar.svelte';
-	import PostCard from '$lib/components/feed/PostCard.svelte';
+	import StoryAvatarLink from '$lib/components/story/StoryAvatarLink.svelte';
+	import SmartVideo from '$lib/components/media/SmartVideo.svelte';
+	import MediaLightbox from '$lib/components/media/MediaLightbox.svelte';
+	import SharePostSheet from '$lib/components/feed/SharePostSheet.svelte';
 	import UserBadges from '$lib/components/ui/UserBadges.svelte';
 	import { createdCommentResponseSchema } from '$lib/schemas/comment';
 	import type { PageData } from '../../../routes/(app)/posts/[postId]/$types';
@@ -130,6 +148,78 @@
 		} finally {
 			collabActionBusy = false;
 		}
+	}
+
+	// ---- Media + interaksi (layout detail ala IG) ----
+	const gallery = $derived(
+		data.post.media && data.post.media.length > 1 ? data.post.media : [data.post.mediaUrl]
+	);
+	const isGallery = $derived(gallery.length > 1);
+	let slide = $state(0);
+	function goSlide(i: number) {
+		slide = Math.max(0, Math.min(gallery.length - 1, i));
+	}
+
+	let liked = $state(untrack(() => data.post.isLiked));
+	let bookmarked = $state(untrack(() => data.post.isBookmarked));
+	let likesCount = $state(untrack(() => data.post.likesCount));
+	let liking = $state(false);
+	let bookmarking = $state(false);
+	let likeBurst = $state(false);
+	let shareOpen = $state(false);
+	let ownerMenuOpen = $state(false);
+	let collabPopupOpen = $state(false);
+	let lightboxOpen = $state(false);
+	let lightboxIndex = $state(0);
+	let isDesktop = $state(false);
+	$effect(() => {
+		const mq = window.matchMedia('(min-width: 900px)');
+		const sync = () => (isDesktop = mq.matches);
+		sync();
+		mq.addEventListener('change', sync);
+		return () => mq.removeEventListener('change', sync);
+	});
+	const shareUrl = $derived(
+		typeof window !== 'undefined'
+			? new URL(`/posts/${data.post.id}`, window.location.origin).toString()
+			: `https://app.portalsi.com/posts/${data.post.id}`
+	);
+
+	async function toggleLike() {
+		if (liking) return;
+		liking = true;
+		liked = !liked;
+		likesCount += liked ? 1 : -1;
+		try {
+			await clientRequest(`posts/${data.post.id}/like`, { method: 'POST' });
+		} catch {
+			liked = !liked;
+			likesCount += liked ? 1 : -1;
+		} finally {
+			liking = false;
+		}
+	}
+	function doubleTapLike() {
+		if (!liked) void toggleLike();
+		likeBurst = true;
+		setTimeout(() => (likeBurst = false), 850);
+	}
+	async function toggleBookmark() {
+		if (bookmarking) return;
+		bookmarking = true;
+		bookmarked = !bookmarked;
+		try {
+			await clientRequest(`bookmarks/${data.post.id}`, { method: bookmarked ? 'POST' : 'DELETE' });
+		} catch {
+			bookmarked = !bookmarked;
+		} finally {
+			bookmarking = false;
+		}
+	}
+	function openMobileLightbox(index: number) {
+		if (isDesktop) return; // Desktop: tanpa fullscreen.
+		lightboxIndex = index;
+		lightboxOpen = true;
 	}
 
 	// Banner undangan kolaborasi untuk viewer (bila diundang & belum menjawab).
@@ -336,7 +426,7 @@
 						if ((e.currentTarget as HTMLDetailsElement).open && !collabLoaded) void loadCollaborators();
 					}}
 				>
-					<summary><Pencil size={15} /> Kelola postingan</summary>
+					<summary aria-label="Kelola postingan"><MoreHorizontal size={20} /></summary>
 					<form method="POST" action="?/update">
 						<label>Caption <textarea name="caption" rows="4">{data.post.caption}</textarea></label>
 						<label>Lokasi <input name="location" value={data.post.location ?? ''} maxlength="120" placeholder="Tambahkan lokasi" /></label>
@@ -399,31 +489,102 @@
 			{#if form?.message}<p class:success={form.success} class="notice" role="status">
 					{form.message}
 				</p>{/if}
-			<PostCard post={data.post} zoomable autoplay />
-			<details class="likers surface">
-				<summary
-					><Users size={16} /> {data.likers.length.toLocaleString('id-ID')} orang menyukai</summary
-				>
-				<div>
-					{#each data.likers as user (user.id)}<a href={`/u/${user.username}`}
-							><Avatar name={user.fullName} src={user.avatarUrl} size="sm" /><span
-								><strong
-									>{user.fullName}<UserBadges
-										verified={user.badgeVerified}
-										role={user.role}
-									/></strong
-								><small>@{user.username}{user.isFollowing ? ' · Diikuti' : ''}</small></span
-							></a
-						>{/each}{#if data.likers.length === 0}<p>Belum ada yang menyukai.</p>{/if}
-				</div>
-			</details>
+			<div class="detail-media">
+				{#if data.post.isVideo}
+					<SmartVideo
+						src={data.post.mediaUrl}
+						sources={data.post.videoSources ?? []}
+						poster={data.post.thumbnailUrl}
+						label={data.post.mediaAlt}
+						fill
+						preferSound
+						onDoubleTap={doubleTapLike}
+					/>
+				{:else if isGallery}
+					<div class="dm-gallery">
+						<div class="dm-track" style:transform={`translateX(-${slide * 100}%)`}>
+							{#each gallery as src, i (i)}
+								<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
+								<img
+									src={src}
+									alt={`${data.post.mediaAlt} (${i + 1})`}
+									ondblclick={doubleTapLike}
+									onclick={() => openMobileLightbox(i)}
+								/>
+							{/each}
+						</div>
+						{#if slide > 0}<button class="dm-nav prev" onclick={() => goSlide(slide - 1)} aria-label="Sebelumnya"><ChevronLeft size={22} /></button>{/if}
+						{#if slide < gallery.length - 1}<button class="dm-nav next" onclick={() => goSlide(slide + 1)} aria-label="Berikutnya"><ChevronRight size={22} /></button>{/if}
+						<div class="dm-dots">{#each gallery as _, i (i)}<span class:on={i === slide}></span>{/each}</div>
+					</div>
+				{:else}
+					<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
+					<img
+						class="dm-img"
+						src={data.post.mediaUrl}
+						alt={data.post.mediaAlt}
+						ondblclick={doubleTapLike}
+						onclick={() => openMobileLightbox(0)}
+					/>
+				{/if}
+				{#if likeBurst}<span class="dm-burst"><Heart size={100} fill="currentColor" /></span>{/if}
+			</div>
 		</div>
 		<section class="comments surface" id="comments">
-			<header>
-				<h2>Komentar</h2>
-				<span>{commentCount}</span>
+			<header class="ds-head">
+				<StoryAvatarLink
+					userId={data.post.user.id}
+					username={data.post.user.username}
+					name={data.post.user.fullName}
+					avatarUrl={data.post.user.avatarUrl}
+					size="md"
+					hasStory={data.post.user.hasStory}
+					seen={data.post.user.storyViewed}
+				/>
+				{#if data.post.coAuthors && data.post.coAuthors.length > 0}<button
+						class="ds-costack"
+						onclick={() => (collabPopupOpen = true)}
+						aria-label="Lihat kolaborator"
+						>{#each data.post.coAuthors.slice(0, 2) as ca (ca.id)}<Avatar
+								name={ca.username}
+								src={ca.avatarUrl}
+								size="sm"
+							/>{/each}{#if data.post.coAuthors.length > 2}<span class="more"
+								>+{data.post.coAuthors.length - 2}</span
+							>{/if}</button
+					>{/if}
+				<div class="ds-names">
+					<strong>
+						<a href={`/u/${data.post.user.username}`}>{data.post.user.username}</a>
+						<UserBadges verified={data.post.user.badgeVerified} role={data.post.user.role} />
+						{#if data.post.coAuthors && data.post.coAuthors.length === 1}<span class="co-and"
+								>dan <a href={`/u/${data.post.coAuthors[0].username}`}
+									>{data.post.coAuthors[0].username}</a
+								></span
+							>{:else if data.post.coAuthors && data.post.coAuthors.length > 1}<button
+								class="co-and-btn"
+								onclick={() => (collabPopupOpen = true)}
+								>dan {data.post.coAuthors.length} lainnya</button
+							>{/if}
+					</strong>
+					{#if data.post.location}<small><MapPin size={12} /> {data.post.location}</small>{/if}
+				</div>
 			</header>
 			<div class="comment-list">
+				{#if data.post.caption || data.post.music}
+					<article class="pinned-caption">
+						<Avatar name={data.post.user.fullName} src={data.post.user.avatarUrl} size="sm" />
+						<div>
+							<p>
+								<strong>{data.post.user.username}</strong>
+								{#if data.post.caption}<MentionText text={data.post.caption} />{/if}
+							</p>
+							{#if data.post.music}<span class="pc-music"
+									><Music2 size={13} /> {data.post.music.title} — {data.post.music.artist}</span
+								>{/if}
+						</div>
+					</article>
+				{/if}
 				{#each comments as comment (comment.id)}
 					<article>
 						<Avatar name={comment.user.fullName} src={comment.user.avatarUrl} size="sm" />
@@ -508,6 +669,29 @@
 				{/each}
 				{#if comments.length === 0}<p class="empty">Jadilah yang pertama berkomentar.</p>{/if}
 			</div>
+			<div class="ds-actions">
+				<div class="ds-act-buttons">
+					<button class:on={liked} onclick={toggleLike} disabled={liking} aria-label="Suka"
+						><Heart size={24} fill={liked ? 'currentColor' : 'none'} /></button
+					>
+					<button
+						onclick={() =>
+							document.querySelector<HTMLTextAreaElement>('.comment-form textarea')?.focus()}
+						aria-label="Komentar"><MessageCircle size={24} /></button
+					>
+					<button onclick={() => (shareOpen = true)} aria-label="Bagikan"><Send size={22} /></button>
+					<button
+						class="ds-bookmark"
+						class:on={bookmarked}
+						onclick={toggleBookmark}
+						disabled={bookmarking}
+						aria-label="Simpan"><Bookmark size={23} fill={bookmarked ? 'currentColor' : 'none'} /></button
+					>
+				</div>
+				{#if likesCount > 0}<strong class="ds-likes">{likesCount.toLocaleString('id-ID')} suka</strong
+					>{/if}
+				<time class="ds-time">{data.post.createdLabel}</time>
+			</div>
 			<div class="comment-compose">
 			{#if replyTo}<div class="replying">
 					Membalas {replyTo.name}<button
@@ -543,6 +727,46 @@
 			{#if gifOpen}<GifPicker onSelect={pickGif} onClose={() => (gifOpen = false)} />{/if}
 		</section>
 	</div>
+
+{#if shareOpen}
+	<SharePostSheet postId={data.post.id} {shareUrl} onClose={() => (shareOpen = false)} />
+{/if}
+
+{#if lightboxOpen}
+	<MediaLightbox
+		open={lightboxOpen}
+		src={gallery[lightboxIndex]}
+		alt={data.post.mediaAlt}
+		onClose={() => (lightboxOpen = false)}
+	/>
+{/if}
+
+{#if collabPopupOpen && data.post.coAuthors && data.post.coAuthors.length > 0}
+	<div class="collab-modal-scrim" role="presentation" onclick={() => (collabPopupOpen = false)}>
+		<div class="collab-modal" role="dialog" aria-modal="true" aria-label="Kolaborator" onclick={(e) => e.stopPropagation()}>
+			<header>
+				<strong>Kolaborasi</strong>
+				<button onclick={() => (collabPopupOpen = false)} aria-label="Tutup"><X size={19} /></button>
+			</header>
+			<ul>
+				<li>
+					<a href={`/u/${data.post.user.username}`}>
+						<Avatar name={data.post.user.fullName} src={data.post.user.avatarUrl} size="md" />
+						<span><strong>@{data.post.user.username}</strong><small>Pembuat</small></span>
+					</a>
+				</li>
+				{#each data.post.coAuthors as ca (ca.id)}
+					<li>
+						<a href={`/u/${ca.username}`}>
+							<Avatar name={ca.fullName} src={ca.avatarUrl} size="md" />
+							<span><strong>@{ca.username}</strong><small>Kolaborator</small></span>
+						</a>
+					</li>
+				{/each}
+			</ul>
+		</div>
+	</div>
+{/if}
 
 {#if editing}
 	<div use:portal>
@@ -652,21 +876,7 @@
 	.edit-actions .save:disabled {
 		opacity: 0.5;
 	}
-	.post-column {
-		display: grid;
-		gap: 12px;
-	}
-	.owner-tools,
-	.likers {
-		padding: 14px 16px;
-	}
-	.owner-tools summary,
-	.likers summary {
-		display: flex;
-		width: fit-content;
-		cursor: pointer;
-		align-items: center;
-		gap: 7px;
+	.owner-tools summary {
 		font-size: 0.76rem;
 		font-weight: 730;
 	}
@@ -900,38 +1110,353 @@
 	}
 	.post-detail-layout {
 		display: grid;
-		grid-template-columns: minmax(0, 620px) minmax(300px, 1fr);
-		gap: 18px;
-		align-items: start;
+		grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+		gap: 0;
+		align-items: stretch;
 	}
+	/* ---- Kolom media (kiri) ---- */
+	.post-column {
+		position: relative;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		min-width: 0;
+		background: #0b0c0d;
+		border-radius: 14px 0 0 14px;
+		overflow: hidden;
+	}
+	.detail-media {
+		position: relative;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 100%;
+		max-height: 84vh;
+	}
+	.detail-media :global(.smart-video) {
+		width: 100%;
+	}
+	.dm-img {
+		display: block;
+		max-width: 100%;
+		max-height: 84vh;
+		object-fit: contain;
+		cursor: default;
+	}
+	.dm-gallery {
+		position: relative;
+		width: 100%;
+		overflow: hidden;
+	}
+	.dm-track {
+		display: flex;
+		transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+	}
+	.dm-track img {
+		flex: 0 0 100%;
+		width: 100%;
+		max-height: 84vh;
+		object-fit: contain;
+	}
+	.dm-nav {
+		position: absolute;
+		top: 50%;
+		display: grid;
+		width: 34px;
+		height: 34px;
+		place-items: center;
+		background: rgb(255 255 255 / 88%);
+		border: 0;
+		border-radius: 50%;
+		color: #111;
+		transform: translateY(-50%);
+		box-shadow: 0 2px 8px rgb(0 0 0 / 25%);
+		cursor: pointer;
+	}
+	.dm-nav.prev {
+		left: 10px;
+	}
+	.dm-nav.next {
+		right: 10px;
+	}
+	.dm-dots {
+		position: absolute;
+		bottom: 12px;
+		left: 0;
+		right: 0;
+		display: flex;
+		justify-content: center;
+		gap: 5px;
+	}
+	.dm-dots span {
+		width: 6px;
+		height: 6px;
+		border-radius: 50%;
+		background: rgb(255 255 255 / 45%);
+	}
+	.dm-dots span.on {
+		background: #fff;
+	}
+	.dm-burst {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		color: #ff2d55;
+		transform: translate(-50%, -50%) scale(0.4);
+		animation: dm-burst 0.85s ease forwards;
+		pointer-events: none;
+		filter: drop-shadow(0 4px 14px rgb(0 0 0 / 35%));
+	}
+	@keyframes dm-burst {
+		0% {
+			opacity: 0;
+			transform: translate(-50%, -50%) scale(0.4);
+		}
+		25% {
+			opacity: 1;
+			transform: translate(-50%, -50%) scale(1.1);
+		}
+		70% {
+			opacity: 1;
+			transform: translate(-50%, -50%) scale(1);
+		}
+		100% {
+			opacity: 0;
+			transform: translate(-50%, -50%) scale(1.15);
+		}
+	}
+
+	/* ---- Kolom info + komentar (kanan) ---- */
 	.comments {
 		display: flex;
 		flex-direction: column;
+		min-width: 0;
 	}
-	.comments > header {
+	.comments > .ds-head {
 		display: flex;
 		align-items: center;
-		justify-content: space-between;
-		padding: 15px 17px;
+		gap: 10px;
+		padding: 12px 15px;
 		border-bottom: 1px solid var(--color-border);
 	}
-	.comments h2 {
-		margin: 0;
-		font-size: 0.94rem;
+	.ds-costack {
+		display: inline-flex;
+		align-items: center;
+		margin-left: -14px;
+		padding: 0;
+		background: none;
+		border: 0;
+		cursor: pointer;
 	}
-	.comments > header span {
+	.ds-costack :global(.avatar-wrap) {
+		margin-left: -8px;
+		border-radius: 50%;
+		box-shadow: 0 0 0 2px var(--color-surface, #fff);
+	}
+	.ds-costack .more {
 		display: grid;
-		min-width: 25px;
-		height: 25px;
 		place-items: center;
-		background: var(--color-primary-soft);
-		border-radius: 99px;
-		color: var(--color-primary-strong);
-		font-size: 0.7rem;
-		font-weight: 720;
+		min-width: 22px;
+		height: 22px;
+		margin-left: -8px;
+		padding: 0 5px;
+		background: var(--color-secondary-soft, #e7ebf2);
+		border-radius: 999px;
+		box-shadow: 0 0 0 2px var(--color-surface, #fff);
+		font-size: 0.62rem;
+		font-weight: 800;
+		color: var(--color-secondary, #4b5563);
+	}
+	.ds-names {
+		display: grid;
+		min-width: 0;
+	}
+	.ds-names strong {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		font-size: 0.9rem;
+		flex-wrap: wrap;
+	}
+	.ds-names a {
+		color: inherit;
+	}
+	.ds-names small {
+		display: inline-flex;
+		align-items: center;
+		gap: 3px;
+		color: var(--color-muted);
+		font-size: 0.72rem;
+	}
+	.co-and,
+	.co-and-btn {
+		background: none;
+		border: 0;
+		padding: 0;
+		color: inherit;
+		font-weight: 700;
+		cursor: pointer;
+	}
+	.pinned-caption {
+		display: flex;
+		gap: 9px;
+		padding: 14px 15px;
+		border-bottom: 1px solid var(--color-border);
+	}
+	.pinned-caption p {
+		margin: 0;
+		font-size: 0.82rem;
+		line-height: 1.45;
+	}
+	.pinned-caption strong {
+		margin-right: 5px;
+		font-weight: 700;
+	}
+	.pc-music {
+		display: inline-flex;
+		align-items: center;
+		gap: 5px;
+		margin-top: 6px;
+		color: var(--color-muted);
+		font-size: 0.72rem;
 	}
 	.comment-list {
 		flex: 1;
+		min-height: 0;
+		overflow-y: auto;
+	}
+	.ds-actions {
+		padding: 10px 14px 6px;
+		border-top: 1px solid var(--color-border);
+	}
+	.ds-act-buttons {
+		display: flex;
+		align-items: center;
+		gap: 14px;
+	}
+	.ds-act-buttons button {
+		display: grid;
+		place-items: center;
+		background: none;
+		border: 0;
+		color: var(--color-text);
+		cursor: pointer;
+	}
+	.ds-act-buttons button.on {
+		color: #ff2d55;
+	}
+	.ds-act-buttons .ds-bookmark {
+		margin-left: auto;
+		color: var(--color-text);
+	}
+	.ds-act-buttons .ds-bookmark.on {
+		color: var(--color-primary-strong, #c96a10);
+	}
+	.ds-likes {
+		display: block;
+		margin-top: 8px;
+		font-size: 0.84rem;
+		font-weight: 700;
+	}
+	.ds-time {
+		display: block;
+		margin-top: 2px;
+		color: var(--color-muted);
+		font-size: 0.68rem;
+		text-transform: uppercase;
+		letter-spacing: 0.02em;
+	}
+
+	/* Owner tools → tombol titik-tiga di kanan atas media, dropdown kartu saat dibuka. */
+	.owner-tools {
+		position: absolute;
+		top: 12px;
+		right: 12px;
+		z-index: 6;
+		width: auto;
+	}
+	.owner-tools > summary {
+		display: grid;
+		width: 38px;
+		height: 38px;
+		margin-left: auto;
+		place-items: center;
+		list-style: none;
+		background: rgb(0 0 0 / 45%);
+		border-radius: 50%;
+		color: #fff;
+		cursor: pointer;
+		backdrop-filter: blur(6px);
+	}
+	.owner-tools > summary::-webkit-details-marker {
+		display: none;
+	}
+	.owner-tools[open] {
+		width: min(320px, 78vw);
+		padding: 8px;
+		background: var(--color-surface, #fff);
+		border: 1px solid var(--color-border);
+		border-radius: 14px;
+		box-shadow: 0 16px 40px rgb(0 0 0 / 24%);
+	}
+	.owner-tools[open] > summary {
+		background: var(--color-surface-soft, #eef0f3);
+		color: var(--color-text);
+		margin-bottom: 8px;
+	}
+
+	.collab-modal-scrim {
+		position: fixed;
+		inset: 0;
+		z-index: 1500;
+		display: grid;
+		place-items: center;
+		padding: 20px;
+		background: rgb(0 0 0 / 45%);
+	}
+	.collab-modal {
+		width: min(100%, 360px);
+		max-height: 70vh;
+		overflow: hidden;
+		display: flex;
+		flex-direction: column;
+		background: var(--color-surface, #fff);
+		border-radius: 16px;
+	}
+	.collab-modal header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 13px 15px;
+		border-bottom: 1px solid var(--color-border);
+	}
+	.collab-modal header button {
+		background: none;
+		border: 0;
+		color: var(--color-muted);
+		cursor: pointer;
+	}
+	.collab-modal ul {
+		list-style: none;
+		margin: 0;
+		padding: 6px;
+		overflow-y: auto;
+	}
+	.collab-modal li a {
+		display: flex;
+		align-items: center;
+		gap: 11px;
+		padding: 9px 10px;
+		border-radius: 12px;
+		color: inherit;
+	}
+	.collab-modal li span {
+		display: grid;
+	}
+	.collab-modal li small {
+		color: var(--color-muted);
+		font-size: 0.72rem;
 	}
 	/* Kolom tulis komentar disematkan (sticky) di bawah agar selalu mudah dijangkau. */
 	.comment-compose {
@@ -1088,6 +1613,18 @@
 		}
 		.comments {
 			position: static;
+		}
+		.post-column {
+			border-radius: 0;
+		}
+		.detail-media,
+		.dm-img,
+		.dm-track img {
+			max-height: 70vh;
+		}
+		/* Di mobile biarkan mengalir natural (tanpa scroll internal komentar). */
+		.comment-list {
+			overflow: visible;
 		}
 	}
 	@media (max-width: 767px) {

@@ -150,7 +150,7 @@
 	@media (min-width: 951px) {
 		.pm-panel {
 			height: 86vh;
-			max-height: 860px;
+			max-height: 880px;
 		}
 		.pm-scroll {
 			overflow: hidden;
@@ -159,37 +159,8 @@
 		.pm-scroll :global(.post-detail-layout) {
 			height: 100%;
 			margin: 0;
-			gap: 0;
-			align-items: stretch;
-			grid-template-columns: minmax(0, 1.15fr) minmax(340px, 0.85fr);
 		}
-		.pm-scroll :global(.post-column) {
-			overflow-y: auto;
-			padding: 20px;
-			border-right: 1px solid var(--color-border);
-		}
-		.pm-scroll :global(.comments) {
-			height: 100%;
-			display: flex;
-			flex-direction: column;
-			overflow: hidden;
-			border-radius: 0;
-		}
-		.pm-scroll :global(.comments > header) {
-			flex: none;
-		}
-		.pm-scroll :global(.comments .comment-list) {
-			flex: 1;
-			min-height: 0;
-			max-height: none;
-			overflow-y: auto;
-		}
-		.pm-scroll :global(.comments .comment-form) {
-			flex: none;
-		}
-		/* Hilangkan opsi perbesar & fullscreen video di desktop (mobile tetap ada). */
-		.pm-scroll :global(.expand-media),
-		.pm-scroll :global(.zoom-cue),
+		/* Sembunyikan fullscreen video di desktop (mobile tetap). */
 		.pm-scroll :global(.smart-video .video-controls .fs-btn) {
 			display: none !important;
 		}
