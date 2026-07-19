@@ -60,6 +60,12 @@
 					icon: Bookmark
 				},
 				{
+					label: 'Undangan kolaborasi',
+					desc: 'Terima atau tolak ajakan co-author',
+					href: '/settings/collaborations',
+					icon: UserRound
+				},
+				{
 					label: 'Arsip cerita',
 					desc: 'Cerita Anda yang telah berakhir',
 					href: '/settings/story-archive',

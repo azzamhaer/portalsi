@@ -20,7 +20,8 @@
 		preferSound = false,
 		sources = [],
 		onDoubleTap,
-		minimal = false
+		minimal = false,
+		loop = false
 	}: {
 		src: string;
 		poster?: string;
@@ -32,6 +33,7 @@
 		sources?: VideoSource[];
 		onDoubleTap?: () => void;
 		minimal?: boolean;
+		loop?: boolean;
 	} = $props();
 
 	// Daftar kualitas (fallback ke satu sumber 'Asli' bila tak ada varian).
@@ -133,6 +135,67 @@
 		else video.pause();
 	}
 
+	// ---- Seek tipis untuk mode minimal (reels) ----
+	let scrubbing = $state(false);
+	let scrubTime = $state(0);
+	let seekEl: HTMLDivElement;
+	let previewCanvas: HTMLCanvasElement | undefined;
+	let wasPlayingBeforeScrub = false;
+	const progress = $derived(duration > 0 ? current / duration : 0);
+	const scrubRatio = $derived(duration > 0 ? scrubTime / duration : 0);
+	const previewLeftPct = $derived(Math.min(90, Math.max(10, scrubRatio * 100)));
+
+	function pointerToTime(clientX: number) {
+		if (!seekEl) return 0;
+		const rect = seekEl.getBoundingClientRect();
+		const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+		return ratio * (duration || 0);
+	}
+	function drawPreview() {
+		if (!previewCanvas || !video?.videoWidth) return;
+		const ctx = previewCanvas.getContext('2d');
+		if (!ctx) return;
+		const maxH = 132;
+		const scale = maxH / video.videoHeight;
+		previewCanvas.width = Math.max(1, Math.round(video.videoWidth * scale));
+		previewCanvas.height = maxH;
+		try {
+			ctx.drawImage(video, 0, 0, previewCanvas.width, previewCanvas.height);
+		} catch {
+			/* abaikan */
+		}
+	}
+	function startScrub(e: PointerEvent) {
+		if (!video || !duration) return;
+		e.stopPropagation();
+		scrubbing = true;
+		wasPlayingBeforeScrub = !video.paused;
+		video.pause();
+		try {
+			seekEl.setPointerCapture(e.pointerId);
+		} catch {
+			/* abaikan */
+		}
+		moveScrub(e);
+	}
+	function moveScrub(e: PointerEvent) {
+		if (!scrubbing || !video) return;
+		e.stopPropagation();
+		const t = pointerToTime(e.clientX);
+		scrubTime = t;
+		video.currentTime = t;
+	}
+	function endScrub(e: PointerEvent) {
+		if (!scrubbing) return;
+		scrubbing = false;
+		try {
+			seekEl.releasePointerCapture(e.pointerId);
+		} catch {
+			/* abaikan */
+		}
+		if (wasPlayingBeforeScrub) void video.play().catch(() => undefined);
+	}
+
 	// Bedakan tap tunggal (play/pause) vs ganda (like) bila onDoubleTap disediakan.
 	let tapTimer: ReturnType<typeof setTimeout> | null = null;
 	function onVideoTap() {
@@ -228,6 +291,7 @@
 		src={activeSrc}
 		{poster}
 		bind:muted
+		{loop}
 		preload={autoplay ? 'auto' : 'metadata'}
 		playsinline
 		aria-label={label}
@@ -261,6 +325,9 @@
 		ontimeupdate={() => {
 			current = video.currentTime;
 			duration = video.duration || duration;
+		}}
+		onseeked={() => {
+			if (scrubbing) drawPreview();
 		}}
 		onerror={() => {
 			failed = true;
@@ -321,6 +388,34 @@
 								</li>{/each}
 						</ul>{/if}
 				</div>{/if}
+		</div>
+
+		<!-- Seek tipis di paling bawah + preview saat drag -->
+		<div
+			class="seek"
+			class:scrubbing
+			bind:this={seekEl}
+			role="slider"
+			tabindex="0"
+			aria-label="Geser posisi video"
+			aria-valuemin="0"
+			aria-valuemax={Math.round(duration) || 0}
+			aria-valuenow={Math.round(current) || 0}
+			onpointerdown={startScrub}
+			onpointermove={moveScrub}
+			onpointerup={endScrub}
+			onpointercancel={endScrub}
+		>
+			{#if scrubbing}
+				<div class="seek-preview" style:left={`${previewLeftPct}%`}>
+					<canvas bind:this={previewCanvas}></canvas>
+					<span>{format(scrubTime)} / {format(duration)}</span>
+				</div>
+			{/if}
+			<div class="seek-track">
+				<div class="seek-fill" style:width={`${(scrubbing ? scrubRatio : progress) * 100}%`}></div>
+				<span class="seek-knob" style:left={`${(scrubbing ? scrubRatio : progress) * 100}%`}></span>
+			</div>
 		</div>
 	{:else}
 		<div class="video-controls">
@@ -531,6 +626,74 @@
 	.minimal-controls .quality-menu {
 		top: calc(100% + 6px);
 		bottom: auto;
+	}
+	.seek {
+		position: absolute;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		z-index: 6;
+		display: flex;
+		height: 22px;
+		align-items: flex-end;
+		cursor: pointer;
+		touch-action: none;
+	}
+	.seek-track {
+		position: relative;
+		width: 100%;
+		height: 3px;
+		background: rgb(255 255 255 / 22%);
+		transition: height 0.12s ease;
+	}
+	.seek.scrubbing .seek-track {
+		height: 6px;
+	}
+	.seek-fill {
+		position: absolute;
+		inset: 0 auto 0 0;
+		background: #fff;
+	}
+	.seek-knob {
+		position: absolute;
+		top: 50%;
+		width: 12px;
+		height: 12px;
+		margin-left: -6px;
+		border-radius: 50%;
+		background: #fff;
+		box-shadow: 0 1px 4px rgb(0 0 0 / 45%);
+		transform: translateY(-50%) scale(0);
+		transition: transform 0.12s ease;
+	}
+	.seek.scrubbing .seek-knob {
+		transform: translateY(-50%) scale(1);
+	}
+	.seek-preview {
+		position: absolute;
+		bottom: 18px;
+		display: grid;
+		justify-items: center;
+		gap: 5px;
+		transform: translateX(-50%);
+		pointer-events: none;
+	}
+	.seek-preview canvas {
+		width: auto;
+		height: 92px;
+		border-radius: 9px;
+		border: 2px solid rgb(255 255 255 / 85%);
+		box-shadow: 0 6px 20px rgb(0 0 0 / 45%);
+		background: #000;
+	}
+	.seek-preview span {
+		padding: 2px 9px;
+		background: rgb(0 0 0 / 72%);
+		border-radius: 999px;
+		color: #fff;
+		font-size: 0.67rem;
+		font-weight: 700;
+		font-variant-numeric: tabular-nums;
 	}
 	.quality {
 		position: relative;

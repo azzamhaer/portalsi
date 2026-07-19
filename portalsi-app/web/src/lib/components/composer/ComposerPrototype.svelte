@@ -12,6 +12,7 @@
 		Sparkles,
 		TriangleAlert,
 		Upload,
+		UserPlus,
 		Video,
 		Volume2,
 		VolumeX,
@@ -124,6 +125,11 @@
 	let selectedMusic = $state<(typeof musicResults)[number] | null>(null);
 	let musicRecommended = $state<typeof musicResults>([]);
 	let musicRecoLoading = $state(false);
+	// Kolaborator (co-author) — hanya untuk post.
+	let collaborators = $state<{ id: number; username: string; fullName: string }[]>([]);
+	let collabQuery = $state('');
+	let collabResults = $state<{ id: number; username: string; fullName: string }[]>([]);
+	let collabSearching = $state(false);
 	let musicStartSeconds = $state(0);
 	let musicEndSeconds = $state(15);
 	let musicTotalSeconds = $state(30);
@@ -362,6 +368,58 @@
 			.catch(() => undefined)
 			.finally(() => (musicRecoLoading = false));
 	});
+
+	// Pencarian kolaborator (debounced).
+	$effect(() => {
+		const q = collabQuery.trim();
+		if (kind === 'story' || q.length < 2) {
+			collabResults = [];
+			collabSearching = false;
+			return;
+		}
+		collabSearching = true;
+		const controller = new AbortController();
+		const timer = window.setTimeout(async () => {
+			try {
+				const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&type=users`, {
+					signal: controller.signal
+				});
+				const payload = (await res.json()) as {
+					users?: { user_id: number; username: string; full_name?: string | null }[];
+				};
+				const chosen = new Set(collaborators.map((c) => c.id));
+				collabResults = (payload.users ?? [])
+					.filter((u) => !chosen.has(u.user_id))
+					.slice(0, 6)
+					.map((u) => ({
+						id: u.user_id,
+						username: u.username,
+						fullName: u.full_name?.trim() || u.username
+					}));
+			} catch {
+				if (!controller.signal.aborted) collabResults = [];
+			} finally {
+				if (!controller.signal.aborted) collabSearching = false;
+			}
+		}, 260);
+		return () => {
+			window.clearTimeout(timer);
+			controller.abort();
+		};
+	});
+
+	function addCollaborator(c: { id: number; username: string; fullName: string }) {
+		if (collaborators.length >= 5 || collaborators.some((x) => x.id === c.id)) return;
+		collaborators = [...collaborators, c];
+		collabQuery = '';
+		collabResults = [];
+	}
+	function removeCollaborator(id: number) {
+		collaborators = collaborators.filter((c) => c.id !== id);
+	}
+	function appendCollaborators(body: FormData) {
+		for (const c of collaborators) body.append('collaborators[]', String(c.id));
+	}
 
 	function clearGallery() {
 		galleryItems.forEach((item) => URL.revokeObjectURL(item.url));
@@ -654,6 +712,7 @@
 				uploadFileTotal = 0;
 				body.set('caption', caption.trim());
 				appendMusic(body);
+				appendCollaborators(body);
 				if (location.trim()) body.set('location', location.trim());
 				body.set('is_video', '0');
 				body.set('is_archived', '0');
@@ -702,6 +761,7 @@
 					if (thumbnail) body.set('thumbnail', thumbnail);
 				}
 				if (location.trim()) body.set('location', location.trim());
+				appendCollaborators(body);
 				body.set('is_video', String(selectedFileKind === 'video' ? 1 : 0));
 				body.set('video_muted', videoWillMute ? '1' : '0');
 				body.set('is_archived', '0');
@@ -1387,6 +1447,45 @@
 								}}><MapPin size={13} /> {place.label}</button
 							>{/each}
 					</div>{/if}{/if}
+			{#if kind !== 'story'}
+				<div class="field collab-field">
+					<span><UserPlus size={17} /> Kolaborator</span>
+					{#if collaborators.length > 0}
+						<div class="collab-chips">
+							{#each collaborators as c (c.id)}
+								<span class="collab-chip"
+									>@{c.username}<button
+										type="button"
+										onclick={() => removeCollaborator(c.id)}
+										aria-label={`Hapus ${c.username}`}><X size={12} /></button
+									></span
+								>
+							{/each}
+						</div>
+					{/if}
+					{#if collaborators.length < 5}
+						<div class="collab-input">
+							<input
+								bind:value={collabQuery}
+								maxlength="40"
+								placeholder="Cari & undang co-author (mereka harus menyetujui)"
+								onkeydown={(event) => {
+									if (event.key === 'Enter') event.preventDefault();
+								}}
+							/>{#if collabSearching}<LoaderCircle class="field-spinner" size={16} />{/if}
+						</div>
+					{/if}
+					{#if collabResults.length}
+						<div class="suggestions" aria-label="Hasil kolaborator">
+							{#each collabResults as u (u.id)}
+								<button type="button" onclick={() => addCollaborator(u)}
+									><strong>@{u.username}</strong> <small>{u.fullName}</small></button
+								>
+							{/each}
+						</div>
+					{/if}
+				</div>
+			{/if}
 			<label class="field"
 				><span><Music2 size={17} /> Musik</span><input
 					bind:value={musicQuery}
@@ -2192,6 +2291,58 @@
 	}
 	.field {
 		margin-top: 14px;
+	}
+	.collab-field {
+		display: grid;
+		gap: 8px;
+	}
+	.collab-field > span {
+		display: inline-flex;
+		align-items: center;
+		gap: 7px;
+		font-size: 0.82rem;
+		font-weight: 700;
+	}
+	.collab-chips {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px;
+	}
+	.collab-chip {
+		display: inline-flex;
+		align-items: center;
+		gap: 5px;
+		padding: 4px 6px 4px 11px;
+		background: var(--color-primary-soft, #fdece0);
+		border-radius: 999px;
+		font-size: 0.78rem;
+		font-weight: 700;
+		color: var(--color-primary-strong, #c96a10);
+	}
+	.collab-chip button {
+		display: grid;
+		place-items: center;
+		width: 18px;
+		height: 18px;
+		background: rgb(0 0 0 / 8%);
+		border: 0;
+		border-radius: 50%;
+		color: inherit;
+		cursor: pointer;
+	}
+	.collab-input {
+		position: relative;
+		display: flex;
+		align-items: center;
+	}
+	.collab-input input {
+		width: 100%;
+		min-height: 42px;
+		padding: 0 13px;
+		background: var(--color-surface-soft, #f2f3f5);
+		border: 1px solid var(--color-border);
+		border-radius: 11px;
+		font-size: 0.85rem;
 	}
 	.attribution {
 		display: block;

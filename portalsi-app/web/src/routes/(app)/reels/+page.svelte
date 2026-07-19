@@ -181,6 +181,7 @@
 								fill
 								autoplay
 								preferSound
+								loop
 								minimal
 								onDoubleTap={() => doubleTapLike(reel)}
 							/>
@@ -371,7 +372,7 @@
 	}
 	.reel-meta {
 		position: absolute;
-		bottom: 18px;
+		bottom: 32px;
 		left: 16px;
 		right: 84px;
 		display: grid;
@@ -447,7 +448,7 @@
 	.reel-actions {
 		position: absolute;
 		right: 12px;
-		bottom: 22px;
+		bottom: 36px;
 		display: grid;
 		justify-items: center;
 		gap: 18px;

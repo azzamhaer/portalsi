@@ -165,13 +165,18 @@
 				hasStory={post.user.hasStory}
 				seen={post.user.storyViewed}
 			/>
-			<a href={`/u/${post.user.username}`} class="author-copy">
-				<strong id={`post-${post.id}-author`}
-					>{post.user.username}
-					<UserBadges verified={post.user.badgeVerified} role={post.user.role} /></strong
-				>
+			<div class="author-copy">
+				<strong id={`post-${post.id}-author`}>
+					<a href={`/u/${post.user.username}`}>{post.user.username}</a>
+					<UserBadges verified={post.user.badgeVerified} role={post.user.role} />
+					{#if post.coAuthors && post.coAuthors.length > 0}<span class="co-authors"
+							>&amp; <a href={`/u/${post.coAuthors[0].username}`}>{post.coAuthors[0].username}</a
+							>{#if post.coAuthors.length > 1}
+								&amp; {post.coAuthors.length - 1} lainnya{/if}</span
+						>{/if}
+				</strong>
 				<small>{post.createdLabel}</small>
-			</a>
+			</div>
 		</div>
 		{#if canShowFollow}
 			<button
@@ -354,6 +359,12 @@
 	.author small {
 		color: var(--color-muted);
 		font-size: 0.76rem;
+	}
+	.author-copy a {
+		color: inherit;
+	}
+	.co-authors {
+		font-weight: 700;
 	}
 
 	.follow-btn {

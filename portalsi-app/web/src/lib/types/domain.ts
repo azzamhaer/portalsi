@@ -34,6 +34,8 @@ export interface PostPreview {
 	videoMuted?: boolean;
 	/** Pilihan kualitas video (rendah/sedang/asli) untuk player adaptif. */
 	videoSources?: { quality: 'low' | 'medium' | 'original'; label: string; src: string }[];
+	/** Co-author (kolaborator) yang sudah menerima undangan. */
+	coAuthors?: { id: number; username: string; fullName: string; verified: boolean }[];
 	mediaAlt: string;
 	location?: string;
 	createdLabel: string;

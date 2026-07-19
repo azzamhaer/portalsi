@@ -17,6 +17,8 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PortfolioController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\CollaboratorController;
+use App\Http\Controllers\SearchController;
 use App\Http\Controllers\SearchHistoryController;
 use App\Http\Controllers\StoryController;
 use App\Http\Controllers\StoryViewController;
@@ -597,6 +599,10 @@ Route::middleware(['auth:sanctum', 'notBanned'])->group(function () {
     Route::patch('/notifications/read/all', [NotificationController::class, 'markAllAsRead']);
 
     Route::get('/explore', [PostController::class, 'explore']);
+    Route::get('/search', [SearchController::class, 'index']);
+    Route::get('/collaborations/pending', [CollaboratorController::class, 'pending']);
+    Route::post('/posts/{postId}/collaborators/accept', [CollaboratorController::class, 'accept'])->whereNumber('postId');
+    Route::post('/posts/{postId}/collaborators/reject', [CollaboratorController::class, 'reject'])->whereNumber('postId');
     Route::get('/circle-avatar/{id}', [PostController::class, 'circleAvatar']);
     Route::get('/clips/{id}', [PostController::class, 'clips']);
     Route::get('/reels', [PostController::class, 'reels']);

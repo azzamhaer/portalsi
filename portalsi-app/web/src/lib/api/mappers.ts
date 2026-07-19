@@ -76,6 +76,12 @@ export function mapPost(post: BackendPost, mediaBaseUrl: string): PostPreview {
 		isVideo: hasImageExtension ? false : hasVideoExtension ? true : post.is_video,
 		videoMuted: post.video_muted,
 		videoSources: buildVideoSources(post, mediaUrl, mediaBaseUrl),
+		coAuthors: (post.co_authors ?? []).map((u) => ({
+			id: u.user_id,
+			username: u.username,
+			fullName: u.full_name?.trim() || u.username,
+			verified: u.is_verified
+		})),
 		mediaAlt: post.caption?.trim() || `Postingan oleh ${post.user.username}`,
 		location: post.location ?? undefined,
 		createdLabel: relativeTimeId(post.created_at),

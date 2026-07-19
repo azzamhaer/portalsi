@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Post;
 use App\Models\User;
 use App\Models\Story;
 use Illuminate\Http\Request;
@@ -49,7 +50,12 @@ class ProfileController extends Controller
         $pagination = null;
 
         if ($canViewPosts) {
-            $postsQuery = $user->posts()
+            // Sertakan post milik sendiri DAN post kolaborasi yang sudah diterima.
+            $postsQuery = Post::where(function ($q) use ($user) {
+                $q->where('user_id', $user->user_id)
+                    ->orWhereHas('acceptedCollaborators', fn ($c) => $c->where('users.user_id', $user->user_id));
+            })
+                ->where('is_archived', false)
                 ->latest()
                 ->select('post_id', 'caption', 'media_url', 'media_urls', 'is_video', 'created_at', 'thumbnail_url', 'media_variants');
 
@@ -172,7 +178,11 @@ class ProfileController extends Controller
             ->with('followers')
             ->firstOrFail();
 
-        $postsQuery = $user->posts()
+        $postsQuery = Post::where(function ($q) use ($user) {
+            $q->where('user_id', $user->user_id)
+                ->orWhereHas('acceptedCollaborators', fn ($c) => $c->where('users.user_id', $user->user_id));
+        })
+            ->where('is_archived', false)
             ->latest()
             ->select('post_id', 'caption', 'media_url', 'media_urls', 'is_video', 'created_at', 'thumbnail_url', 'media_variants');
 
@@ -181,7 +191,7 @@ class ProfileController extends Controller
         $recentPosts = $paginatedPosts->getCollection()->map(function ($post) {
             try {
                 $mediaUrl = $post->media_url;
-                
+
                 if (empty($mediaUrl) || !is_string($mediaUrl)) {
                     return [
                         'post_id' => $post->post_id,

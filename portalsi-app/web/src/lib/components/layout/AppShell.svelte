@@ -33,6 +33,7 @@
 	const topLevel = new Set([
 		'/home',
 		'/reels',
+		'/search',
 		'/explore',
 		'/messages',
 		'/notifications',
@@ -98,6 +99,7 @@
 	const primary = [
 		{ href: '/home', label: 'Beranda', icon: Home },
 		{ href: '/reels', label: 'Reels', icon: Clapperboard },
+		{ href: '/search', label: 'Cari', icon: Search },
 		{ href: '/explore', label: 'Jelajah', icon: Compass },
 		{ href: '/messages', label: 'Pesan', icon: MessageCircle },
 		{ href: '/notifications', label: 'Notifikasi', icon: Bell },
@@ -222,7 +224,7 @@
 			>
 			<div>
 				<a href="/marketplace" aria-label="Marketplace"><ShoppingBag size={21} /></a>
-				<a href="/explore" aria-label="Cari"><Search size={21} /></a>
+				<a href="/search" aria-label="Cari"><Search size={21} /></a>
 				<a href="/notifications" aria-label="Notifikasi" class:has-dot={unreadCount > 0}
 					><Bell size={21} /></a
 				>

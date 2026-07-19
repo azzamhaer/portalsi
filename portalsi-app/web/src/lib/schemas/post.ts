@@ -33,6 +33,16 @@ export const postSchema = z
 				z.object({ url: z.string().nullish(), key: z.string().nullish() }).passthrough()
 			)
 			.nullish(),
+		co_authors: z
+			.array(
+				z.object({
+					user_id: z.coerce.number().int().positive(),
+					username: z.string().min(1),
+					full_name: z.string().nullish(),
+					is_verified: booleanish.catch(false)
+				})
+			)
+			.catch([]),
 		location: z.string().nullish(),
 		is_video: booleanish.catch(false),
 		video_muted: booleanish.catch(false),

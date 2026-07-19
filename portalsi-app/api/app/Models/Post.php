@@ -77,5 +77,39 @@ public function bookmarkedByUsers()
                 ->withTimestamps();
 }
 
+    // Semua kolaborator (pending + accepted).
+    public function collaborators()
+    {
+        return $this->belongsToMany(User::class, 'post_collaborators', 'post_id', 'user_id')
+            ->withPivot('status', 'responded_at')
+            ->withTimestamps();
+    }
 
+    // Hanya co-author yang sudah menerima undangan.
+    public function acceptedCollaborators()
+    {
+        return $this->collaborators()->wherePivot('status', 'accepted');
+    }
+
+    protected $appends = ['co_authors'];
+
+    /**
+     * Daftar co-author (accepted) untuk response — hanya bila relasi sudah di-eager-load,
+     * agar tidak memicu N+1. Endpoint yang butuh cukup ->with('acceptedCollaborators').
+     */
+    public function getCoAuthorsAttribute()
+    {
+        if (! $this->relationLoaded('acceptedCollaborators')) {
+            return [];
+        }
+
+        return $this->acceptedCollaborators->map(fn ($u) => [
+            'user_id' => $u->user_id,
+            'username' => $u->username,
+            'full_name' => $u->full_name,
+            'profile_picture_url' => $u->profile_picture_url,
+            'is_verified' => (bool) $u->is_verified,
+            'role' => $u->role,
+        ])->values();
+    }
 }

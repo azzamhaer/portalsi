@@ -442,7 +442,7 @@ class PostController extends Controller
     {
         $authUser = Auth::user();
 
-        $post = Post::with(['user', 'tags', 'mentions'])
+        $post = Post::with(['user', 'tags', 'mentions', 'acceptedCollaborators'])
             ->withCount(['likes', 'comments'])
             ->findOrFail($id);
 
@@ -516,6 +516,8 @@ class PostController extends Controller
             'is_archived' => 'nullable|boolean',
             'is_video' => 'nullable|boolean',
             'video_muted' => 'nullable|boolean',
+            'collaborators' => 'nullable|array|max:5',
+            'collaborators.*' => 'integer',
             // musik fields
             'music_track_name' => 'nullable|string|max:255',
             'music_artist_name' => 'nullable|string|max:255',
@@ -677,6 +679,32 @@ class PostController extends Controller
         // (afterResponse) supaya thumbnail siap secepatnya. Cron media:process-pending jadi
         // jaring pengaman untuk yang gagal/terlewat. Tidak memblokir request user.
         \App\Jobs\ProcessPostMedia::dispatch($post->post_id)->afterResponse();
+
+        // Undang co-author (status pending → menunggu persetujuan mereka).
+        $collabIds = collect($request->input('collaborators', []))
+            ->map(fn ($v) => (int) $v)
+            ->filter(fn ($id) => $id > 0 && $id !== (int) Auth::id())
+            ->unique()
+            ->take(5);
+        if ($collabIds->isNotEmpty()) {
+            $validIds = User::whereIn('user_id', $collabIds)->pluck('user_id');
+            foreach ($validIds as $uid) {
+                $post->collaborators()->syncWithoutDetaching([
+                    $uid => ['status' => 'pending'],
+                ]);
+                $notif = Notification::create([
+                    'recipient_id' => $uid,
+                    'type' => 'collab_invite',
+                    'related_user_id' => Auth::id(),
+                    'related_post_id' => $post->post_id,
+                    'is_read' => false,
+                    'created_at' => now(),
+                ]);
+                if ($notif) {
+                    broadcast(new NotificationCreated($notif));
+                }
+            }
+        }
 
         // Tangani hashtag
         if ($request->filled('caption')) {
@@ -973,7 +1001,7 @@ class PostController extends Controller
             $allowedIds[] = $authUser->user_id;
         }
 
-        $base = Post::with(['user', 'tags'])
+        $base = Post::with(['user', 'tags', 'acceptedCollaborators'])
             ->withCount(['likes', 'comments'])
             ->where('is_video', true)
             ->where('is_archived', false)
