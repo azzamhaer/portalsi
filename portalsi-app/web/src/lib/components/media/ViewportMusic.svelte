@@ -12,13 +12,15 @@
 		title,
 		artist,
 		start = 0,
-		clipDuration = 15
+		clipDuration = 15,
+		autoStart = false
 	}: {
 		src?: string;
 		title: string;
 		artist: string;
 		start?: number;
 		clipDuration?: number;
+		autoStart?: boolean;
 	} = $props();
 	let root: HTMLDivElement;
 	let audio = $state<HTMLAudioElement>();
@@ -51,6 +53,11 @@
 
 	onMount(() => {
 		if (!src) return;
+		// Mode detail/modal: langsung putar saat dibuka (bukan menunggu hover/viewport).
+		if (autoStart) {
+			void play();
+			return () => pause();
+		}
 		// Ikat pemutaran ke visibilitas POSTINGAN (kartu), bukan baris detail musik ini.
 		// Aktif saat kartu melintasi pita tengah layar (bekerja untuk kartu tinggi maupun pendek).
 		const target = root.closest('.post-card') ?? root.closest('.media') ?? root;

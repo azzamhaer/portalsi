@@ -446,24 +446,10 @@
 							<strong>Kelola postingan</strong>
 							<button onclick={() => (ownerMenuOpen = false)} aria-label="Tutup"><X size={20} /></button>
 						</header>
-						<form method="POST" action="?/update">
+						<div class="emc-body">
+						<form id="editPostForm" method="POST" action="?/update">
 						<label>Caption <textarea name="caption" rows="4">{data.post.caption}</textarea></label>
 						<label>Lokasi <input name="location" value={data.post.location ?? ''} maxlength="120" placeholder="Tambahkan lokasi" /></label>
-						<div>
-							<button type="submit">Simpan</button><button
-								class="delete"
-								type="submit"
-								formaction="?/delete"
-								onclick={(event) =>
-									confirmButtonAction(event, {
-										title: 'Hapus postingan?',
-										description:
-											'Foto/video, komentar, interaksi, DAN salinan di profil kolaborator akan dihapus permanen.',
-										confirmLabel: 'Hapus postingan',
-										tone: 'danger'
-									})}><Trash2 size={14} /> Hapus</button
-							>
-						</div>
 					</form>
 
 					<div class="collab-manage">
@@ -503,6 +489,24 @@
 								{/if}
 							</div>
 						{/if}
+						</div>
+						</div>
+						<div class="emc-actions">
+							<button type="submit" form="editPostForm">Simpan</button>
+							<button
+								class="delete"
+								type="submit"
+								form="editPostForm"
+								formaction="?/delete"
+								onclick={(event) =>
+									confirmButtonAction(event, {
+										title: 'Hapus postingan?',
+										description:
+											'Foto/video, komentar, interaksi, DAN salinan di profil kolaborator akan dihapus permanen.',
+										confirmLabel: 'Hapus postingan',
+										tone: 'danger'
+									})}><Trash2 size={14} /> Hapus</button
+							>
 						</div>
 					</div>
 				</div>
@@ -588,7 +592,6 @@
 								>dan {data.post.coAuthors.length} lainnya</button
 							>{/if}
 					</strong>
-					{#if data.post.location}<small><MapPin size={12} /> {data.post.location}</small>{/if}
 				</div>
 				{#if isPostOwner}<button
 						class="ds-more"
@@ -611,7 +614,13 @@
 							artist={data.post.music.artist}
 							start={data.post.music.startSeconds}
 							clipDuration={data.post.music.durationSeconds}
+							autoStart
 						/>
+					</div>
+				{/if}
+				{#if data.post.location}
+					<div class="pinned-location">
+						<MapPin size={14} /><span>{data.post.location}</span>
 					</div>
 				{/if}
 				{#each comments as comment (comment.id)}
@@ -1376,7 +1385,24 @@
 		word-break: break-word;
 	}
 	.pinned-music {
-		padding: 0 16px 12px;
+		padding: 2px 16px 12px;
+	}
+	.pinned-music :global(.viewport-music) {
+		font-size: 0.78rem;
+	}
+	.pinned-music :global(.viewport-music strong) {
+		font-weight: 600;
+	}
+	.pinned-location {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		padding: 0 16px 14px;
+		color: var(--color-muted);
+		font-size: 0.78rem;
+	}
+	.pinned-location :global(svg) {
+		flex: none;
 	}
 	.pinned-caption a {
 		color: inherit;
@@ -1480,6 +1506,17 @@
 		box-shadow: 0 24px 60px rgb(0 0 0 / 30%);
 		animation: cm-pop 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
 	}
+	.emc-actions {
+		display: flex;
+		gap: 8px;
+		flex: none;
+		padding: 14px 18px calc(14px + env(safe-area-inset-bottom, 0px));
+		border-top: 1px solid var(--color-border);
+	}
+	.emc-actions button {
+		flex: 1;
+		justify-content: center;
+	}
 	.emc-head {
 		display: flex;
 		align-items: center;
@@ -1496,10 +1533,14 @@
 		color: var(--color-muted);
 		cursor: pointer;
 	}
+	.emc-body {
+		flex: 1;
+		min-height: 0;
+		overflow-y: auto;
+	}
 	.edit-modal-card form,
 	.edit-modal-card .collab-manage {
 		padding: 16px 18px;
-		overflow-y: auto;
 	}
 	.edit-modal-card .collab-manage {
 		border-top: 1px solid var(--color-border);
