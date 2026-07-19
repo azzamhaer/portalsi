@@ -125,8 +125,10 @@ export const actions: Actions = {
 			return fail(400, { message: 'Postingan tidak valid.' });
 		const source = await request.formData();
 		const caption = String(source.get('caption') ?? '').trim();
+		const location = String(source.get('location') ?? '').trim();
 		const body = new FormData();
 		body.set('caption', caption);
+		body.set('location', location);
 		try {
 			await backendRequest(`posts/${postId}/update`, {
 				method: 'POST',

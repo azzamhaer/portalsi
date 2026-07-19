@@ -40,6 +40,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			time: relativeTimeId(item.created_at),
 			postId: item.related_post_id,
 			storyId: item.related_story_id,
+			postThumbnail: normalizeMediaUrl(item.post_thumbnail, mediaBaseUrl) ?? undefined,
 			user: item.sender
 				? {
 						id: item.sender.user_id,

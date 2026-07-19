@@ -68,6 +68,7 @@ class NotificationController extends Controller
                 ] : null,
                 'related_post_id' => $notif->related_post_id,
                 'related_story_id' => $notif->related_story_id,
+                'post_thumbnail' => $this->notifPostThumbnail($notif->post),
                 'is_read' => $notif->is_read,
                 'created_at' => $notif->created_at,
             ];
@@ -125,6 +126,23 @@ class NotificationController extends Controller
         ]);
     }
 
+    // Thumbnail kecil post terkait (untuk notifikasi kolaborasi, dsb).
+    private function notifPostThumbnail($post)
+    {
+        if (! $post) {
+            return null;
+        }
+        $variants = is_array($post->media_variants) ? $post->media_variants : [];
+        if (! empty($variants['thumbnail']['url'])) {
+            return $variants['thumbnail']['url'];
+        }
+        if (! empty($post->thumbnail_url) && ! preg_match('#placeholder|/img/#i', (string) $post->thumbnail_url)) {
+            return $post->thumbnail_url;
+        }
+
+        return $post->is_video ? null : $post->media_url;
+    }
+
     // 🔧 Pesan notifikasi dinamis
     private function generateMessage($notif)
     {
@@ -166,6 +184,8 @@ class NotificationController extends Controller
             'story_mention' => "$username menyebut kamu di cerita",
             'bio_mention' => "$username menyebut kamu di bio profil",
             'new_post' => "$username membagikan postingan baru",
+            'collab_invite' => "$username mengajak kamu berkolaborasi di sebuah postingan",
+            'collab_accepted' => "$username menerima ajakan kolaborasimu",
             default => "$username melakukan aksi tidak dikenal"
         };
     }

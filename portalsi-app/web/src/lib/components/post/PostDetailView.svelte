@@ -12,6 +12,10 @@
 	import MentionTextarea from '$lib/components/ui/MentionTextarea.svelte';
 	import GifPicker from '$lib/components/comment/GifPicker.svelte';
 	import { portal } from '$lib/actions/portal';
+	import { env } from '$env/dynamic/public';
+	import { normalizeMediaUrl } from '$lib/utils/media';
+	import { postCollaboratorsSchema } from '$lib/schemas/collab';
+	import { searchResponseSchema } from '$lib/schemas/search';
 
 	type PrivatePostData = Extract<PageData, { isPublic: false }>;
 	let {
@@ -35,6 +39,98 @@
 	let gifOpen = $state(false);
 	let editing = $state<{ id: number; reply: boolean; text: string } | null>(null);
 	let savingEdit = $state(false);
+
+	// ---- Kelola kolaborator (owner) ----
+	const detailMediaBase = env.PUBLIC_MEDIA_BASE_URL?.trim() || 'https://api.portalsi.com/storage';
+	const isPostOwner = data.post.user.id === data.currentUser.id;
+	type CollabRow = { userId: number; username: string; avatarUrl?: string; status: string };
+	let collabList = $state<CollabRow[]>([]);
+	let collabLoaded = $state(false);
+	let collabQuery = $state('');
+	let collabResults = $state<{ id: number; username: string; avatarUrl?: string }[]>([]);
+	let collabActionBusy = $state(false);
+
+	async function loadCollaborators() {
+		try {
+			const res = await clientRequest(`posts/${data.post.id}/collaborators`, {
+				schema: postCollaboratorsSchema
+			});
+			collabList = res.collaborators.map((c) => ({
+				userId: c.user_id,
+				username: c.username,
+				avatarUrl: normalizeMediaUrl(c.profile_picture_url, detailMediaBase) ?? undefined,
+				status: c.status
+			}));
+		} catch {
+			collabList = [];
+		} finally {
+			collabLoaded = true;
+		}
+	}
+
+	$effect(() => {
+		const q = collabQuery.trim();
+		if (!isPostOwner || q.length < 2) {
+			collabResults = [];
+			return;
+		}
+		const controller = new AbortController();
+		const timer = setTimeout(async () => {
+			try {
+				const res = await clientRequest(`search?q=${encodeURIComponent(q)}&type=users`, {
+					schema: searchResponseSchema,
+					signal: controller.signal
+				});
+				const taken = new Set([data.post.user.id, ...collabList.map((c) => c.userId)]);
+				collabResults = res.users
+					.filter((u) => !taken.has(u.user_id))
+					.slice(0, 5)
+					.map((u) => ({
+						id: u.user_id,
+						username: u.username,
+						avatarUrl: normalizeMediaUrl(u.profile_picture_url, detailMediaBase) ?? undefined
+					}));
+			} catch {
+				/* abaikan */
+			}
+		}, 260);
+		return () => {
+			clearTimeout(timer);
+			controller.abort();
+		};
+	});
+
+	async function addCollaborator(u: { id: number; username: string; avatarUrl?: string }) {
+		if (collabActionBusy) return;
+		collabActionBusy = true;
+		try {
+			await clientRequest(`posts/${data.post.id}/collaborators`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ collaborators: [u.id] })
+			});
+			collabList = [...collabList, { userId: u.id, username: u.username, avatarUrl: u.avatarUrl, status: 'pending' }];
+			collabQuery = '';
+			collabResults = [];
+		} catch {
+			/* abaikan */
+		} finally {
+			collabActionBusy = false;
+		}
+	}
+
+	async function removeCollaborator(userId: number) {
+		if (collabActionBusy) return;
+		collabActionBusy = true;
+		try {
+			await clientRequest(`posts/${data.post.id}/collaborators/${userId}`, { method: 'DELETE' });
+			collabList = collabList.filter((c) => c.userId !== userId);
+		} catch {
+			/* abaikan */
+		} finally {
+			collabActionBusy = false;
+		}
+	}
 
 	// Mulai membalas. Balasan selalu menempel ke komentar INDUK (topCommentId) agar
 	// kedalaman maksimal 2 level. Untuk balas-ke-balasan, prefill "@username " sehingga
@@ -187,13 +283,16 @@
 
 <div class="post-detail-layout">
 		<div class="post-column">
-			{#if data.post.user.id === data.currentUser.id}<details class="owner-tools surface">
+			{#if isPostOwner}<details
+					class="owner-tools surface"
+					ontoggle={(e) => {
+						if ((e.currentTarget as HTMLDetailsElement).open && !collabLoaded) void loadCollaborators();
+					}}
+				>
 					<summary><Pencil size={15} /> Kelola postingan</summary>
 					<form method="POST" action="?/update">
-						<label>Caption <textarea name="caption" rows="4">{data.post.caption}</textarea></label
-						><small
-							>Media, musik, dan lokasi tidak dapat diganti setelah postingan diterbitkan.</small
-						>
+						<label>Caption <textarea name="caption" rows="4">{data.post.caption}</textarea></label>
+						<label>Lokasi <input name="location" value={data.post.location ?? ''} maxlength="120" placeholder="Tambahkan lokasi" /></label>
 						<div>
 							<button type="submit">Simpan</button><button
 								class="delete"
@@ -203,13 +302,52 @@
 									confirmButtonAction(event, {
 										title: 'Hapus postingan?',
 										description:
-											'Foto atau video, komentar, dan interaksi pada postingan ini akan dihapus permanen.',
+											'Foto/video, komentar, interaksi, DAN salinan di profil kolaborator akan dihapus permanen.',
 										confirmLabel: 'Hapus postingan',
 										tone: 'danger'
 									})}><Trash2 size={14} /> Hapus</button
 							>
 						</div>
 					</form>
+
+					<div class="collab-manage">
+						<strong><Users size={15} /> Kolaborator</strong>
+						{#if collabList.length > 0}
+							<ul>
+								{#each collabList as c (c.userId)}
+									<li>
+										<Avatar name={c.username} src={c.avatarUrl} size="sm" />
+										<a href={`/u/${c.username}`}>@{c.username}</a>
+										<span class="c-status" class:pending={c.status === 'pending'}
+											>{c.status === 'accepted' ? 'Diterima' : 'Menunggu'}</span
+										>
+										<button
+											class="c-remove"
+											disabled={collabActionBusy}
+											onclick={() => removeCollaborator(c.userId)}
+											aria-label={`Hapus ${c.username}`}><X size={14} /></button
+										>
+									</li>
+								{/each}
+							</ul>
+						{:else if collabLoaded}
+							<p class="c-empty">Belum ada kolaborator.</p>
+						{/if}
+						{#if collabList.length < 5}
+							<div class="collab-add">
+								<input bind:value={collabQuery} maxlength="40" placeholder="Tambah kolaborator (cari username)" />
+								{#if collabResults.length}
+									<div class="collab-add-results">
+										{#each collabResults as u (u.id)}
+											<button type="button" onclick={() => addCollaborator(u)}>
+												<Avatar name={u.username} src={u.avatarUrl} size="sm" /> @{u.username}
+											</button>
+										{/each}
+									</div>
+								{/if}
+							</div>
+						{/if}
+					</div>
 				</details>{/if}
 			{#if form?.message}<p class:success={form.success} class="notice" role="status">
 					{form.message}
@@ -528,6 +666,101 @@
 	}
 	.owner-tools button.delete {
 		background: var(--color-danger);
+	}
+	.owner-tools input {
+		width: 100%;
+		min-height: 38px;
+		padding: 0 10px;
+		background: var(--color-canvas);
+		border: 1px solid var(--color-border);
+		border-radius: 9px;
+		outline: 0;
+		font-size: 0.82rem;
+	}
+	.collab-manage {
+		margin-top: 14px;
+		padding-top: 12px;
+		border-top: 1px solid var(--color-border);
+		display: grid;
+		gap: 9px;
+	}
+	.collab-manage > strong {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		font-size: 0.8rem;
+	}
+	.collab-manage ul {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: grid;
+		gap: 4px;
+	}
+	.collab-manage li {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+	.collab-manage li a {
+		font-size: 0.82rem;
+		font-weight: 700;
+		color: var(--color-text);
+	}
+	.c-status {
+		margin-left: auto;
+		padding: 2px 8px;
+		border-radius: 999px;
+		background: var(--color-secondary-soft, #e7f6ee);
+		color: var(--color-secondary, #1a9d5a);
+		font-size: 0.64rem;
+		font-weight: 800;
+	}
+	.c-status.pending {
+		background: var(--color-warning-soft, #fdf0dc);
+		color: var(--color-warning-strong, #b7791f);
+	}
+	.owner-tools .c-remove {
+		display: grid;
+		place-items: center;
+		width: 28px;
+		min-height: 28px;
+		padding: 0;
+		background: var(--color-danger-soft);
+		color: var(--color-danger);
+		border-radius: 8px;
+	}
+	.c-empty {
+		margin: 0;
+		color: var(--color-muted);
+		font-size: 0.74rem;
+	}
+	.collab-add {
+		position: relative;
+		display: grid;
+		gap: 5px;
+	}
+	.collab-add-results {
+		display: grid;
+		gap: 2px;
+		padding: 4px;
+		background: var(--color-canvas);
+		border: 1px solid var(--color-border);
+		border-radius: 10px;
+	}
+	.owner-tools .collab-add-results button {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		min-height: 40px;
+		padding: 0 9px;
+		background: transparent;
+		border-radius: 8px;
+		color: var(--color-text);
+		font-weight: 700;
+	}
+	.owner-tools .collab-add-results button:hover {
+		background: var(--color-surface-soft, #f4f5f7);
 	}
 	.notice {
 		margin: 0;

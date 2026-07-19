@@ -2,6 +2,20 @@ import { z } from 'zod';
 
 const booleanish = z.union([z.boolean(), z.literal(0), z.literal(1)]).transform(Boolean);
 
+export const postCollaboratorsSchema = z.object({
+	owner_id: z.coerce.number().int().positive(),
+	is_owner: booleanish.catch(false),
+	collaborators: z.array(
+		z.object({
+			user_id: z.coerce.number().int().positive(),
+			username: z.string().min(1),
+			full_name: z.string().nullish(),
+			profile_picture_url: z.string().nullish(),
+			status: z.enum(['pending', 'accepted']).catch('pending')
+		})
+	)
+});
+
 export const collabPendingSchema = z.object({
 	data: z.array(
 		z.object({

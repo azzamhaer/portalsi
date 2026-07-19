@@ -26,6 +26,12 @@
 	import { confirmAction } from '$lib/ui/confirm';
 	import { finishProgress, startProgress } from '$lib/ui/progress';
 	import MentionTextarea from '$lib/components/ui/MentionTextarea.svelte';
+	import Avatar from '$lib/components/ui/Avatar.svelte';
+	import { env } from '$env/dynamic/public';
+	import { normalizeMediaUrl } from '$lib/utils/media';
+
+	const composerMediaBase =
+		env.PUBLIC_MEDIA_BASE_URL?.trim() || 'https://api.portalsi.com/storage';
 
 	type Kind = 'post' | 'story' | 'clips';
 	let { kind }: { kind: Kind } = $props();
@@ -126,9 +132,10 @@
 	let musicRecommended = $state<typeof musicResults>([]);
 	let musicRecoLoading = $state(false);
 	// Kolaborator (co-author) — hanya untuk post.
-	let collaborators = $state<{ id: number; username: string; fullName: string }[]>([]);
+	type CollabUser = { id: number; username: string; fullName: string; avatarUrl?: string };
+	let collaborators = $state<CollabUser[]>([]);
 	let collabQuery = $state('');
-	let collabResults = $state<{ id: number; username: string; fullName: string }[]>([]);
+	let collabResults = $state<CollabUser[]>([]);
 	let collabSearching = $state(false);
 	let musicStartSeconds = $state(0);
 	let musicEndSeconds = $state(15);
@@ -385,7 +392,12 @@
 					signal: controller.signal
 				});
 				const payload = (await res.json()) as {
-					users?: { user_id: number; username: string; full_name?: string | null }[];
+					users?: {
+						user_id: number;
+						username: string;
+						full_name?: string | null;
+						profile_picture_url?: string | null;
+					}[];
 				};
 				const chosen = new Set(collaborators.map((c) => c.id));
 				collabResults = (payload.users ?? [])
@@ -394,7 +406,8 @@
 					.map((u) => ({
 						id: u.user_id,
 						username: u.username,
-						fullName: u.full_name?.trim() || u.username
+						fullName: u.full_name?.trim() || u.username,
+						avatarUrl: normalizeMediaUrl(u.profile_picture_url, composerMediaBase) ?? undefined
 					}));
 			} catch {
 				if (!controller.signal.aborted) collabResults = [];
@@ -408,7 +421,7 @@
 		};
 	});
 
-	function addCollaborator(c: { id: number; username: string; fullName: string }) {
+	function addCollaborator(c: CollabUser) {
 		if (collaborators.length >= 5 || collaborators.some((x) => x.id === c.id)) return;
 		collaborators = [...collaborators, c];
 		collabQuery = '';
@@ -1453,8 +1466,8 @@
 					{#if collaborators.length > 0}
 						<div class="collab-chips">
 							{#each collaborators as c (c.id)}
-								<span class="collab-chip"
-									>@{c.username}<button
+								<span class="collab-chip">
+									<Avatar name={c.username} src={c.avatarUrl} size="sm" />@{c.username}<button
 										type="button"
 										onclick={() => removeCollaborator(c.id)}
 										aria-label={`Hapus ${c.username}`}><X size={12} /></button
@@ -1476,11 +1489,12 @@
 						</div>
 					{/if}
 					{#if collabResults.length}
-						<div class="suggestions" aria-label="Hasil kolaborator">
+						<div class="suggestions collab-suggestions" aria-label="Hasil kolaborator">
 							{#each collabResults as u (u.id)}
-								<button type="button" onclick={() => addCollaborator(u)}
-									><strong>@{u.username}</strong> <small>{u.fullName}</small></button
-								>
+								<button type="button" onclick={() => addCollaborator(u)}>
+									<Avatar name={u.username} src={u.avatarUrl} size="sm" />
+									<strong>@{u.username}</strong>
+								</button>
 							{/each}
 						</div>
 					{/if}
@@ -2311,13 +2325,26 @@
 	.collab-chip {
 		display: inline-flex;
 		align-items: center;
-		gap: 5px;
-		padding: 4px 6px 4px 11px;
+		gap: 6px;
+		padding: 3px 6px 3px 4px;
 		background: var(--color-primary-soft, #fdece0);
 		border-radius: 999px;
 		font-size: 0.78rem;
 		font-weight: 700;
 		color: var(--color-primary-strong, #c96a10);
+	}
+	.collab-chip :global(.avatar-wrap.sm) {
+		width: 22px;
+		height: 22px;
+	}
+	.collab-suggestions button {
+		display: flex;
+		align-items: center;
+		gap: 9px;
+	}
+	.collab-suggestions strong {
+		font-size: 0.84rem;
+		color: var(--color-text);
 	}
 	.collab-chip button {
 		display: grid;

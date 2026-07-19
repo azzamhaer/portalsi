@@ -601,6 +601,9 @@ Route::middleware(['auth:sanctum', 'notBanned'])->group(function () {
     Route::get('/explore', [PostController::class, 'explore']);
     Route::get('/search', [SearchController::class, 'index']);
     Route::get('/collaborations/pending', [CollaboratorController::class, 'pending']);
+    Route::get('/posts/{postId}/collaborators', [CollaboratorController::class, 'list'])->whereNumber('postId');
+    Route::post('/posts/{postId}/collaborators', [CollaboratorController::class, 'add'])->whereNumber('postId');
+    Route::delete('/posts/{postId}/collaborators/{userId}', [CollaboratorController::class, 'removeByOwner'])->whereNumber('postId')->whereNumber('userId');
     Route::post('/posts/{postId}/collaborators/accept', [CollaboratorController::class, 'accept'])->whereNumber('postId');
     Route::post('/posts/{postId}/collaborators/reject', [CollaboratorController::class, 'reject'])->whereNumber('postId');
     Route::get('/circle-avatar/{id}', [PostController::class, 'circleAvatar']);

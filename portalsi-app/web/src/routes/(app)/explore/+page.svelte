@@ -23,6 +23,7 @@
 		userSearchResponseSchema,
 		type SearchHistoryItem
 	} from '$lib/schemas/post';
+	import { searchResponseSchema } from '$lib/schemas/search';
 	import type { PageProps } from './$types';
 	import type { PortalUser } from '$lib/types/domain';
 
@@ -132,16 +133,17 @@
 		const timer = window.setTimeout(async () => {
 			try {
 				const encoded = encodeURIComponent(query);
-				const response = await clientRequest(
-					`users/search?username=${encoded}&full_name=${encoded}&per_page=12`,
-					{ schema: userSearchResponseSchema, signal: controller.signal }
-				);
-				livePeople = response.data.map((user) => mapCompactUser(user, mediaBaseUrl));
-				if (!livePeople.length) searchMessage = 'Tidak ada pengguna yang cocok.';
+				// Algoritma pencarian akun yang di-enhance (prefix diprioritaskan).
+				const response = await clientRequest(`search?q=${encoded}&type=users`, {
+					schema: searchResponseSchema,
+					signal: controller.signal
+				});
+				livePeople = response.users.map((user) => mapCompactUser(user, mediaBaseUrl));
+				searchMessage = livePeople.length ? '' : 'Tidak ada akun yang cocok.';
 			} catch (error) {
 				if (!(error instanceof DOMException && error.name === 'AbortError')) {
 					livePeople = [];
-					searchMessage = 'Tidak ada pengguna yang cocok.';
+					searchMessage = 'Tidak ada akun yang cocok.';
 				}
 			} finally {
 				if (!controller.signal.aborted) searching = false;
@@ -255,7 +257,7 @@
 			{/each}
 		</section>{/if}
 	{#if searchQuery.trim().length >= 2}<section class="live-results surface" aria-live="polite">
-			<h2>Hasil cepat</h2>
+			<h2>Akun</h2>
 			{#each visiblePeople as user (user.id)}<div>
 					<StoryAvatarLink
 						userId={user.id}
@@ -270,7 +272,15 @@
 							>{user.fullName}<UserBadges verified={user.badgeVerified} role={user.role} /></strong
 						><small>@{user.username}</small></a
 					>
-				</div>{/each}{#if searchMessage}<p>{searchMessage}</p>{/if}
+				</div>{/each}{#if searchMessage}<p class="live-empty">{searchMessage}</p>{/if}
+			<a
+				class="search-more"
+				href={`/search?q=${encodeURIComponent(searchQuery.trim())}`}
+				onclick={() => void rememberSearch(searchQuery)}
+			>
+				<Search size={16} /> Cari “{searchQuery.trim()}” lebih lanjut
+				<span>akun · caption · hashtag</span>
+			</a>
 		</section>{/if}
 	{#if showFilters}<nav class="filters surface" id="filters" aria-label="Filter jelajah">
 			<span class="filters-label"><SlidersHorizontal size={14} /> Urutkan</span>
@@ -527,6 +537,26 @@
 		margin: 0;
 		padding: 12px;
 		text-align: center;
+	}
+	.search-more {
+		display: flex;
+		align-items: center;
+		gap: 9px;
+		margin-top: 4px;
+		padding: 12px 14px;
+		border-top: 1px solid var(--color-border);
+		color: var(--color-primary-strong, #c96a10);
+		font-size: 0.86rem;
+		font-weight: 700;
+	}
+	.search-more span {
+		margin-left: auto;
+		color: var(--color-muted);
+		font-size: 0.68rem;
+		font-weight: 500;
+	}
+	.search-more:hover {
+		background: var(--color-surface-soft, #f4f5f7);
 	}
 	.filters {
 		display: flex;

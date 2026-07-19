@@ -9,6 +9,7 @@
 		Heart,
 		MessageCircle,
 		UserPlus,
+		Users,
 		X
 	} from '@lucide/svelte';
 	import { onMount, untrack } from 'svelte';
@@ -41,8 +42,28 @@
 		follow: UserPlus,
 		follow_accepted: UserPlus,
 		mention: AtSign,
-		story_mention: AtSign
+		story_mention: AtSign,
+		collab_invite: Users,
+		collab_accepted: Users
 	};
+
+	// Terima/tolak undangan kolaborasi langsung dari notifikasi.
+	let collabBusy = $state<number | null>(null);
+	async function decideCollab(item: (typeof items)[number], accept: boolean) {
+		if (!item.postId || collabBusy !== null) return;
+		collabBusy = item.postId;
+		try {
+			await clientRequest(`posts/${item.postId}/collaborators/${accept ? 'accept' : 'reject'}`, {
+				method: 'POST'
+			});
+			items = items.filter((n) => n.id !== item.id);
+			statusMessage = accept ? 'Kolaborasi diterima.' : 'Undangan ditolak.';
+		} catch {
+			statusMessage = 'Gagal memproses undangan.';
+		} finally {
+			collabBusy = null;
+		}
+	}
 
 	onMount(() => {
 		if (!data.user) return;
@@ -208,7 +229,25 @@
 								/>{/if}<small>{item.time}</small>
 						</p></a
 					>
-					{#if !item.read}<span class="dot" aria-label="Belum dibaca"></span>{/if}
+					{#if item.type === 'collab_invite'}
+						<div class="collab-actions">
+							<button
+								class="c-accept"
+								disabled={collabBusy === item.postId}
+								onclick={() => decideCollab(item, true)}
+								aria-label="Terima kolaborasi"><Check size={16} /></button
+							>
+							<button
+								class="c-reject"
+								disabled={collabBusy === item.postId}
+								onclick={() => decideCollab(item, false)}
+								aria-label="Tolak kolaborasi"><X size={16} /></button
+							>
+						</div>
+					{/if}
+					{#if item.postThumbnail}<a class="notif-thumb" href={destination(item)}
+							><img src={item.postThumbnail} alt="" /></a
+						>{:else if !item.read}<span class="dot" aria-label="Belum dibaca"></span>{/if}
 				</article>
 			{/each}
 			{#if items.length === 0}<p class="empty">Belum ada notifikasi.</p>{/if}
@@ -331,12 +370,49 @@
 	}
 	.notification-list > article {
 		display: grid;
-		grid-template-columns: auto 1fr auto;
+		grid-template-columns: auto 1fr auto auto;
 		align-items: center;
 		gap: 12px;
 		min-height: 80px;
 		padding: 13px 16px;
 		border-bottom: 1px solid var(--color-border);
+	}
+	.collab-actions {
+		display: flex;
+		gap: 6px;
+	}
+	.collab-actions button {
+		display: grid;
+		width: 34px;
+		height: 34px;
+		place-items: center;
+		border: 0;
+		border-radius: 9px;
+		cursor: pointer;
+	}
+	.collab-actions button:disabled {
+		opacity: 0.5;
+	}
+	.c-accept {
+		background: var(--color-secondary);
+		color: #fff;
+	}
+	.c-reject {
+		background: var(--color-danger-soft);
+		color: var(--color-danger);
+	}
+	.notif-thumb {
+		display: block;
+		width: 46px;
+		height: 46px;
+		border-radius: 8px;
+		overflow: hidden;
+		background: var(--color-surface-soft);
+	}
+	.notif-thumb img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
 	}
 	.notification-list > article:hover {
 		background: var(--color-surface-soft);

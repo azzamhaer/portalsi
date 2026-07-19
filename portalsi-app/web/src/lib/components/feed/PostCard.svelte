@@ -12,7 +12,9 @@
 	} from '@lucide/svelte';
 	import { onMount } from 'svelte';
 	import StoryAvatarLink from '$lib/components/story/StoryAvatarLink.svelte';
+	import Avatar from '$lib/components/ui/Avatar.svelte';
 	import UserBadges from '$lib/components/ui/UserBadges.svelte';
+	import { X } from '@lucide/svelte';
 	import SmartVideo from '$lib/components/media/SmartVideo.svelte';
 	import ViewportMusic from '$lib/components/media/ViewportMusic.svelte';
 	import MediaLightbox from '$lib/components/media/MediaLightbox.svelte';
@@ -28,6 +30,7 @@
 		preferSound = false
 	}: { post: PostPreview; zoomable?: boolean; autoplay?: boolean; preferSound?: boolean } = $props();
 	let lightboxOpen = $state(false);
+	let collabPopupOpen = $state(false);
 	let lightboxIndex = $state(0);
 	let shareOpen = $state(false);
 	let openingPost = $state(false);
@@ -156,23 +159,39 @@
 <article class="post-card" aria-labelledby={`post-${post.id}-author`}>
 	<header>
 		<div class="author">
-			<StoryAvatarLink
-				userId={post.user.id}
-				username={post.user.username}
-				name={post.user.fullName}
-				avatarUrl={post.user.avatarUrl}
-				size="md"
-				hasStory={post.user.hasStory}
-				seen={post.user.storyViewed}
-			/>
+			<div class="author-avatars">
+				<StoryAvatarLink
+					userId={post.user.id}
+					username={post.user.username}
+					name={post.user.fullName}
+					avatarUrl={post.user.avatarUrl}
+					size="md"
+					hasStory={post.user.hasStory}
+					seen={post.user.storyViewed}
+				/>
+				{#if post.coAuthors && post.coAuthors.length > 0}
+					<button
+						class="coauthor-stack"
+						onclick={() => (collabPopupOpen = true)}
+						aria-label="Lihat kolaborator"
+					>
+						{#each post.coAuthors.slice(0, 2) as ca (ca.id)}
+							<Avatar name={ca.username} src={ca.avatarUrl} size="sm" />
+						{/each}
+						{#if post.coAuthors.length > 2}<span class="more">+{post.coAuthors.length - 2}</span>{/if}
+					</button>
+				{/if}
+			</div>
 			<div class="author-copy">
 				<strong id={`post-${post.id}-author`}>
 					<a href={`/u/${post.user.username}`}>{post.user.username}</a>
 					<UserBadges verified={post.user.badgeVerified} role={post.user.role} />
-					{#if post.coAuthors && post.coAuthors.length > 0}<span class="co-authors"
-							>&amp; <a href={`/u/${post.coAuthors[0].username}`}>{post.coAuthors[0].username}</a
-							>{#if post.coAuthors.length > 1}
-								&amp; {post.coAuthors.length - 1} lainnya{/if}</span
+					{#if post.coAuthors && post.coAuthors.length > 0}<button
+							class="co-authors"
+							onclick={() => (collabPopupOpen = true)}
+							>&amp; {post.coAuthors.length === 1
+								? `@${post.coAuthors[0].username}`
+								: `${post.coAuthors.length} kolaborator`}</button
 						>{/if}
 				</strong>
 				<small>{post.createdLabel}</small>
@@ -321,6 +340,42 @@
 	<SharePostSheet postId={post.id} {shareUrl} onClose={() => (shareOpen = false)} />
 {/if}
 
+{#if collabPopupOpen && post.coAuthors && post.coAuthors.length > 0}
+	<div class="collab-modal-scrim" role="presentation" onclick={() => (collabPopupOpen = false)}>
+		<div
+			class="collab-modal"
+			role="dialog"
+			aria-modal="true"
+			aria-label="Kolaborator"
+			onclick={(e) => e.stopPropagation()}
+		>
+			<header>
+				<strong>Kolaborasi</strong>
+				<button onclick={() => (collabPopupOpen = false)} aria-label="Tutup"><X size={19} /></button>
+			</header>
+			<ul>
+				<li>
+					<a href={`/u/${post.user.username}`}>
+						<Avatar name={post.user.fullName} src={post.user.avatarUrl} size="md" />
+						<span
+							><strong>@{post.user.username}</strong><small>Pembuat</small></span
+						><UserBadges verified={post.user.badgeVerified} role={post.user.role} />
+					</a>
+				</li>
+				{#each post.coAuthors as ca (ca.id)}
+					<li>
+						<a href={`/u/${ca.username}`}>
+							<Avatar name={ca.fullName} src={ca.avatarUrl} size="md" />
+							<span><strong>@{ca.username}</strong><small>Kolaborator</small></span>
+							{#if ca.verified}<UserBadges verified={true} role="other" />{/if}
+						</a>
+					</li>
+				{/each}
+			</ul>
+		</div>
+	</div>
+{/if}
+
 <style>
 	.post-card {
 		overflow: hidden;
@@ -363,8 +418,122 @@
 	.author-copy a {
 		color: inherit;
 	}
+	.author-avatars {
+		display: flex;
+		align-items: center;
+	}
+	.coauthor-stack {
+		display: inline-flex;
+		align-items: center;
+		margin-left: -10px;
+		padding: 0;
+		background: none;
+		border: 0;
+		cursor: pointer;
+	}
+	.coauthor-stack :global(.avatar-wrap) {
+		margin-left: -8px;
+		box-shadow: 0 0 0 2px var(--color-surface, #fff);
+		border-radius: 50%;
+	}
+	.coauthor-stack .more {
+		display: grid;
+		place-items: center;
+		min-width: 22px;
+		height: 22px;
+		margin-left: -8px;
+		padding: 0 5px;
+		background: var(--color-secondary-soft, #e7ebf2);
+		border-radius: 999px;
+		box-shadow: 0 0 0 2px var(--color-surface, #fff);
+		font-size: 0.62rem;
+		font-weight: 800;
+		color: var(--color-secondary, #4b5563);
+	}
 	.co-authors {
+		background: none;
+		border: 0;
+		padding: 0;
+		color: inherit;
 		font-weight: 700;
+		cursor: pointer;
+	}
+	.co-authors:hover {
+		text-decoration: underline;
+	}
+
+	.collab-modal-scrim {
+		position: fixed;
+		inset: 0;
+		z-index: 80;
+		display: grid;
+		place-items: center;
+		padding: 20px;
+		background: rgb(0 0 0 / 45%);
+		animation: cm-fade 0.15s ease;
+	}
+	.collab-modal {
+		width: min(100%, 380px);
+		max-height: 70vh;
+		overflow: hidden;
+		display: flex;
+		flex-direction: column;
+		background: var(--color-surface, #fff);
+		border-radius: 16px;
+		animation: cm-pop 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+	}
+	.collab-modal header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 14px 16px;
+		border-bottom: 1px solid var(--color-border);
+	}
+	.collab-modal header button {
+		background: none;
+		border: 0;
+		color: var(--color-muted);
+		cursor: pointer;
+	}
+	.collab-modal ul {
+		list-style: none;
+		margin: 0;
+		padding: 6px;
+		overflow-y: auto;
+	}
+	.collab-modal li a {
+		display: flex;
+		align-items: center;
+		gap: 11px;
+		padding: 9px 10px;
+		border-radius: 12px;
+		color: inherit;
+	}
+	.collab-modal li a:hover {
+		background: var(--color-surface-soft, #f4f5f7);
+	}
+	.collab-modal li span {
+		display: grid;
+		flex: 1;
+		min-width: 0;
+	}
+	.collab-modal li strong {
+		font-size: 0.9rem;
+	}
+	.collab-modal li small {
+		color: var(--color-muted);
+		font-size: 0.72rem;
+	}
+	@keyframes cm-fade {
+		from {
+			opacity: 0;
+		}
+	}
+	@keyframes cm-pop {
+		from {
+			opacity: 0;
+			transform: scale(0.94);
+		}
 	}
 
 	.follow-btn {

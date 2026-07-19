@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Events\NotificationCreated;
 use App\Models\Notification;
 use App\Models\Post;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -88,6 +89,95 @@ class CollaboratorController extends Controller
         }
 
         return response()->json(['message' => 'Kolaborasi diterima.']);
+    }
+
+    /** Daftar kolaborator sebuah post (owner melihat status pending; lainnya hanya accepted). */
+    public function list($postId)
+    {
+        $post = Post::find($postId);
+        if (! $post) {
+            return response()->json(['message' => 'Post tidak ditemukan.'], 404);
+        }
+        $isOwner = $post->user_id === Auth::id();
+
+        $rows = DB::table('post_collaborators as pc')
+            ->join('users as u', 'u.user_id', '=', 'pc.user_id')
+            ->where('pc.post_id', $postId)
+            ->when(! $isOwner, fn ($q) => $q->where('pc.status', 'accepted'))
+            ->select('u.user_id', 'u.username', 'u.full_name', 'u.profile_picture_url', 'pc.status')
+            ->get();
+
+        return response()->json([
+            'owner_id' => $post->user_id,
+            'is_owner' => $isOwner,
+            'collaborators' => $rows->map(fn ($r) => [
+                'user_id' => (int) $r->user_id,
+                'username' => $r->username,
+                'full_name' => $r->full_name,
+                'profile_picture_url' => $r->profile_picture_url,
+                'status' => $r->status,
+            ]),
+        ]);
+    }
+
+    /** Owner menambahkan kolaborator baru (undangan pending + notifikasi). */
+    public function add($postId, Request $request)
+    {
+        $post = Post::find($postId);
+        if (! $post) {
+            return response()->json(['message' => 'Post tidak ditemukan.'], 404);
+        }
+        if ($post->user_id !== Auth::id()) {
+            return response()->json(['message' => 'Hanya pembuat post yang dapat menambah kolaborator.'], 403);
+        }
+        $request->validate([
+            'collaborators' => 'required|array|max:5',
+            'collaborators.*' => 'integer',
+        ]);
+
+        $current = DB::table('post_collaborators')->where('post_id', $postId)->count();
+        $ids = collect($request->input('collaborators'))
+            ->map(fn ($v) => (int) $v)
+            ->filter(fn ($id) => $id > 0 && $id !== (int) Auth::id())
+            ->unique()
+            ->take(max(0, 5 - $current));
+
+        $valid = User::whereIn('user_id', $ids)->pluck('user_id');
+        foreach ($valid as $uid) {
+            $post->collaborators()->syncWithoutDetaching([$uid => ['status' => 'pending']]);
+            $notif = Notification::create([
+                'recipient_id' => $uid,
+                'type' => 'collab_invite',
+                'related_user_id' => Auth::id(),
+                'related_post_id' => (int) $postId,
+                'is_read' => false,
+                'created_at' => now(),
+            ]);
+            if ($notif) {
+                broadcast(new NotificationCreated($notif));
+            }
+        }
+
+        return response()->json(['message' => 'Undangan kolaborasi dikirim.']);
+    }
+
+    /** Owner menghapus kolaborator (pending maupun accepted). */
+    public function removeByOwner($postId, $userId)
+    {
+        $post = Post::find($postId);
+        if (! $post) {
+            return response()->json(['message' => 'Post tidak ditemukan.'], 404);
+        }
+        if ($post->user_id !== Auth::id()) {
+            return response()->json(['message' => 'Hanya pembuat post yang dapat menghapus kolaborator.'], 403);
+        }
+        DB::table('post_collaborators')->where('post_id', $postId)->where('user_id', $userId)->delete();
+        Notification::where('recipient_id', $userId)
+            ->where('related_post_id', $postId)
+            ->where('type', 'collab_invite')
+            ->delete();
+
+        return response()->json(['message' => 'Kolaborator dihapus.']);
     }
 
     public function reject($postId)
