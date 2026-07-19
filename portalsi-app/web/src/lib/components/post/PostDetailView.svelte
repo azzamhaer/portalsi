@@ -1159,35 +1159,38 @@
 		position: relative;
 		display: flex;
 		flex-direction: column;
-		align-items: flex-end;
+		align-items: center;
 		justify-content: center;
 		min-width: 0;
-		background: transparent;
+		height: 100%;
+		background: #0a0b0c;
+		border-radius: 16px 0 0 16px;
 		overflow: hidden;
 	}
 	.detail-media {
 		position: relative;
 		display: flex;
 		align-items: center;
-		justify-content: flex-end;
+		justify-content: center;
 		width: 100%;
-		max-height: 84vh;
+		height: 100%;
 	}
 	.detail-media :global(.smart-video) {
 		width: 100%;
+		height: 100%;
 	}
 	.dm-img {
 		display: block;
 		max-width: 100%;
-		max-height: 84vh;
+		max-height: 100%;
 		object-fit: contain;
-		border-radius: 12px;
 		cursor: default;
 	}
-	.dm-gallery,
-	.detail-media :global(.smart-video) {
-		border-radius: 12px;
-		overflow: hidden;
+	.dm-gallery {
+		display: flex;
+		align-items: center;
+		width: 100%;
+		height: 100%;
 	}
 	.dm-gallery {
 		position: relative;
@@ -1196,12 +1199,15 @@
 	}
 	.dm-track {
 		display: flex;
+		width: 100%;
+		height: 100%;
 		transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
 	}
 	.dm-track img {
 		flex: 0 0 100%;
 		width: 100%;
-		max-height: 84vh;
+		height: 100%;
+		max-height: 100%;
 		object-fit: contain;
 	}
 	.dm-nav {
@@ -1759,30 +1765,44 @@
 	@media (max-width: 950px) {
 		.post-detail-layout {
 			grid-template-columns: 1fr;
+			grid-template-rows: auto;
 		}
 		.comments {
 			position: static;
+			background: var(--color-surface);
 		}
+		/* Media: penuh selebar layar, tinggi dibatasi agar info tetap terlihat. */
 		.post-column {
-			border-radius: 0;
+			height: auto;
+			max-height: 56vh;
+			border-radius: 16px 16px 0 0;
 		}
-		.detail-media,
+		.detail-media {
+			height: auto;
+		}
 		.dm-img,
-		.dm-track img {
-			max-height: 70vh;
+		.dm-track img,
+		.detail-media :global(.smart-video) {
+			max-height: 56vh;
 		}
 		.detail-media {
 			justify-content: center;
 		}
-		/* Di mobile biarkan mengalir natural (tanpa scroll internal komentar). */
+		/* Mobile: mengalir natural (tanpa scroll internal komentar). */
 		.comment-list {
 			overflow: visible;
+			flex: initial;
+		}
+		.comments > .ds-head {
+			padding: 12px 14px;
+		}
+		.ds-actions {
+			padding: 10px 14px 4px;
 		}
 	}
 	@media (max-width: 767px) {
-		.edit-modal-card,
-		.comments {
-			border-radius: 0;
+		.edit-modal-card {
+			border-radius: 18px;
 		}
 		.comment-list {
 			padding-inline: 2px;
