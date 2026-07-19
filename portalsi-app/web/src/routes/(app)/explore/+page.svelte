@@ -317,7 +317,16 @@
 						muted
 						playsinline
 						preload="metadata"
-					></video>{:else}<img src={post.thumbnailUrl ?? post.mediaUrl} alt={post.mediaAlt} />{/if}
+					></video>{:else}<img
+						src={post.thumbnailUrl ?? post.mediaUrl}
+						alt={post.mediaAlt}
+						loading="lazy"
+						onerror={(e) => {
+							const img = e.currentTarget as HTMLImageElement;
+							if (!post.isVideo && img.src !== post.mediaUrl) img.src = post.mediaUrl;
+							else if (!img.src.endsWith('/assets/logo.png')) img.src = '/assets/logo.png';
+						}}
+					/>{/if}
 				{#if post.isVideo}<span aria-label="Video"><Play size={16} fill="currentColor" /></span
 					>{:else if post.media && post.media.length > 1}<span aria-label="Beberapa foto"
 						><Copy size={16} /></span

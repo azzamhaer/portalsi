@@ -565,17 +565,28 @@
 		display: block;
 	}
 	.quality-menu button {
+		display: flex !important;
 		width: 100% !important;
 		height: auto !important;
+		align-items: center;
 		justify-content: flex-start;
-		padding: 7px 9px !important;
-		font-size: 0.72rem;
+		padding: 8px 11px !important;
+		background: transparent;
+		border: 0;
 		border-radius: 7px;
+		color: #fff;
+		font-size: 0.74rem;
+		font-weight: 600;
+		text-align: left;
+		cursor: pointer;
+	}
+	.quality-menu button:hover {
+		background: rgb(255 255 255 / 12%);
 	}
 	.quality-menu button.active {
-		background: rgb(242 138 34 / 22%);
-		color: #ffb765;
-		font-weight: 700;
+		background: rgb(242 138 34 / 26%);
+		color: #ffcf9a;
+		font-weight: 800;
 	}
 	@keyframes spin {
 		to {

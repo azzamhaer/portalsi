@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { env } from '$env/dynamic/public';
-	import { untrack } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import {
 		Bookmark,
 		ChevronDown,
@@ -15,26 +15,47 @@
 	import { reelsFeedSchema } from '$lib/schemas/post';
 	import SmartVideo from '$lib/components/media/SmartVideo.svelte';
 	import CommentsSheet from '$lib/components/reels/CommentsSheet.svelte';
+	import SharePostSheet from '$lib/components/feed/SharePostSheet.svelte';
 	import BackButton from '$lib/components/ui/BackButton.svelte';
+	import MentionText from '$lib/components/ui/MentionText.svelte';
 	import Avatar from '$lib/components/ui/Avatar.svelte';
 	import UserBadges from '$lib/components/ui/UserBadges.svelte';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
 	const mediaBaseUrl = env.PUBLIC_MEDIA_BASE_URL?.trim() || 'https://api.portalsi.com/storage';
+	const SEEN_KEY = 'psi_reels_seen';
 
 	let reels = $state([...data.reels]);
-	let page = $state(untrack(() => data.page));
-	let lastPage = $state(untrack(() => data.lastPage));
+	let hasMore = $state(untrack(() => data.hasMore));
 	let loadingMore = $state(false);
 	let activeIndex = $state(0);
 	let commentsFor = $state<number | null>(null);
+	let shareFor = $state<number | null>(null);
 	let burstId = $state<number | null>(null);
+	let expanded = $state(new Set<number>());
 
 	let itemEls: HTMLElement[] = [];
+	const seen = new Set<number>();
+
+	function persistSeen() {
+		try {
+			localStorage.setItem(SEEN_KEY, JSON.stringify(Array.from(seen).slice(-500)));
+		} catch {
+			/* abaikan */
+		}
+	}
+	function markSeen(id: number) {
+		if (seen.has(id)) return;
+		seen.add(id);
+		persistSeen();
+	}
 
 	function nf(n: number) {
 		return n >= 1000 ? `${(n / 1000).toFixed(n >= 10_000 ? 0 : 1)}rb` : String(n);
+	}
+	function isLongCaption(c?: string) {
+		return !!c && (c.length > 90 || c.includes('\n'));
 	}
 
 	async function toggleLike(reel: (typeof reels)[number]) {
@@ -67,32 +88,32 @@
 		}
 	}
 
-	async function share(reel: (typeof reels)[number]) {
-		const url = new URL(`/posts/${reel.id}`, location.origin).toString();
-		try {
-			if (navigator.share) await navigator.share({ url, title: 'Reel Portal SI' });
-			else await navigator.clipboard.writeText(url);
-		} catch {
-			/* dibatalkan */
-		}
-	}
-
 	function scrollToIndex(i: number) {
 		const t = Math.max(0, Math.min(reels.length - 1, i));
 		itemEls[t]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 	}
 
 	async function maybeLoadMore() {
-		if (loadingMore || page >= lastPage) return;
+		if (loadingMore || !hasMore) return;
 		if (activeIndex < reels.length - 2) return;
 		loadingMore = true;
 		try {
-			const res = await clientRequest(`reels?page=${page + 1}`, { schema: reelsFeedSchema });
-			const known = new Set(reels.map((r) => r.id));
-			const mapped = res.data.map((p) => mapPost(p, mediaBaseUrl)).filter((m) => !known.has(m.id));
+			const loadedIds = reels.map((r) => r.id);
+			const exclude = Array.from(new Set([...seen, ...loadedIds])).slice(-300).join(',');
+			const res = await clientRequest(
+				`reels?count=6${exclude ? `&exclude=${encodeURIComponent(exclude)}` : ''}`,
+				{ schema: reelsFeedSchema }
+			);
+			if (res.exhausted) {
+				seen.clear();
+				persistSeen();
+			}
+			const known = new Set(loadedIds);
+			const mapped = res.data
+				.map((p) => mapPost(p, mediaBaseUrl))
+				.filter((m) => !known.has(m.id));
 			reels.push(...mapped);
-			page = res.pagination.current_page;
-			lastPage = res.pagination.last_page;
+			hasMore = res.has_more || mapped.length > 0;
 		} catch {
 			/* diamkan */
 		} finally {
@@ -100,13 +121,13 @@
 		}
 	}
 
-	// Observer untuk melacak reel aktif (autoplay ditangani SmartVideo sendiri).
 	function track(node: HTMLElement, index: number) {
 		itemEls[index] = node;
 		const io = new IntersectionObserver(
 			([entry]) => {
 				if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
 					activeIndex = index;
+					markSeen(reels[index]?.id);
 					void maybeLoadMore();
 				}
 			},
@@ -116,9 +137,17 @@
 		return { destroy: () => io.disconnect() };
 	}
 
-	$effect(() => {
+	onMount(() => {
+		try {
+			const raw = localStorage.getItem(SEEN_KEY);
+			if (raw) for (const id of JSON.parse(raw) as number[]) seen.add(id);
+		} catch {
+			/* abaikan */
+		}
+		if (reels[0]) markSeen(reels[0].id);
+
 		function onKey(e: KeyboardEvent) {
-			if (commentsFor !== null) return;
+			if (commentsFor !== null || shareFor !== null) return;
 			if (e.key === 'ArrowDown' || e.key === 'PageDown') {
 				e.preventDefault();
 				scrollToIndex(activeIndex + 1);
@@ -136,7 +165,6 @@
 
 <div class="reels-page">
 	<div class="reels-topbar"><BackButton /></div>
-
 	{#if reels.length === 0}
 		<div class="reels-empty">Belum ada video untuk ditampilkan.</div>
 	{:else}
@@ -162,18 +190,28 @@
 							<span class="like-burst"><Heart size={110} fill="currentColor" /></span>
 						{/if}
 
-						<!-- Meta kiri bawah -->
 						<div class="reel-meta">
 							<a class="reel-author" href={`/u/${reel.user.username}`}>
-								<Avatar
-									name={reel.user.fullName}
-									src={reel.user.avatarUrl ?? undefined}
-									size="sm"
-								/>
+								<Avatar name={reel.user.fullName} src={reel.user.avatarUrl ?? undefined} size="sm" />
 								<strong>{reel.user.username}</strong>
 								<UserBadges verified={reel.user.badgeVerified} role={reel.user.role} />
 							</a>
-							{#if reel.caption}<p class="reel-caption">{reel.caption}</p>{/if}
+							{#if reel.caption}
+								<div class="reel-caption" class:open={expanded.has(reel.id)}>
+									<div class="cap-text"><MentionText text={reel.caption} /></div>
+									{#if isLongCaption(reel.caption)}
+										<button
+											class="cap-toggle"
+											onclick={() => {
+												const s = new Set(expanded);
+												if (s.has(reel.id)) s.delete(reel.id);
+												else s.add(reel.id);
+												expanded = s;
+											}}>{expanded.has(reel.id) ? 'tutup' : '… selengkapnya'}</button
+										>
+									{/if}
+								</div>
+							{/if}
 							{#if reel.music}
 								<button class="reel-music" title={`${reel.music.title} · ${reel.music.artist}`}>
 									<Music2 size={13} />
@@ -182,17 +220,16 @@
 							{/if}
 						</div>
 
-						<!-- Aksi kanan (di dalam post → responsif mobile & desktop) -->
 						<div class="reel-actions">
 							<button class:on={reel.isLiked} onclick={() => toggleLike(reel)} aria-label="Suka">
 								<Heart size={27} fill={reel.isLiked ? 'currentColor' : 'none'} />
-								<b>{nf(reel.likesCount)}</b>
+								<b>{reel.likesCount > 0 ? nf(reel.likesCount) : 'Suka'}</b>
 							</button>
 							<button onclick={() => (commentsFor = reel.id)} aria-label="Komentar">
 								<MessageCircle size={27} />
-								<b>{nf(reel.commentsCount)}</b>
+								<b>{reel.commentsCount > 0 ? nf(reel.commentsCount) : 'Komentar'}</b>
 							</button>
-							<button onclick={() => share(reel)} aria-label="Bagikan">
+							<button onclick={() => (shareFor = reel.id)} aria-label="Bagikan">
 								<Send size={25} />
 							</button>
 							<button
@@ -208,15 +245,18 @@
 			{/each}
 		</div>
 
-		<!-- Navigasi atas/bawah (desktop) -->
 		<div class="reels-nav">
-			<button onclick={() => scrollToIndex(activeIndex - 1)} aria-label="Reel sebelumnya" disabled={activeIndex === 0}>
+			<button
+				onclick={() => scrollToIndex(activeIndex - 1)}
+				aria-label="Reel sebelumnya"
+				disabled={activeIndex === 0}
+			>
 				<ChevronUp size={22} />
 			</button>
 			<button
 				onclick={() => scrollToIndex(activeIndex + 1)}
 				aria-label="Reel berikutnya"
-				disabled={activeIndex >= reels.length - 1 && page >= lastPage}
+				disabled={activeIndex >= reels.length - 1 && !hasMore}
 			>
 				<ChevronDown size={22} />
 			</button>
@@ -232,6 +272,14 @@
 		onPosted={(n) => {
 			if (reel) reel.commentsCount = n;
 		}}
+	/>
+{/if}
+
+{#if shareFor !== null}
+	<SharePostSheet
+		postId={shareFor}
+		shareUrl={new URL(`/posts/${shareFor}`, location.origin).toString()}
+		onClose={() => (shareFor = null)}
 	/>
 {/if}
 
@@ -253,14 +301,14 @@
 	.reels-topbar :global(button) {
 		color: #fff;
 		background: rgb(0 0 0 / 40%);
-		border-radius: 50%;
+		border-radius: 999px;
 		backdrop-filter: blur(6px);
 	}
 	.reels-empty {
 		display: grid;
 		height: 100%;
 		place-items: center;
-		color: rgb(255 255 255 / 70%);
+		color: var(--color-muted, rgb(255 255 255 / 70%));
 		font-size: 0.9rem;
 	}
 	.reels-viewport {
@@ -292,7 +340,6 @@
 		padding: 0;
 		background: #000;
 		border: 0;
-		cursor: pointer;
 	}
 	.like-burst {
 		position: absolute;
@@ -330,7 +377,7 @@
 		display: grid;
 		gap: 8px;
 		z-index: 3;
-		text-shadow: 0 1px 6px rgb(0 0 0 / 55%);
+		text-shadow: 0 1px 6px rgb(0 0 0 / 60%);
 	}
 	.reel-author {
 		display: inline-flex;
@@ -344,14 +391,38 @@
 		font-size: 0.9rem;
 	}
 	.reel-caption {
-		margin: 0;
 		max-width: 34rem;
 		font-size: 0.85rem;
 		line-height: 1.4;
+		color: #fff;
+	}
+	.reel-caption .cap-text {
 		display: -webkit-box;
 		-webkit-line-clamp: 2;
 		-webkit-box-orient: vertical;
 		overflow: hidden;
+		white-space: pre-wrap;
+		word-break: break-word;
+	}
+	.reel-caption.open .cap-text {
+		display: block;
+		max-height: 38vh;
+		overflow-y: auto;
+		-webkit-line-clamp: unset;
+	}
+	.reel-caption :global(a) {
+		color: #9ec3ff;
+		font-weight: 600;
+	}
+	.cap-toggle {
+		margin-top: 2px;
+		background: none;
+		border: 0;
+		color: rgb(255 255 255 / 80%);
+		font-size: 0.78rem;
+		font-weight: 700;
+		cursor: pointer;
+		padding: 0;
 	}
 	.reel-music {
 		display: inline-flex;
@@ -389,15 +460,12 @@
 		background: none;
 		border: 0;
 		color: #fff;
-		font-size: 0.68rem;
+		font-size: 0.66rem;
 		font-weight: 700;
 		cursor: pointer;
-		filter: drop-shadow(0 2px 6px rgb(0 0 0 / 45%));
+		filter: drop-shadow(0 2px 6px rgb(0 0 0 / 55%));
 	}
 	.reel-actions button.on {
-		color: #ff2d55;
-	}
-	.reel-actions button.on :global(svg) {
 		color: #ff2d55;
 	}
 	.reels-nav {
@@ -426,19 +494,25 @@
 		cursor: default;
 	}
 
-	/* ---- Desktop: video portrait di tengah, nav bulat kanan, aksi di kanan video ---- */
+	/* ---- Desktop: video portrait di tengah, background terang (kontras sidebar) ---- */
 	@media (min-width: 900px) {
 		.reels-page {
 			left: var(--sidebar-width, 240px);
+			background: var(--color-bg-soft, var(--color-bg, #f4f2ee));
+		}
+		/* Desktop selalu punya sidebar → tak perlu tombol kembali. */
+		.reels-topbar {
+			display: none;
 		}
 		.reel-stage {
 			width: auto;
 			height: min(90vh, calc(9 / 16 * 1600px));
 			aspect-ratio: 9 / 16;
-			border-radius: 14px;
+			border-radius: 16px;
+			box-shadow: 0 12px 40px rgb(0 0 0 / 14%);
 		}
 		.reel-video {
-			border-radius: 14px;
+			border-radius: 16px;
 		}
 		.reels-nav {
 			display: flex;

@@ -948,14 +948,23 @@ class PostController extends Controller
     }
 
     /**
-     * Feed Reels: daftar video (paginated) yang boleh dilihat user —
-     * dari akun publik atau akun yang sudah diikuti (accepted). Video saja.
+     * Feed Reels (video saja) — algoritma keberagaman untuk platform baru:
+     *  - Acak (bukan berdasarkan like, agar tidak monoton saat masih sedikit interaksi).
+     *  - Kecualikan post yang SUDAH dilihat user (dikirim via `exclude`) → yang sudah
+     *    ditonton makin kecil peluang muncul lagi. Bila pool habis, klien mereset exclude.
+     *  - Hindari penulis yang sama muncul berturut-turut dalam satu batch.
+     *  - Hormati privasi: hanya akun publik atau yang diikuti (accepted).
      */
     public function reels(Request $request)
     {
         $authUser = Auth::user();
-        $perPage = min(8, max(3, (int) $request->input('per_page', 6)));
-        $page = max(1, (int) $request->input('page', 1));
+        $count = min(8, max(3, (int) $request->input('count', 6)));
+
+        $exclude = $request->input('exclude', []);
+        if (is_string($exclude)) {
+            $exclude = array_filter(explode(',', $exclude), fn ($v) => $v !== '');
+        }
+        $exclude = array_slice(array_values(array_unique(array_map('intval', (array) $exclude))), 0, 500);
 
         $allowedIds = $authUser
             ? $authUser->following()->wherePivot('status', 'accepted')->pluck('users.user_id')->toArray()
@@ -964,7 +973,7 @@ class PostController extends Controller
             $allowedIds[] = $authUser->user_id;
         }
 
-        $paginated = Post::with(['user', 'tags'])
+        $base = Post::with(['user', 'tags'])
             ->withCount(['likes', 'comments'])
             ->where('is_video', true)
             ->where('is_archived', false)
@@ -975,11 +984,44 @@ class PostController extends Controller
                         $w->orWhereIn('users.user_id', $allowedIds);
                     }
                 });
-            })
-            ->latest()
-            ->paginate($perPage, ['*'], 'page', $page);
+            });
 
-        $data = $paginated->getCollection()->map(function ($post) use ($authUser) {
+        // Ambil sampel acak lebih besar (untuk diversity), kecualikan yang sudah dilihat.
+        $sample = (clone $base)
+            ->when(! empty($exclude), fn ($q) => $q->whereNotIn('post_id', $exclude))
+            ->inRandomOrder()
+            ->take($count * 5)
+            ->get();
+
+        // Bila hampir habis karena exclude, longgarkan (biar tetap ada konten — recycle).
+        $exhausted = false;
+        if ($sample->count() < $count) {
+            $exhausted = true;
+            $sample = (clone $base)->inRandomOrder()->take($count * 5)->get();
+        }
+
+        // Susun ulang agar penulis tidak sama beruntun (greedy).
+        $ordered = collect();
+        $pool = $sample->values()->all();
+        $lastAuthor = null;
+        while (count($pool) > 0 && $ordered->count() < $count) {
+            $pickIndex = null;
+            foreach ($pool as $i => $p) {
+                if ($p->user_id !== $lastAuthor) {
+                    $pickIndex = $i;
+                    break;
+                }
+            }
+            if ($pickIndex === null) {
+                $pickIndex = 0; // semua sisa penulis sama → terpaksa
+            }
+            $chosen = $pool[$pickIndex];
+            $ordered->push($chosen);
+            $lastAuthor = $chosen->user_id;
+            array_splice($pool, $pickIndex, 1);
+        }
+
+        $data = $ordered->map(function ($post) use ($authUser) {
             $post->is_liked = $authUser
                 ? $post->likes()->where('user_id', $authUser->user_id)->exists()
                 : false;
@@ -996,16 +1038,13 @@ class PostController extends Controller
             $post->thumbnail_url = $post->thumbnail_url ?? null;
 
             return $post;
-        });
+        })->values();
 
         return response()->json([
             'data' => $data,
-            'pagination' => [
-                'current_page' => $paginated->currentPage(),
-                'last_page' => $paginated->lastPage(),
-                'per_page' => $paginated->perPage(),
-                'total' => $paginated->total(),
-            ],
+            // exhausted=true → klien sebaiknya reset daftar "sudah dilihat".
+            'exhausted' => $exhausted,
+            'has_more' => ! $exhausted && $data->count() >= $count,
         ]);
     }
 }

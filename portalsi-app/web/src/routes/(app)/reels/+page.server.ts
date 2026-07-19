@@ -10,13 +10,12 @@ export const load: PageServerLoad = async ({ locals }) => {
 	const response = await backendRequest('reels', {
 		token: locals.token,
 		requestId: locals.requestId,
-		query: { page: '1' },
+		query: { count: '6' },
 		schema: reelsFeedSchema
 	});
 	const media = env.PUBLIC_MEDIA_BASE_URL?.trim() || 'https://api.portalsi.com/storage';
 	return {
 		reels: response.data.map((post) => mapPost(post, media)),
-		page: response.pagination.current_page,
-		lastPage: response.pagination.last_page
+		hasMore: response.has_more
 	};
 };

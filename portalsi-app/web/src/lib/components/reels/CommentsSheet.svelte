@@ -4,6 +4,7 @@
 	import { untrack } from 'svelte';
 	import { clientRequest } from '$lib/api/client';
 	import Avatar from '$lib/components/ui/Avatar.svelte';
+	import GifPicker from '$lib/components/comment/GifPicker.svelte';
 	import { commentsResponseSchema, createdCommentResponseSchema } from '$lib/schemas/comment';
 	import { normalizeMediaUrl } from '$lib/utils/media';
 	import { relativeTimeId } from '$lib/utils/time';
@@ -22,6 +23,7 @@
 		username: string;
 		avatarUrl?: string;
 		text: string;
+		gifUrl?: string;
 		createdLabel: string;
 		likesCount: number;
 		isLiked: boolean;
@@ -32,6 +34,7 @@
 	let comments = $state<CommentView[]>([]);
 	let draft = $state('');
 	let sending = $state(false);
+	let gifOpen = $state(false);
 	let currentPost = $state(untrack(() => postId));
 
 	function mapUser(user: {
@@ -56,6 +59,7 @@
 				id: c.comment_id,
 				...mapUser(c.user),
 				text: c.content,
+				gifUrl: c.gif_url ?? undefined,
 				createdLabel: relativeTimeId(c.created_at),
 				likesCount: c.likes_count,
 				isLiked: c.is_liked,
@@ -74,21 +78,23 @@
 		void loadComments(postId);
 	});
 
-	async function send() {
+	async function send(gifUrl: string | null = null) {
 		const text = draft.trim();
-		if (!text || sending) return;
+		if ((!text && !gifUrl) || sending) return;
 		sending = true;
+		gifOpen = false;
 		try {
 			const response = await clientRequest(`posts/${postId}/comments`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ content: text, gif_url: null, parent_comment_id: null }),
+				body: JSON.stringify({ content: text, gif_url: gifUrl, parent_comment_id: null }),
 				schema: createdCommentResponseSchema
 			});
 			comments.unshift({
 				id: response.data.comment_id,
 				...mapUser(response.data.user),
 				text: response.data.content,
+				gifUrl: response.data.gif_url ?? gifUrl ?? undefined,
 				createdLabel: 'baru saja',
 				likesCount: 0,
 				isLiked: false,
@@ -141,8 +147,9 @@
 						<div class="c-body">
 							<p>
 								<a href={`/u/${item.username}`}>{item.username}</a>
-								<span>{item.text}</span>
+								{#if item.text}<span>{item.text}</span>{/if}
 							</p>
+							{#if item.gifUrl}<img class="c-gif" src={item.gifUrl} alt="GIF" />{/if}
 							<small
 								>{item.createdLabel}{#if item.repliesCount > 0} · {item.repliesCount} balasan{/if}</small
 							>
@@ -168,6 +175,12 @@
 				void send();
 			}}
 		>
+			<button
+				type="button"
+				class="gif-btn"
+				onclick={() => (gifOpen = true)}
+				aria-label="Kirim GIF">GIF</button
+			>
 			<input
 				bind:value={draft}
 				maxlength="500"
@@ -180,6 +193,10 @@
 		</form>
 	</section>
 </div>
+
+{#if gifOpen}
+	<GifPicker onSelect={(url) => void send(url)} onClose={() => (gifOpen = false)} />
+{/if}
 
 <style>
 	.comments-scrim {
@@ -282,6 +299,24 @@
 		border: 1px solid var(--color-border);
 		border-radius: 999px;
 		font-size: 0.85rem;
+	}
+	.gif-btn {
+		flex: none;
+		height: 40px;
+		padding: 0 11px;
+		background: var(--color-surface-soft, #f2f3f5);
+		border: 1px solid var(--color-border);
+		border-radius: 999px;
+		font-size: 0.72rem;
+		font-weight: 800;
+		color: var(--color-primary-strong, #c96a10);
+		cursor: pointer;
+	}
+	.c-gif {
+		margin-top: 6px;
+		max-width: 160px;
+		max-height: 160px;
+		border-radius: 10px;
 	}
 	.comments-input button {
 		display: grid;
