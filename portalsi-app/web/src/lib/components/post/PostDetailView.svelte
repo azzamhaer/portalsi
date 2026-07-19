@@ -420,14 +420,29 @@
 			{:else if inviteStatus === 'done'}
 				<div class="collab-invite-banner surface done">Undangan kolaborasi telah diproses.</div>
 			{/if}
-			{#if isPostOwner}<details
-					class="owner-tools surface"
-					ontoggle={(e) => {
-						if ((e.currentTarget as HTMLDetailsElement).open && !collabLoaded) void loadCollaborators();
+			{#if isPostOwner}
+				<button
+					class="post-more"
+					onclick={() => {
+						ownerMenuOpen = true;
+						if (!collabLoaded) void loadCollaborators();
 					}}
-				>
-					<summary aria-label="Kelola postingan"><MoreHorizontal size={20} /></summary>
-					<form method="POST" action="?/update">
+					aria-label="Kelola postingan"><MoreHorizontal size={20} /></button>
+			{/if}
+			{#if ownerMenuOpen}
+				<div class="edit-modal-scrim" role="presentation" onclick={() => (ownerMenuOpen = false)}>
+					<div
+						class="edit-modal-card"
+						role="dialog"
+						aria-modal="true"
+						aria-label="Kelola postingan"
+						onclick={(e) => e.stopPropagation()}
+					>
+						<header class="emc-head">
+							<strong>Kelola postingan</strong>
+							<button onclick={() => (ownerMenuOpen = false)} aria-label="Tutup"><X size={20} /></button>
+						</header>
+						<form method="POST" action="?/update">
 						<label>Caption <textarea name="caption" rows="4">{data.post.caption}</textarea></label>
 						<label>Lokasi <input name="location" value={data.post.location ?? ''} maxlength="120" placeholder="Tambahkan lokasi" /></label>
 						<div>
@@ -484,8 +499,10 @@
 								{/if}
 							</div>
 						{/if}
+						</div>
 					</div>
-				</details>{/if}
+				</div>
+			{/if}
 			{#if form?.message}<p class:success={form.success} class="notice" role="status">
 					{form.message}
 				</p>{/if}
@@ -572,18 +589,15 @@
 			</header>
 			<div class="comment-list">
 				{#if data.post.caption || data.post.music}
-					<article class="pinned-caption">
-						<Avatar name={data.post.user.fullName} src={data.post.user.avatarUrl} size="sm" />
-						<div>
-							<p>
-								<strong>{data.post.user.username}</strong>
+					<div class="pinned-caption">
+						<p>
+							<a href={`/u/${data.post.user.username}`}><strong>{data.post.user.username}</strong></a>
 								{#if data.post.caption}<MentionText text={data.post.caption} />{/if}
 							</p>
 							{#if data.post.music}<span class="pc-music"
 									><Music2 size={13} /> {data.post.music.title} — {data.post.music.artist}</span
 								>{/if}
 						</div>
-					</article>
 				{/if}
 				{#each comments as comment (comment.id)}
 					<article>
@@ -876,27 +890,27 @@
 	.edit-actions .save:disabled {
 		opacity: 0.5;
 	}
-	.owner-tools summary {
+	.edit-modal-card summary {
 		font-size: 0.76rem;
 		font-weight: 730;
 	}
-	.owner-tools form {
+	.edit-modal-card form {
 		display: grid;
 		gap: 10px;
 		margin-top: 14px;
 	}
-	.owner-tools label {
+	.edit-modal-card label {
 		display: grid;
 		gap: 5px;
 		color: var(--color-muted);
 		font-size: 0.7rem;
 		font-weight: 680;
 	}
-	.owner-tools form > small {
+	.edit-modal-card form > small {
 		color: var(--color-muted);
 		font-size: 0.68rem;
 	}
-	.owner-tools textarea {
+	.edit-modal-card textarea {
 		width: 100%;
 		padding: 9px 10px;
 		background: var(--color-canvas);
@@ -904,11 +918,11 @@
 		border-radius: 9px;
 		outline: 0;
 	}
-	.owner-tools form > div {
+	.edit-modal-card form > div {
 		display: flex;
 		gap: 7px;
 	}
-	.owner-tools button {
+	.edit-modal-card button {
 		display: flex;
 		min-height: 38px;
 		align-items: center;
@@ -921,10 +935,10 @@
 		font-size: 0.72rem;
 		font-weight: 720;
 	}
-	.owner-tools button.delete {
+	.edit-modal-card button.delete {
 		background: var(--color-danger);
 	}
-	.owner-tools input {
+	.edit-modal-card input {
 		width: 100%;
 		min-height: 38px;
 		padding: 0 10px;
@@ -1030,7 +1044,7 @@
 		background: var(--color-warning-soft, #fdf0dc);
 		color: var(--color-warning-strong, #b7791f);
 	}
-	.owner-tools .c-remove {
+	.edit-modal-card .c-remove {
 		display: grid;
 		place-items: center;
 		width: 28px;
@@ -1058,7 +1072,7 @@
 		border: 1px solid var(--color-border);
 		border-radius: 10px;
 	}
-	.owner-tools .collab-add-results button {
+	.edit-modal-card .collab-add-results button {
 		display: flex;
 		align-items: center;
 		gap: 8px;
@@ -1069,7 +1083,7 @@
 		color: var(--color-text);
 		font-weight: 700;
 	}
-	.owner-tools .collab-add-results button:hover {
+	.edit-modal-card .collab-add-results button:hover {
 		background: var(--color-surface-soft, #f4f5f7);
 	}
 	.notice {
@@ -1122,7 +1136,7 @@
 		align-items: center;
 		justify-content: center;
 		min-width: 0;
-		background: #0b0c0d;
+		background: var(--color-canvas, #fbf7ef);
 		border-radius: 14px 0 0 14px;
 		overflow: hidden;
 	}
@@ -1299,15 +1313,15 @@
 		cursor: pointer;
 	}
 	.pinned-caption {
-		display: flex;
-		gap: 9px;
-		padding: 14px 15px;
-		border-bottom: 1px solid var(--color-border);
+		padding: 12px 16px 14px;
 	}
 	.pinned-caption p {
 		margin: 0;
-		font-size: 0.82rem;
-		line-height: 1.45;
+		font-size: 0.84rem;
+		line-height: 1.5;
+	}
+	.pinned-caption a {
+		color: inherit;
 	}
 	.pinned-caption strong {
 		margin-right: 5px;
@@ -1327,8 +1341,7 @@
 		overflow-y: auto;
 	}
 	.ds-actions {
-		padding: 10px 14px 6px;
-		border-top: 1px solid var(--color-border);
+		padding: 8px 14px 8px;
 	}
 	.ds-act-buttons {
 		display: flex;
@@ -1369,41 +1382,77 @@
 	}
 
 	/* Owner tools → tombol titik-tiga di kanan atas media, dropdown kartu saat dibuka. */
-	.owner-tools {
+	.post-more {
 		position: absolute;
 		top: 12px;
 		right: 12px;
 		z-index: 6;
-		width: auto;
-	}
-	.owner-tools > summary {
 		display: grid;
 		width: 38px;
 		height: 38px;
-		margin-left: auto;
 		place-items: center;
-		list-style: none;
-		background: rgb(0 0 0 / 45%);
+		background: rgb(0 0 0 / 42%);
+		border: 0;
 		border-radius: 50%;
 		color: #fff;
 		cursor: pointer;
 		backdrop-filter: blur(6px);
 	}
-	.owner-tools > summary::-webkit-details-marker {
-		display: none;
+	.edit-modal-scrim {
+		position: fixed;
+		inset: 0;
+		z-index: 1500;
+		display: grid;
+		place-items: center;
+		padding: 18px;
+		background: rgb(0 0 0 / 48%);
+		animation: cm-fade 0.15s ease;
 	}
-	.owner-tools[open] {
-		width: min(320px, 78vw);
-		padding: 8px;
+	.edit-modal-card {
+		display: flex;
+		flex-direction: column;
+		width: min(100%, 480px);
+		max-height: 86vh;
+		overflow: hidden;
 		background: var(--color-surface, #fff);
-		border: 1px solid var(--color-border);
-		border-radius: 14px;
-		box-shadow: 0 16px 40px rgb(0 0 0 / 24%);
+		border-radius: 18px;
+		box-shadow: 0 24px 60px rgb(0 0 0 / 30%);
+		animation: cm-pop 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
 	}
-	.owner-tools[open] > summary {
-		background: var(--color-surface-soft, #eef0f3);
-		color: var(--color-text);
-		margin-bottom: 8px;
+	.emc-head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 15px 18px;
+		border-bottom: 1px solid var(--color-border);
+	}
+	.emc-head strong {
+		font-size: 1rem;
+	}
+	.emc-head button {
+		background: none;
+		border: 0;
+		color: var(--color-muted);
+		cursor: pointer;
+	}
+	.edit-modal-card form,
+	.edit-modal-card .collab-manage {
+		padding: 16px 18px;
+		overflow-y: auto;
+	}
+	.edit-modal-card .collab-manage {
+		border-top: 1px solid var(--color-border);
+	}
+	@keyframes cm-fade {
+		from {
+			opacity: 0;
+		}
+	}
+	@keyframes cm-pop {
+		from {
+			opacity: 0;
+			transform: scale(0.95);
+		}
 	}
 
 	.collab-modal-scrim {
@@ -1458,11 +1507,7 @@
 		color: var(--color-muted);
 		font-size: 0.72rem;
 	}
-	/* Kolom tulis komentar disematkan (sticky) di bawah agar selalu mudah dijangkau. */
 	.comment-compose {
-		position: sticky;
-		bottom: 0;
-		z-index: 4;
 		background: var(--color-surface);
 		border-top: 1px solid var(--color-border);
 	}
@@ -1628,7 +1673,7 @@
 		}
 	}
 	@media (max-width: 767px) {
-		.owner-tools,
+		.edit-modal-card,
 		.comments {
 			border-radius: 0;
 		}
