@@ -95,6 +95,8 @@
 	let thumbnailPreviewTimer: ReturnType<typeof setTimeout> | undefined;
 	let thumbnailPreviewRun = 0;
 	let uploadProgress = $state(0);
+	let uploadFileIndex = $state(0);
+	let uploadFileTotal = $state(0);
 	let activeUpload = $state<XMLHttpRequest | null>(null);
 	let cropMode = $state<'original' | 'square' | 'portrait' | 'story'>(
 		untrack(() => (kind === 'story' ? 'story' : 'original'))
@@ -120,6 +122,8 @@
 		}>
 	>([]);
 	let selectedMusic = $state<(typeof musicResults)[number] | null>(null);
+	let musicRecommended = $state<typeof musicResults>([]);
+	let musicRecoLoading = $state(false);
 	let musicStartSeconds = $state(0);
 	let musicEndSeconds = $state(15);
 	let musicTotalSeconds = $state(30);
@@ -289,7 +293,7 @@
 
 	$effect(() => {
 		const query = musicQuery.trim();
-		if (query.length < 2 || selectedMusic?.title === query) {
+		if (query.length < 2) {
 			musicResults = [];
 			musicSearching = false;
 			return;
@@ -345,6 +349,18 @@
 				musicTotalSeconds = selectedMusic?.durationSeconds ?? Math.max(30, musicEndSeconds);
 			})
 			.catch(() => undefined);
+	});
+
+	onMount(() => {
+		// Muat rekomendasi musik (chart) untuk ditampilkan saat kolom pencarian kosong.
+		musicRecoLoading = true;
+		fetch('/api/external/music/recommended')
+			.then((res) => (res.ok ? res.json() : { tracks: [] }))
+			.then((payload: { tracks?: typeof musicResults }) => {
+				musicRecommended = payload.tracks ?? [];
+			})
+			.catch(() => undefined)
+			.finally(() => (musicRecoLoading = false));
 	});
 
 	function clearGallery() {
@@ -605,13 +621,19 @@
 		if (!confirmed) return;
 		submitting = true;
 		uploadProgress = 0;
+		uploadFileIndex = 0;
+		uploadFileTotal = 0;
 		message = '';
 		startProgress();
 		try {
 			// Jalur galeri multi-foto (post): terapkan crop/filter tiap foto, lalu unggah.
 			if (kind === 'post' && galleryMode) {
 				const body = new FormData();
-				for (const item of galleryItems) {
+				uploadFileTotal = galleryItems.length;
+				for (let i = 0; i < galleryItems.length; i++) {
+					const item = galleryItems[i];
+					uploadFileIndex = i + 1;
+					uploadProgress = 0;
 					const css = filterOptions.find((option) => option.id === item.filter)?.css ?? 'none';
 					let uploadFile = item.file;
 					if (item.region) {
@@ -629,6 +651,7 @@
 					if (key) body.append('media_keys[]', key);
 					else body.append('media[]', uploadFile);
 				}
+				uploadFileTotal = 0;
 				body.set('caption', caption.trim());
 				appendMusic(body);
 				if (location.trim()) body.set('location', location.trim());
@@ -803,9 +826,9 @@
 	}
 
 	function selectMusic(track: (typeof musicResults)[number]) {
+		// Non-destruktif: JANGAN timpa kolom pencarian / kosongkan hasil, supaya user
+		// mudah berganti pilihan atau membatalkan tanpa harus mengetik ulang.
 		selectedMusic = track;
-		musicQuery = track.title;
-		musicResults = [];
 		musicStartSeconds = 0;
 		musicTotalSeconds = Math.max(5, track.durationSeconds || 30);
 		musicEndSeconds = musicTotalSeconds;
@@ -1124,9 +1147,11 @@
 				submitting ||
 				videoNotReady}
 			>{submitting
-				? uploadProgress >= 100
-					? 'Memproses di server…'
-					: `Mengunggah ${uploadProgress}%`
+				? uploadFileTotal > 1
+					? `Mengunggah ${uploadFileIndex}/${uploadFileTotal} · ${uploadProgress}%`
+					: uploadProgress >= 100
+						? 'Memproses di server…'
+						: `Mengunggah ${uploadProgress}%`
 				: videoNotReady
 					? 'Menyiapkan video…'
 					: 'Bagikan'}</button
@@ -1373,10 +1398,12 @@
 				/>{#if musicSearching}<LoaderCircle class="field-spinner" size={16} />{/if}</label
 			>
 			<small class="music-help"
-				>Pilih lagu penuh dari Audius, lalu atur bagian yang ingin diputar.</small
+				>Cari lagu (dari Apple Music), lalu pilih bagian 30 detik yang ingin diputar.</small
 			>
 			{#if musicResults.length}<div class="suggestions music" aria-label="Hasil musik">
-					{#each musicResults as track (track.id)}<button onclick={() => selectMusic(track)}
+					{#each musicResults as track (track.id)}<button
+							class:active={selectedMusic?.id === track.id}
+							onclick={() => selectMusic(track)}
 							>{#if track.artworkUrl}<img src={track.artworkUrl} alt="" />{:else}<Music2
 									size={28}
 								/>{/if}<span
@@ -1385,7 +1412,27 @@
 								></span
 							></button
 						>{/each}
-				</div>{/if}
+				</div>
+			{:else if musicQuery.trim().length < 2 && (musicRecommended.length || musicRecoLoading)}
+				<div class="reco-head">
+					<span>Rekomendasi</span>{#if musicRecoLoading}<LoaderCircle
+							class="field-spinner"
+							size={14}
+						/>{/if}
+				</div>
+				{#if musicRecommended.length}<div class="suggestions music" aria-label="Rekomendasi musik">
+						{#each musicRecommended as track (track.id)}<button
+								class:active={selectedMusic?.id === track.id}
+								onclick={() => selectMusic(track)}
+								>{#if track.artworkUrl}<img src={track.artworkUrl} alt="" />{:else}<Music2
+										size={28}
+									/>{/if}<span
+									><strong>{track.title}</strong><small
+										>{track.artist} · {formatMusicTime(track.durationSeconds)}</small
+									></span
+								></button
+							>{/each}
+					</div>{/if}{/if}
 			{#if selectedMusic}<div class="selected-music">
 					{#if selectedMusic.artworkUrl}<img src={selectedMusic.artworkUrl} alt="" />{:else}<Music2
 							size={21}
@@ -1423,7 +1470,7 @@
 							musicAudio?.pause();
 							musicPreviewPlaying = false;
 							selectedMusic = null;
-							musicQuery = '';
+							// Pertahankan kolom pencarian & hasil agar user bisa langsung pilih lagu lain.
 						}}
 						aria-label="Hapus musik"><X size={14} /></button
 					>
@@ -2185,6 +2232,23 @@
 	}
 	.suggestions.music button {
 		align-items: center;
+	}
+	.suggestions.music button.active {
+		background: var(--color-primary-soft, rgb(242 138 34 / 12%));
+	}
+	.suggestions.music button.active strong {
+		color: var(--color-primary-strong, #c96a10);
+	}
+	.reco-head {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		margin: 9px 2px 2px;
+		color: var(--color-muted);
+		font-size: 0.66rem;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.03em;
 	}
 	.suggestions.music img {
 		width: 36px;

@@ -673,8 +673,10 @@ class PostController extends Controller
             'music_clip_duration_ms' => $request->music_clip_duration_ms,
         ]);
 
-        // Varian media (rendition + thumbnail square) dibuat oleh cron media:process-pending
-        // berdasarkan media_status='pending' di atas — tidak transcode di web request.
+        // Varian media (thumbnail square + rendition) dibuat SEGERA setelah respons terkirim
+        // (afterResponse) supaya thumbnail siap secepatnya. Cron media:process-pending jadi
+        // jaring pengaman untuk yang gagal/terlewat. Tidak memblokir request user.
+        \App\Jobs\ProcessPostMedia::dispatch($post->post_id)->afterResponse();
 
         // Tangani hashtag
         if ($request->filled('caption')) {
