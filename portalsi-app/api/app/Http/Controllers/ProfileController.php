@@ -51,7 +51,7 @@ class ProfileController extends Controller
         if ($canViewPosts) {
             $postsQuery = $user->posts()
                 ->latest()
-                ->select('post_id', 'caption', 'media_url', 'media_urls', 'is_video', 'created_at', 'thumbnail_url');
+                ->select('post_id', 'caption', 'media_url', 'media_urls', 'is_video', 'created_at', 'thumbnail_url', 'media_variants');
 
             $paginatedPosts = $postsQuery->paginate($perPage, ['*'], 'page', $page);
 
@@ -71,10 +71,8 @@ class ProfileController extends Controller
                         ];
                     }
 
-                    $isVideo = preg_match('/\.(mp4|mov|avi|mkv|webm|3gp)$/i', $mediaUrl);
-                    $thumbnail = $isVideo
-                        ? $this->generateThumbnailUrl($mediaUrl, $post)
-                        : null;
+                    $isVideo = (bool) preg_match('/\.(mp4|mov|avi|mkv|webm|3gp)$/i', $mediaUrl);
+                    $thumbnail = $this->resolvePostThumbnail($post, $mediaUrl, $isVideo);
 
                     return [
                         'post_id' => $post->post_id,
@@ -176,7 +174,7 @@ class ProfileController extends Controller
 
         $postsQuery = $user->posts()
             ->latest()
-            ->select('post_id', 'caption', 'media_url', 'media_urls', 'is_video', 'created_at', 'thumbnail_url');
+            ->select('post_id', 'caption', 'media_url', 'media_urls', 'is_video', 'created_at', 'thumbnail_url', 'media_variants');
 
         $paginatedPosts = $postsQuery->paginate($perPage, ['*'], 'page', $page);
 
@@ -195,10 +193,8 @@ class ProfileController extends Controller
                     ];
                 }
 
-                $isVideo = preg_match('/\.(mp4|mov|avi|mkv|webm|3gp)$/i', $mediaUrl);
-                $thumbnail = $isVideo
-                    ? $this->generateThumbnailUrl($mediaUrl, $post)
-                    : null;
+                $isVideo = (bool) preg_match('/\.(mp4|mov|avi|mkv|webm|3gp)$/i', $mediaUrl);
+                $thumbnail = $this->resolvePostThumbnail($post, $mediaUrl, $isVideo);
 
                 return [
                     'post_id' => $post->post_id,
@@ -314,6 +310,33 @@ class ProfileController extends Controller
     }
 
     // ---------------- Helper functions ----------------
+
+    /**
+     * Thumbnail untuk grid (foto & video): utamakan varian square hasil pipeline,
+     * lalu thumbnail_url tersimpan, lalu fallback lama untuk video. Foto tanpa
+     * thumbnail → null (frontend pakai media asli sementara).
+     */
+    private function resolvePostThumbnail($post, string $mediaUrl, bool $isVideo): ?string
+    {
+        $variants = is_array($post->media_variants ?? null) ? $post->media_variants : [];
+        if (! empty($variants['thumbnail']['url']) && is_string($variants['thumbnail']['url'])) {
+            return $this->normalizeMediaUrl($variants['thumbnail']['url']);
+        }
+
+        if (! empty($post->thumbnail_url) && is_string($post->thumbnail_url)
+            && ! preg_match('#placeholder|/img/#i', $post->thumbnail_url)) {
+            $rel = $this->getRelativePath($post->thumbnail_url);
+            if ($rel && $this->safeExists($rel)) {
+                return $this->normalizeMediaUrl($post->thumbnail_url);
+            }
+        }
+
+        if ($isVideo) {
+            return $this->generateThumbnailUrl($mediaUrl, $post);
+        }
+
+        return null;
+    }
 
     /**
      * Generate thumbnail URL dengan exists check YANG AMAN.
