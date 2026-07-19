@@ -159,6 +159,15 @@
 		.pm-scroll :global(.post-detail-layout) {
 			height: 100%;
 			margin: 0;
+			grid-template-rows: minmax(0, 1fr);
+		}
+		.pm-scroll :global(.comments) {
+			min-height: 0;
+			height: 100%;
+		}
+		.pm-scroll :global(.comment-list) {
+			min-height: 0;
+			overflow-y: auto;
 		}
 		/* Sembunyikan fullscreen video di desktop (mobile tetap). */
 		.pm-scroll :global(.smart-video .video-controls .fs-btn) {

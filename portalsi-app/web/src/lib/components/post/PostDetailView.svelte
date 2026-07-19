@@ -20,6 +20,7 @@
 	import Avatar from '$lib/components/ui/Avatar.svelte';
 	import StoryAvatarLink from '$lib/components/story/StoryAvatarLink.svelte';
 	import SmartVideo from '$lib/components/media/SmartVideo.svelte';
+	import ViewportMusic from '$lib/components/media/ViewportMusic.svelte';
 	import MediaLightbox from '$lib/components/media/MediaLightbox.svelte';
 	import SharePostSheet from '$lib/components/feed/SharePostSheet.svelte';
 	import UserBadges from '$lib/components/ui/UserBadges.svelte';
@@ -169,6 +170,18 @@
 	let shareOpen = $state(false);
 	let ownerMenuOpen = $state(false);
 	let collabPopupOpen = $state(false);
+	let editedCountdown = $state(0);
+	// Popup countdown 3 detik saat post berhasil diedit.
+	$effect(() => {
+		if (!form?.success) return;
+		ownerMenuOpen = false;
+		editedCountdown = 3;
+		const iv = setInterval(() => {
+			editedCountdown -= 1;
+			if (editedCountdown <= 0) clearInterval(iv);
+		}, 1000);
+		return () => clearInterval(iv);
+	});
 	let lightboxOpen = $state(false);
 	let lightboxIndex = $state(0);
 	let isDesktop = $state(false);
@@ -420,15 +433,6 @@
 			{:else if inviteStatus === 'done'}
 				<div class="collab-invite-banner surface done">Undangan kolaborasi telah diproses.</div>
 			{/if}
-			{#if isPostOwner}
-				<button
-					class="post-more"
-					onclick={() => {
-						ownerMenuOpen = true;
-						if (!collabLoaded) void loadCollaborators();
-					}}
-					aria-label="Kelola postingan"><MoreHorizontal size={20} /></button>
-			{/if}
 			{#if ownerMenuOpen}
 				<div class="edit-modal-scrim" role="presentation" onclick={() => (ownerMenuOpen = false)}>
 					<div
@@ -503,7 +507,7 @@
 					</div>
 				</div>
 			{/if}
-			{#if form?.message}<p class:success={form.success} class="notice" role="status">
+			{#if form?.message && !form.success}<p class="notice" role="status">
 					{form.message}
 				</p>{/if}
 			<div class="detail-media">
@@ -586,18 +590,29 @@
 					</strong>
 					{#if data.post.location}<small><MapPin size={12} /> {data.post.location}</small>{/if}
 				</div>
+				{#if isPostOwner}<button
+						class="ds-more"
+						onclick={() => {
+							ownerMenuOpen = true;
+							if (!collabLoaded) void loadCollaborators();
+						}}
+						aria-label="Kelola postingan"><MoreHorizontal size={20} /></button
+					>{/if}
 			</header>
 			<div class="comment-list">
-				{#if data.post.caption || data.post.music}
-					<div class="pinned-caption">
-						<p>
-							<a href={`/u/${data.post.user.username}`}><strong>{data.post.user.username}</strong></a>
-								{#if data.post.caption}<MentionText text={data.post.caption} />{/if}
-							</p>
-							{#if data.post.music}<span class="pc-music"
-									><Music2 size={13} /> {data.post.music.title} — {data.post.music.artist}</span
-								>{/if}
-						</div>
+				{#if data.post.caption}
+					<div class="pinned-caption"><p><MentionText text={data.post.caption} /></p></div>
+				{/if}
+				{#if data.post.music && data.post.music.previewUrl}
+					<div class="pinned-music">
+						<ViewportMusic
+							src={data.post.music.previewUrl}
+							title={data.post.music.title}
+							artist={data.post.music.artist}
+							start={data.post.music.startSeconds}
+							clipDuration={data.post.music.durationSeconds}
+						/>
+					</div>
 				{/if}
 				{#each comments as comment (comment.id)}
 					<article>
@@ -741,6 +756,17 @@
 			{#if gifOpen}<GifPicker onSelect={pickGif} onClose={() => (gifOpen = false)} />{/if}
 		</section>
 	</div>
+
+{#if editedCountdown > 0}
+	<div class="edited-toast-scrim" role="presentation" onclick={() => (editedCountdown = 0)}>
+		<div class="edited-toast" role="status">
+			<span class="et-ring"><Check size={26} /></span>
+			<strong>Postingan diperbarui</strong>
+			<small>Tertutup otomatis dalam {editedCountdown} detik…</small>
+			<button onclick={() => (editedCountdown = 0)}>Tutup</button>
+		</div>
+	</div>
+{/if}
 
 {#if shareOpen}
 	<SharePostSheet postId={data.post.id} {shareUrl} onClose={() => (shareOpen = false)} />
@@ -1133,18 +1159,17 @@
 		position: relative;
 		display: flex;
 		flex-direction: column;
-		align-items: center;
+		align-items: flex-end;
 		justify-content: center;
 		min-width: 0;
-		background: var(--color-canvas, #fbf7ef);
-		border-radius: 14px 0 0 14px;
+		background: transparent;
 		overflow: hidden;
 	}
 	.detail-media {
 		position: relative;
 		display: flex;
 		align-items: center;
-		justify-content: center;
+		justify-content: flex-end;
 		width: 100%;
 		max-height: 84vh;
 	}
@@ -1156,7 +1181,13 @@
 		max-width: 100%;
 		max-height: 84vh;
 		object-fit: contain;
+		border-radius: 12px;
 		cursor: default;
+	}
+	.dm-gallery,
+	.detail-media :global(.smart-video) {
+		border-radius: 12px;
+		overflow: hidden;
 	}
 	.dm-gallery {
 		position: relative;
@@ -1254,6 +1285,22 @@
 		padding: 12px 15px;
 		border-bottom: 1px solid var(--color-border);
 	}
+	.ds-more {
+		display: grid;
+		place-items: center;
+		width: 34px;
+		height: 34px;
+		margin-left: auto;
+		flex: none;
+		background: none;
+		border: 0;
+		border-radius: 50%;
+		color: var(--color-text);
+		cursor: pointer;
+	}
+	.ds-more:hover {
+		background: var(--color-surface-soft, #f1f2f4);
+	}
 	.ds-costack {
 		display: inline-flex;
 		align-items: center;
@@ -1289,7 +1336,7 @@
 	.ds-names strong {
 		display: inline-flex;
 		align-items: center;
-		gap: 4px;
+		gap: 7px;
 		font-size: 0.9rem;
 		flex-wrap: wrap;
 	}
@@ -1319,6 +1366,11 @@
 		margin: 0;
 		font-size: 0.84rem;
 		line-height: 1.5;
+		white-space: pre-wrap;
+		word-break: break-word;
+	}
+	.pinned-music {
+		padding: 0 16px 12px;
 	}
 	.pinned-caption a {
 		color: inherit;
@@ -1368,17 +1420,20 @@
 	}
 	.ds-likes {
 		display: block;
-		margin-top: 8px;
+		margin-top: 10px;
 		font-size: 0.84rem;
 		font-weight: 700;
 	}
 	.ds-time {
 		display: block;
-		margin-top: 2px;
+		margin-top: 10px;
 		color: var(--color-muted);
-		font-size: 0.68rem;
+		font-size: 0.66rem;
 		text-transform: uppercase;
-		letter-spacing: 0.02em;
+		letter-spacing: 0.03em;
+	}
+	.ds-likes + .ds-time {
+		margin-top: 3px;
 	}
 
 	/* Owner tools → tombol titik-tiga di kanan atas media, dropdown kartu saat dibuka. */
@@ -1455,6 +1510,55 @@
 		}
 	}
 
+	.edited-toast-scrim {
+		position: fixed;
+		inset: 0;
+		z-index: 1600;
+		display: grid;
+		place-items: center;
+		padding: 20px;
+		background: rgb(0 0 0 / 40%);
+		animation: cm-fade 0.15s ease;
+	}
+	.edited-toast {
+		display: grid;
+		justify-items: center;
+		gap: 6px;
+		width: min(100%, 320px);
+		padding: 24px 22px 18px;
+		background: var(--color-surface, #fff);
+		border-radius: 18px;
+		text-align: center;
+		animation: cm-pop 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+	}
+	.et-ring {
+		display: grid;
+		place-items: center;
+		width: 52px;
+		height: 52px;
+		margin-bottom: 4px;
+		border-radius: 50%;
+		background: var(--color-secondary-soft, #e7f6ee);
+		color: var(--color-secondary, #1a9d5a);
+	}
+	.edited-toast strong {
+		font-size: 1.02rem;
+	}
+	.edited-toast small {
+		color: var(--color-muted);
+		font-size: 0.78rem;
+	}
+	.edited-toast button {
+		width: 100%;
+		min-height: 40px;
+		margin-top: 10px;
+		background: var(--color-primary);
+		border: 0;
+		border-radius: 11px;
+		color: #fff;
+		font-weight: 700;
+		cursor: pointer;
+	}
 	.collab-modal-scrim {
 		position: fixed;
 		inset: 0;
@@ -1666,6 +1770,9 @@
 		.dm-img,
 		.dm-track img {
 			max-height: 70vh;
+		}
+		.detail-media {
+			justify-content: center;
 		}
 		/* Di mobile biarkan mengalir natural (tanpa scroll internal komentar). */
 		.comment-list {
