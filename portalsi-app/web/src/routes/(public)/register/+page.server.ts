@@ -53,7 +53,12 @@ export const actions: Actions = {
 					role: 'student'
 				},
 				schema: registerResponseSchema,
-				requestId: locals.requestId
+				requestId: locals.requestId,
+				// Teruskan IP asli klien: throttle pendaftaran harus per-klien, bukan per server SSR.
+				headers: {
+					'X-Real-Client-Ip': locals.clientIp,
+					'X-Real-Client-Ua': request.headers.get('user-agent') ?? ''
+				}
 			});
 			setSessionCookie(cookies, response.token, false);
 		} catch (error) {

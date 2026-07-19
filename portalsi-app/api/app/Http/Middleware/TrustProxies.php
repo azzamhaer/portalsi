@@ -10,9 +10,13 @@ class TrustProxies extends Middleware
     /**
      * The trusted proxies for this application.
      *
+     * API hanya dapat diakses melalui reverse proxy (nginx/Cloudflare), sehingga
+     * X-Forwarded-For / CF-Connecting-IP dapat dipercaya. Tanpa ini, $request->ip()
+     * mengembalikan IP proxy (127.0.0.1) untuk SEMUA klien → throttle IP salah sasaran.
+     *
      * @var array<int, string>|string|null
      */
-    protected $proxies;
+    protected $proxies = '*';
 
     /**
      * The headers that should be used to detect proxies.

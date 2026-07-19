@@ -29,13 +29,10 @@ export const actions: Actions = {
 		}
 
 		try {
-			// Teruskan UA & IP asli browser ke API supaya riwayat login akurat (request ke
-			// API datang dari server SSR, bukan langsung dari browser).
+			// Teruskan UA & IP asli browser ke API supaya throttle/riwayat login akurat PER klien
+			// (request ke API datang dari server SSR, bukan langsung dari browser). IP dihitung
+			// terpusat di hooks (Cloudflare > X-Forwarded-For > alamat soket).
 			const clientUa = request.headers.get('user-agent') ?? '';
-			const clientIp =
-				request.headers.get('cf-connecting-ip') ??
-				(request.headers.get('x-forwarded-for') ?? '').split(',')[0].trim() ??
-				'';
 			const response = await backendRequest('login', {
 				method: 'POST',
 				body: { login: parsed.data.login, password: parsed.data.password },
@@ -43,7 +40,7 @@ export const actions: Actions = {
 				requestId: locals.requestId,
 				headers: {
 					'X-Real-Client-Ua': clientUa,
-					'X-Real-Client-Ip': clientIp || getClientAddress()
+					'X-Real-Client-Ip': locals.clientIp || getClientAddress()
 				}
 			});
 			setSessionCookie(cookies, response.token, parsed.data.remember);

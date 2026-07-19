@@ -11,6 +11,20 @@ export const handle: Handle = async ({ event, resolve }) => {
 	event.locals.user = null;
 	event.locals.sessionUnavailable = false;
 
+	// IP asli klien untuk diteruskan ke API (throttle register/login harus PER klien,
+	// bukan per server SSR). Prioritas: Cloudflare > X-Forwarded-For > alamat soket.
+	const cfIp = event.request.headers.get('cf-connecting-ip');
+	const xffIp = (event.request.headers.get('x-forwarded-for') ?? '').split(',')[0].trim();
+	let clientIp = cfIp || xffIp;
+	if (!clientIp) {
+		try {
+			clientIp = event.getClientAddress();
+		} catch {
+			clientIp = '';
+		}
+	}
+	event.locals.clientIp = clientIp;
+
 	if (unsafeMethods.has(event.request.method)) {
 		const origin = event.request.headers.get('origin');
 		if (origin && origin !== event.url.origin) {

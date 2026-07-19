@@ -11,6 +11,7 @@ declare global {
 			user: SessionUser | null;
 			sessionUnavailable: boolean;
 			requestId: string;
+			clientIp: string;
 		}
 		interface PageData {
 			user?: SessionUser | null;
