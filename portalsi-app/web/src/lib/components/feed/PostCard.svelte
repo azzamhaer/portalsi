@@ -82,6 +82,14 @@
 	let liking = $state(false);
 	let bookmarking = $state(false);
 	let interactionError = $state('');
+	let likeBurst = $state(false);
+
+	// Double-tap untuk like (global di semua media post: video via SmartVideo, gambar via dblclick).
+	function doubleTapLike() {
+		if (!interaction.liked) void toggleLike();
+		likeBurst = true;
+		setTimeout(() => (likeBurst = false), 850);
+	}
 
 	async function toggleLike() {
 		if (liking) return;
@@ -198,7 +206,9 @@
 				{autoplay}
 				forceMuted={post.videoMuted || Boolean(post.music)}
 				preferSound={preferSound || zoomable}
+				onDoubleTap={doubleTapLike}
 			/>
+			{#if likeBurst}<span class="like-burst"><Heart size={96} fill="currentColor" /></span>{/if}
 			{#if zoomable}<button
 					class="expand-media"
 					onclick={() => openLightbox(0)}
@@ -233,10 +243,11 @@
 		</div>{:else if zoomable}<button
 			class="media zoomable"
 			onclick={() => openLightbox(0)}
+			ondblclick={doubleTapLike}
 			aria-label={`Perbesar postingan ${post.user.fullName}`}
 			><img src={post.mediaUrl} alt={post.mediaAlt} /><span class="zoom-cue"
 				><Maximize2 size={20} /> Perbesar</span
-			></button
+			>{#if likeBurst}<span class="like-burst"><Heart size={96} fill="currentColor" /></span>{/if}</button
 		>{:else}<a
 			class="media"
 			class:opening={openingPost}
@@ -442,6 +453,35 @@
 		place-items: center;
 		color: white;
 		pointer-events: none;
+	}
+	.like-burst {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		z-index: 6;
+		color: #ff2d55;
+		transform: translate(-50%, -50%) scale(0.4);
+		animation: pc-burst 0.85s ease forwards;
+		pointer-events: none;
+		filter: drop-shadow(0 4px 14px rgb(0 0 0 / 35%));
+	}
+	@keyframes pc-burst {
+		0% {
+			opacity: 0;
+			transform: translate(-50%, -50%) scale(0.4);
+		}
+		25% {
+			opacity: 1;
+			transform: translate(-50%, -50%) scale(1.1);
+		}
+		70% {
+			opacity: 1;
+			transform: translate(-50%, -50%) scale(1);
+		}
+		100% {
+			opacity: 0;
+			transform: translate(-50%, -50%) scale(1.15);
+		}
 	}
 	.post-opening :global(svg) {
 		filter: drop-shadow(0 4px 12px rgb(0 0 0 / 45%));

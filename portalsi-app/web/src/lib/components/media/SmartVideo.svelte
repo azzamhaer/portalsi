@@ -18,7 +18,9 @@
 		autoplay = false,
 		forceMuted = false,
 		preferSound = false,
-		sources = []
+		sources = [],
+		onDoubleTap,
+		minimal = false
 	}: {
 		src: string;
 		poster?: string;
@@ -28,6 +30,8 @@
 		forceMuted?: boolean;
 		preferSound?: boolean;
 		sources?: VideoSource[];
+		onDoubleTap?: () => void;
+		minimal?: boolean;
 	} = $props();
 
 	// Daftar kualitas (fallback ke satu sumber 'Asli' bila tak ada varian).
@@ -128,6 +132,25 @@
 		if (video.paused) void video.play();
 		else video.pause();
 	}
+
+	// Bedakan tap tunggal (play/pause) vs ganda (like) bila onDoubleTap disediakan.
+	let tapTimer: ReturnType<typeof setTimeout> | null = null;
+	function onVideoTap() {
+		if (!onDoubleTap) {
+			togglePlayback();
+			return;
+		}
+		if (tapTimer) {
+			clearTimeout(tapTimer);
+			tapTimer = null;
+			onDoubleTap();
+			return;
+		}
+		tapTimer = setTimeout(() => {
+			tapTimer = null;
+			togglePlayback();
+		}, 260);
+	}
 	function seek(event: Event) {
 		const value = Number((event.currentTarget as HTMLInputElement).value);
 		if (Number.isFinite(value)) video.currentTime = value;
@@ -208,7 +231,7 @@
 		preload={autoplay ? 'auto' : 'metadata'}
 		playsinline
 		aria-label={label}
-		onclick={togglePlayback}
+		onclick={onVideoTap}
 		onloadstart={() => (loading = true)}
 		onwaiting={() => {
 			if (!hasFrame) loading = true;
@@ -266,7 +289,41 @@
 				togglePlayback();
 			}}><Play size={28} fill="currentColor" /></button
 		>{/if}
-	<div class="video-controls">
+	{#if minimal}
+		<div class="minimal-controls">
+			{#if !forceMuted}<button
+					onclick={(event) => {
+						event.stopPropagation();
+						video.muted = !video.muted;
+						muted = video.muted;
+					}}
+					aria-label={muted ? 'Nyalakan suara' : 'Bisukan'}
+					>{#if muted}<VolumeX size={18} />{:else}<Volume2 size={18} />{/if}</button
+				>{/if}
+			{#if available.length > 1}<div class="quality">
+					<button
+						class="quality-btn"
+						onclick={(event) => {
+							event.stopPropagation();
+							qualityMenuOpen = !qualityMenuOpen;
+						}}
+						aria-label="Kualitas video"><Settings2 size={16} /></button
+					>
+					{#if qualityMenuOpen}<ul class="quality-menu">
+							{#each available as opt (opt.quality)}<li>
+									<button
+										class:active={opt.quality === activeQuality}
+										onclick={(event) => {
+											event.stopPropagation();
+											setQuality(opt.quality);
+										}}>{opt.label}</button
+									>
+								</li>{/each}
+						</ul>{/if}
+				</div>{/if}
+		</div>
+	{:else}
+		<div class="video-controls">
 		<button onclick={togglePlayback} aria-label={playing ? 'Jeda video' : 'Putar video'}
 			>{#if playing}<Pause size={18} fill="currentColor" />{:else}<Play
 					size={18}
@@ -320,7 +377,8 @@
 		<button onclick={fullscreen} aria-label={isFullscreen ? 'Keluar layar penuh' : 'Layar penuh'}
 			>{#if isFullscreen}<Shrink size={17} />{:else}<Expand size={17} />{/if}</button
 		>
-	</div>
+		</div>
+	{/if}
 </div>
 
 <style>
@@ -446,6 +504,33 @@
 		min-width: 40px;
 		flex: 1;
 		accent-color: #f28a22;
+	}
+	.minimal-controls {
+		position: absolute;
+		top: 12px;
+		right: 12px;
+		z-index: 4;
+		display: flex;
+		align-items: flex-start;
+		gap: 8px;
+	}
+	.minimal-controls > button,
+	.minimal-controls .quality-btn {
+		display: grid !important;
+		width: 36px !important;
+		height: 36px;
+		place-items: center;
+		padding: 0 !important;
+		background: rgb(0 0 0 / 42%);
+		border: 0;
+		border-radius: 50%;
+		color: #fff;
+		cursor: pointer;
+		backdrop-filter: blur(6px);
+	}
+	.minimal-controls .quality-menu {
+		top: calc(100% + 6px);
+		bottom: auto;
 	}
 	.quality {
 		position: relative;

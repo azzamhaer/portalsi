@@ -946,4 +946,66 @@ class PostController extends Controller
             'next_page_url' => $nextPageUrl,
         ]);
     }
+
+    /**
+     * Feed Reels: daftar video (paginated) yang boleh dilihat user —
+     * dari akun publik atau akun yang sudah diikuti (accepted). Video saja.
+     */
+    public function reels(Request $request)
+    {
+        $authUser = Auth::user();
+        $perPage = min(8, max(3, (int) $request->input('per_page', 6)));
+        $page = max(1, (int) $request->input('page', 1));
+
+        $allowedIds = $authUser
+            ? $authUser->following()->wherePivot('status', 'accepted')->pluck('users.user_id')->toArray()
+            : [];
+        if ($authUser) {
+            $allowedIds[] = $authUser->user_id;
+        }
+
+        $paginated = Post::with(['user', 'tags'])
+            ->withCount(['likes', 'comments'])
+            ->where('is_video', true)
+            ->where('is_archived', false)
+            ->whereHas('user', function ($u) use ($allowedIds) {
+                $u->where(function ($w) use ($allowedIds) {
+                    $w->where('is_private', false);
+                    if (! empty($allowedIds)) {
+                        $w->orWhereIn('users.user_id', $allowedIds);
+                    }
+                });
+            })
+            ->latest()
+            ->paginate($perPage, ['*'], 'page', $page);
+
+        $data = $paginated->getCollection()->map(function ($post) use ($authUser) {
+            $post->is_liked = $authUser
+                ? $post->likes()->where('user_id', $authUser->user_id)->exists()
+                : false;
+            $post->is_bookmarked = $authUser
+                ? $post->bookmarks()->where('user_id', $authUser->user_id)->exists()
+                : false;
+            $post->user->is_verified = (bool) $post->user->is_verified;
+            $post->music_track_name = $post->music_track_name ?? null;
+            $post->music_artist_name = $post->music_artist_name ?? null;
+            $post->music_preview_url = $post->music_preview_url ?? null;
+            $post->music_album_art_url = $post->music_album_art_url ?? null;
+            $post->music_start_position_ms = $post->music_start_position_ms ?? null;
+            $post->music_clip_duration_ms = $post->music_clip_duration_ms ?? null;
+            $post->thumbnail_url = $post->thumbnail_url ?? null;
+
+            return $post;
+        });
+
+        return response()->json([
+            'data' => $data,
+            'pagination' => [
+                'current_page' => $paginated->currentPage(),
+                'last_page' => $paginated->lastPage(),
+                'per_page' => $paginated->perPage(),
+                'total' => $paginated->total(),
+            ],
+        ]);
+    }
 }

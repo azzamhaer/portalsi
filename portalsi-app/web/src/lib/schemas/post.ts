@@ -137,6 +137,16 @@ export const postLikesSchema = z.array(
 	})
 );
 
+export const reelsFeedSchema = z.object({
+	data: z.array(postSchema),
+	pagination: z.object({
+		current_page: z.coerce.number().int().nonnegative(),
+		last_page: z.coerce.number().int().nonnegative(),
+		per_page: z.coerce.number().int().positive(),
+		total: z.coerce.number().int().nonnegative()
+	})
+});
+
 export const clipSchema = postSchema.omit({ type: true }).extend({ type: z.literal('clip') });
 export const clipsResponseSchema = z.object({
 	clip: clipSchema,

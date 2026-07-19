@@ -9,6 +9,7 @@
 	import {
 		Bell,
 		Bookmark,
+		Clapperboard,
 		Compass,
 		Home,
 		MessageCircle,
@@ -31,6 +32,7 @@
 	const unreadCountSchema = z.object({ count: z.coerce.number().int().nonnegative() });
 	const topLevel = new Set([
 		'/home',
+		'/reels',
 		'/explore',
 		'/messages',
 		'/notifications',
@@ -38,6 +40,8 @@
 		'/profile',
 		'/settings'
 	]);
+	// Reels = pengalaman full-screen bersih (punya back sendiri, tanpa chrome).
+	const isReels = $derived(page.url.pathname === '/reels');
 	// Halaman yang sudah punya tombol back sendiri → jangan tampilkan back global (hindari double).
 	const hasOwnBack = $derived(
 		/^\/(create\/|messages\/(direct|groups|new)|stories\/|groups\/|u\/|profile\/edit|portfolio\/new|settings\/(password|preferences|email|privacy|delete-account))/.test(
@@ -48,7 +52,9 @@
 	// Loading bar global saat membuka post (feedback klik dari halaman mana pun).
 	let postOpening = $state(false);
 	// Sembunyikan bottom-nav di halaman percakapan agar tidak menghalangi kotak pesan & tombol kirim.
-	const hideBottomNav = $derived(/^\/messages\/(direct|groups)\/[^/]+/.test(page.url.pathname));
+	const hideBottomNav = $derived(
+		isReels || /^\/messages\/(direct|groups)\/[^/]+/.test(page.url.pathname)
+	);
 
 	onMount(() => {
 		let active = true;
@@ -91,6 +97,7 @@
 
 	const primary = [
 		{ href: '/home', label: 'Beranda', icon: Home },
+		{ href: '/reels', label: 'Reels', icon: Clapperboard },
 		{ href: '/explore', label: 'Jelajah', icon: Compass },
 		{ href: '/messages', label: 'Pesan', icon: MessageCircle },
 		{ href: '/notifications', label: 'Notifikasi', icon: Bell },
@@ -98,11 +105,12 @@
 		{ href: '/profile', label: 'Profil', icon: UserRound }
 	];
 
+	// Mobile: Marketplace dipindah ke header atas, digantikan Reels di bottombar.
 	const mobile = [
 		{ href: '/home', label: 'Beranda', icon: Home },
-		{ href: '/explore', label: 'Jelajah', icon: Compass },
+		{ href: '/reels', label: 'Reels', icon: Clapperboard },
 		{ href: '/create/post', label: 'Buat', icon: Plus, create: true },
-		{ href: '/marketplace', label: 'Marketplace', icon: ShoppingBag },
+		{ href: '/explore', label: 'Jelajah', icon: Compass },
 		{ href: '/profile', label: 'Profil', icon: UserRound }
 	];
 
@@ -207,20 +215,23 @@
 		</a>
 	</aside>
 
-	<header class="mobile-header">
-		<a class="mobile-brand" href="/home"
-			><img src="/assets/logo-mark.png" alt="" /><b>Portal SI</b></a
-		>
-		<div>
-			<a href="/explore" aria-label="Cari"><Search size={21} /></a>
-			<a href="/notifications" aria-label="Notifikasi" class:has-dot={unreadCount > 0}
-				><Bell size={21} /></a
+	{#if !isReels}
+		<header class="mobile-header">
+			<a class="mobile-brand" href="/home"
+				><img src="/assets/logo-mark.png" alt="" /><b>Portal SI</b></a
 			>
-			<a href="/messages" aria-label="Pesan" class:has-dot={unreadMessages > 0}
-				><MessageCircle size={21} /></a
-			>
-		</div>
-	</header>
+			<div>
+				<a href="/marketplace" aria-label="Marketplace"><ShoppingBag size={21} /></a>
+				<a href="/explore" aria-label="Cari"><Search size={21} /></a>
+				<a href="/notifications" aria-label="Notifikasi" class:has-dot={unreadCount > 0}
+					><Bell size={21} /></a
+				>
+				<a href="/messages" aria-label="Pesan" class:has-dot={unreadMessages > 0}
+					><MessageCircle size={21} /></a
+				>
+			</div>
+		</header>
+	{/if}
 
 	{#if postOpening}<div class="post-loading-bar" role="progressbar" aria-label="Membuka postingan"></div>{/if}
 

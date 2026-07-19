@@ -599,6 +599,7 @@ Route::middleware(['auth:sanctum', 'notBanned'])->group(function () {
     Route::get('/explore', [PostController::class, 'explore']);
     Route::get('/circle-avatar/{id}', [PostController::class, 'circleAvatar']);
     Route::get('/clips/{id}', [PostController::class, 'clips']);
+    Route::get('/reels', [PostController::class, 'reels']);
 
     Route::get('/announcements', [AnnouncementController::class, 'index']);
     Route::get('/announcements/pinned', [AnnouncementController::class, 'pinned']);
