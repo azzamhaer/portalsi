@@ -192,6 +192,7 @@
 	{#if post.isVideo}<div class="media" class:zoomable class:opening={openingPost}>
 			<SmartVideo
 				src={post.mediaUrl}
+				sources={post.videoSources ?? []}
 				poster={post.thumbnailUrl}
 				label={post.mediaAlt}
 				{autoplay}

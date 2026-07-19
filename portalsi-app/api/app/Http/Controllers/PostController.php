@@ -657,6 +657,8 @@ class PostController extends Controller
             'media_url' => $mediaUrl,
             'media_urls' => count($mediaUrls) > 1 ? $mediaUrls : null,
             'thumbnail_url' => $thumbnailUrl,
+            // Tandai untuk pipeline varian (rendition + thumbnail square) via cron media:process-pending.
+            'media_status' => 'pending',
             'location' => $request->location,
             'is_archived' => $request->is_archived ?? false,
             'is_video' => $isVideo,
@@ -671,9 +673,8 @@ class PostController extends Controller
             'music_clip_duration_ms' => $request->music_clip_duration_ms,
         ]);
 
-        if ($isVideo && empty($thumbnailUrl)) {
-            GenerateVideoThumbnail::dispatch($post->post_id)->afterResponse();
-        }
+        // Varian media (rendition + thumbnail square) dibuat oleh cron media:process-pending
+        // berdasarkan media_status='pending' di atas — tidak transcode di web request.
 
         // Tangani hashtag
         if ($request->filled('caption')) {

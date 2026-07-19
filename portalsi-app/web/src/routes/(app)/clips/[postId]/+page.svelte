@@ -52,6 +52,7 @@
 	<article>
 		<SmartVideo
 			src={data.clip.mediaUrl}
+			sources={data.clip.videoSources ?? []}
 			poster={data.clip.thumbnailUrl}
 			label={data.clip.mediaAlt}
 			fill

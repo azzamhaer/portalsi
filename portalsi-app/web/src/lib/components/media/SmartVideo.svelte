@@ -1,5 +1,15 @@
 <script lang="ts">
-	import { Expand, LoaderCircle, Pause, Play, Shrink, Volume2, VolumeX } from '@lucide/svelte';
+	import {
+		Expand,
+		LoaderCircle,
+		Pause,
+		Play,
+		Settings2,
+		Shrink,
+		Volume2,
+		VolumeX
+	} from '@lucide/svelte';
+	type VideoSource = { quality: 'low' | 'medium' | 'original'; label: string; src: string };
 	let {
 		src,
 		poster,
@@ -7,7 +17,8 @@
 		fill = false,
 		autoplay = false,
 		forceMuted = false,
-		preferSound = false
+		preferSound = false,
+		sources = []
 	}: {
 		src: string;
 		poster?: string;
@@ -16,7 +27,60 @@
 		autoplay?: boolean;
 		forceMuted?: boolean;
 		preferSound?: boolean;
+		sources?: VideoSource[];
 	} = $props();
+
+	// Daftar kualitas (fallback ke satu sumber 'Asli' bila tak ada varian).
+	const available = $derived<VideoSource[]>(
+		sources.length > 0 ? sources : [{ quality: 'original', label: 'Asli', src }]
+	);
+
+	function pickInitialQuality(list: VideoSource[]): VideoSource['quality'] {
+		const has = (q: VideoSource['quality']) => list.some((s) => s.quality === q);
+		if (typeof localStorage !== 'undefined') {
+			try {
+				const saved = localStorage.getItem('psi_video_quality') as VideoSource['quality'] | null;
+				if (saved && has(saved)) return saved;
+			} catch {
+				/* abaikan */
+			}
+		}
+		if (typeof navigator !== 'undefined') {
+			const conn = (
+				navigator as Navigator & { connection?: { effectiveType?: string; saveData?: boolean } }
+			).connection;
+			const et = conn?.effectiveType;
+			if (conn?.saveData || et === 'slow-2g' || et === '2g')
+				return has('low') ? 'low' : has('medium') ? 'medium' : 'original';
+			if (et === '3g') return has('medium') ? 'medium' : has('low') ? 'low' : 'original';
+		}
+		// 4g / wifi / tak diketahui: default 'sedang' bila ada (hemat), user bisa naikkan.
+		return has('medium') ? 'medium' : 'original';
+	}
+
+	let activeQuality = $state<VideoSource['quality']>(
+		pickInitialQuality(sources.length > 0 ? sources : [{ quality: 'original', label: 'Asli', src }])
+	);
+	let qualityMenuOpen = $state(false);
+	let resumeAt = 0;
+	let resumePlaying = false;
+
+	const activeSrc = $derived(
+		available.find((s) => s.quality === activeQuality)?.src ?? src
+	);
+
+	function setQuality(q: VideoSource['quality']) {
+		qualityMenuOpen = false;
+		if (q === activeQuality || !video) return;
+		resumeAt = video.currentTime;
+		resumePlaying = !video.paused;
+		activeQuality = q;
+		try {
+			localStorage.setItem('psi_video_quality', q);
+		} catch {
+			/* abaikan */
+		}
+	}
 	let video: HTMLVideoElement;
 	let root: HTMLDivElement;
 	let loading = $state(true);
@@ -138,7 +202,7 @@
 >
 	<video
 		bind:this={video}
-		{src}
+		src={activeSrc}
 		{poster}
 		bind:muted
 		preload={autoplay ? 'auto' : 'metadata'}
@@ -156,6 +220,11 @@
 		onloadeddata={() => {
 			hasFrame = true;
 			loading = false;
+			if (resumeAt > 0) {
+				video.currentTime = resumeAt;
+				resumeAt = 0;
+				if (resumePlaying) playWithFallback();
+			}
 		}}
 		onloadedmetadata={() => {
 			duration = video.duration;
@@ -223,6 +292,31 @@
 				aria-label={muted ? 'Nyalakan suara' : 'Bisukan'}
 				>{#if muted}<VolumeX size={18} />{:else}<Volume2 size={18} />{/if}</button
 			>{/if}
+		{#if available.length > 1}<div class="quality">
+				<button
+					class="quality-btn"
+					onclick={(event) => {
+						event.stopPropagation();
+						qualityMenuOpen = !qualityMenuOpen;
+					}}
+					aria-label="Kualitas video"
+					aria-expanded={qualityMenuOpen}
+					><Settings2 size={16} /><small
+						>{available.find((s) => s.quality === activeQuality)?.label ?? 'Asli'}</small
+					></button
+				>
+				{#if qualityMenuOpen}<ul class="quality-menu">
+						{#each available as opt (opt.quality)}<li>
+								<button
+									class:active={opt.quality === activeQuality}
+									onclick={(event) => {
+										event.stopPropagation();
+										setQuality(opt.quality);
+									}}>{opt.label}</button
+								>
+							</li>{/each}
+					</ul>{/if}
+			</div>{/if}
 		<button onclick={fullscreen} aria-label={isFullscreen ? 'Keluar layar penuh' : 'Layar penuh'}
 			>{#if isFullscreen}<Shrink size={17} />{:else}<Expand size={17} />{/if}</button
 		>
@@ -352,6 +446,51 @@
 		min-width: 40px;
 		flex: 1;
 		accent-color: #f28a22;
+	}
+	.quality {
+		position: relative;
+		flex: none;
+	}
+	.quality-btn {
+		display: inline-flex !important;
+		width: auto !important;
+		align-items: center;
+		gap: 3px;
+		padding: 0 6px !important;
+	}
+	.quality-btn small {
+		font-size: 0.58rem;
+		font-weight: 700;
+	}
+	.quality-menu {
+		position: absolute;
+		right: 0;
+		bottom: calc(100% + 6px);
+		z-index: 3;
+		min-width: 96px;
+		margin: 0;
+		padding: 4px;
+		list-style: none;
+		background: rgb(18 20 24 / 96%);
+		border: 1px solid rgb(255 255 255 / 14%);
+		border-radius: 10px;
+		box-shadow: 0 8px 24px rgb(0 0 0 / 40%);
+	}
+	.quality-menu li {
+		display: block;
+	}
+	.quality-menu button {
+		width: 100% !important;
+		height: auto !important;
+		justify-content: flex-start;
+		padding: 7px 9px !important;
+		font-size: 0.72rem;
+		border-radius: 7px;
+	}
+	.quality-menu button.active {
+		background: rgb(242 138 34 / 22%);
+		color: #ffb765;
+		font-weight: 700;
 	}
 	@keyframes spin {
 		to {

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Post;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -263,6 +264,98 @@ class MediaVariantService
             return true;
         } catch (\Throwable $e) {
             return false;
+        }
+    }
+
+    /**
+     * Proses satu post: buat rendition video (sesuai resolusi) + thumbnail (video/foto),
+     * unggah ke storage, simpan media_variants & set thumbnail_url. Idempotent.
+     * Return jumlah byte baru yang diunggah. Melempar exception bila gagal fatal.
+     */
+    public function processPost(Post $post, bool $force = false): int
+    {
+        $key = $this->relativePath($post->media_url);
+        if (! $key) {
+            throw new \RuntimeException('media_url tak dikenali');
+        }
+
+        $post->media_status = 'processing';
+        $post->save();
+
+        $isVideo = (bool) $post->is_video || $this->isVideoUrl($post->media_url);
+        $ext = pathinfo($key, PATHINFO_EXTENSION) ?: ($isVideo ? 'mp4' : 'jpg');
+        $src = $this->downloadToTemp($key, '.'.$ext);
+        if (! $src) {
+            throw new \RuntimeException('gagal download asli dari storage');
+        }
+
+        $tmpFiles = [$src];
+        $added = 0;
+        try {
+            $probe = $this->probe($src);
+            $origBytes = $this->size($key) ?: (@filesize($src) ?: null);
+            $variants = is_array($post->media_variants) && ! $force ? $post->media_variants : [];
+
+            $variants['original'] = array_filter([
+                'url' => $post->media_url,
+                'key' => $key,
+                'w' => $probe['w'] ?? null,
+                'h' => $probe['h'] ?? null,
+                'bytes' => $origBytes,
+            ], fn ($v) => $v !== null);
+
+            // Thumbnail square (video: frame detik-1; foto: crop tengah).
+            $thumbKey = $this->thumbKey($key);
+            if ($force || ! isset($variants['thumbnail']) || ! $this->exists($thumbKey)) {
+                $tThumb = tempnam(sys_get_temp_dir(), 'psi_thumb_').'.jpg';
+                $tmpFiles[] = $tThumb;
+                if ($this->makeThumbnail($src, $tThumb, $isVideo) && $this->upload($tThumb, $thumbKey)) {
+                    $b = @filesize($tThumb) ?: null;
+                    $added += (int) $b;
+                    $variants['thumbnail'] = array_filter([
+                        'url' => $this->publicUrl($thumbKey),
+                        'key' => $thumbKey,
+                        'w' => self::THUMB,
+                        'h' => self::THUMB,
+                        'bytes' => $b,
+                    ], fn ($v) => $v !== null);
+                    $post->thumbnail_url = $variants['thumbnail']['url'];
+                }
+            }
+
+            // Rendition video.
+            if ($isVideo && $probe) {
+                foreach ($this->neededVideoRenditions($probe['w'], $probe['h']) as $q => $h) {
+                    $vKey = $this->variantKey($key, $q);
+                    if (! $force && isset($variants[$q]) && $this->exists($vKey)) {
+                        continue;
+                    }
+                    $tOut = tempnam(sys_get_temp_dir(), "psi_{$q}_").'.mp4';
+                    $tmpFiles[] = $tOut;
+                    if ($this->transcodeTo($src, $h, $tOut) && $this->upload($tOut, $vKey)) {
+                        $b = @filesize($tOut) ?: null;
+                        $added += (int) $b;
+                        $rp = $this->probe($tOut);
+                        $variants[$q] = array_filter([
+                            'url' => $this->publicUrl($vKey),
+                            'key' => $vKey,
+                            'w' => $rp['w'] ?? null,
+                            'h' => $rp['h'] ?? $h,
+                            'bytes' => $b,
+                        ], fn ($v) => $v !== null);
+                    }
+                }
+            }
+
+            $post->media_variants = $variants;
+            $post->media_status = 'done';
+            $post->save();
+
+            return $added;
+        } finally {
+            foreach ($tmpFiles as $f) {
+                @unlink($f);
+            }
         }
     }
 

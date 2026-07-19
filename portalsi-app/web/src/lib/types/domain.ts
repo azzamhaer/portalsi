@@ -32,6 +32,8 @@ export interface PostPreview {
 	thumbnailUrl?: string;
 	isVideo: boolean;
 	videoMuted?: boolean;
+	/** Pilihan kualitas video (rendah/sedang/asli) untuk player adaptif. */
+	videoSources?: { quality: 'low' | 'medium' | 'original'; label: string; src: string }[];
 	mediaAlt: string;
 	location?: string;
 	createdLabel: string;

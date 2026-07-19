@@ -98,7 +98,8 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 		og: {
 			title: ogTitle(mappedPost.user.fullName || `@${mappedPost.user.username}`),
 			description: ogDescription(mappedPost.caption),
-			image: mappedPost.thumbnailUrl || mappedPost.mediaUrl
+			// Foto: pakai media asli (kualitas penuh utk share WhatsApp/SEO). Video: thumbnail.
+			image: mappedPost.isVideo ? mappedPost.thumbnailUrl || mappedPost.mediaUrl : mappedPost.mediaUrl
 		},
 		post: mappedPost,
 		likers: likes.map((like) => ({

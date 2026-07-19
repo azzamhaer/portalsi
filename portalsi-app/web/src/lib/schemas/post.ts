@@ -27,6 +27,12 @@ export const postSchema = z
 		media_url: z.string().min(1),
 		media_urls: z.array(z.string()).nullish(),
 		thumbnail_url: z.string().nullish(),
+		media_variants: z
+			.record(
+				z.string(),
+				z.object({ url: z.string().nullish(), key: z.string().nullish() }).passthrough()
+			)
+			.nullish(),
 		location: z.string().nullish(),
 		is_video: booleanish.catch(false),
 		video_muted: booleanish.catch(false),

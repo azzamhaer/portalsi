@@ -40,6 +40,23 @@ export function mapSessionToPortalUser(user: SessionUser): PortalUser {
 	};
 }
 
+function buildVideoSources(post: BackendPost, originalUrl: string, mediaBaseUrl: string) {
+	const variants = post.media_variants;
+	if (!variants) return undefined;
+	const out: { quality: 'low' | 'medium' | 'original'; label: string; src: string }[] = [];
+	const low = normalizeMediaUrl(variants.low?.url ?? undefined, mediaBaseUrl);
+	const medium = normalizeMediaUrl(variants.medium?.url ?? undefined, mediaBaseUrl);
+	if (low) out.push({ quality: 'low', label: 'Rendah', src: low });
+	if (medium) out.push({ quality: 'medium', label: 'Sedang', src: medium });
+	out.push({
+		quality: 'original',
+		label: 'Asli',
+		src: normalizeMediaUrl(variants.original?.url ?? undefined, mediaBaseUrl) ?? originalUrl
+	});
+	// Hanya berguna bila ada pilihan selain asli.
+	return out.length > 1 ? out : undefined;
+}
+
 export function mapPost(post: BackendPost, mediaBaseUrl: string): PostPreview {
 	const mediaUrl = normalizeMediaUrl(post.media_url, mediaBaseUrl) ?? '/assets/logo.png';
 	const cleanPath = mediaUrl.split('?')[0].toLowerCase();
@@ -58,6 +75,7 @@ export function mapPost(post: BackendPost, mediaBaseUrl: string): PostPreview {
 		thumbnailUrl: normalizeMediaUrl(post.thumbnail_url, mediaBaseUrl) ?? undefined,
 		isVideo: hasImageExtension ? false : hasVideoExtension ? true : post.is_video,
 		videoMuted: post.video_muted,
+		videoSources: buildVideoSources(post, mediaUrl, mediaBaseUrl),
 		mediaAlt: post.caption?.trim() || `Postingan oleh ${post.user.username}`,
 		location: post.location ?? undefined,
 		createdLabel: relativeTimeId(post.created_at),
