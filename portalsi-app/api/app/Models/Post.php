@@ -18,6 +18,8 @@ class Post extends Model
         'media_url',
         'media_urls',
         'thumbnail_url',
+        'media_variants',
+        'media_status',
         'location',
         'is_archived',
         'is_video',
@@ -35,6 +37,7 @@ class Post extends Model
         'is_video' => 'boolean',
         'video_muted' => 'boolean',
         'media_urls' => 'array',
+        'media_variants' => 'array',
     ];
 
     public function user()
