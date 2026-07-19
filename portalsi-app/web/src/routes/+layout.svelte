@@ -4,7 +4,7 @@
 	import type { Snippet } from 'svelte';
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
 	import GlobalProgress from '$lib/components/ui/GlobalProgress.svelte';
-	import { finishProgress, startProgress } from '$lib/ui/progress';
+	import { resetProgress, startProgress } from '$lib/ui/progress';
 
 	let { children }: { children: Snippet } = $props();
 	beforeNavigate(({ from, to }) => {
@@ -12,7 +12,9 @@
 			startProgress();
 		}
 	});
-	afterNavigate(() => finishProgress(true));
+	// Reset total setelah navigasi selesai → bar tak pernah "nyangkut" walau ada
+	// pasangan start/finish yang tidak seimbang (mis. request dibatalkan saat pindah).
+	afterNavigate(() => resetProgress());
 </script>
 
 <svelte:head>

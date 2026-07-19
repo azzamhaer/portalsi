@@ -14,21 +14,22 @@
 		label?: string;
 	} = $props();
 	let trigger: HTMLDivElement;
-	let intersecting = $state(false);
-	let lastRequestedCount = $state(-1);
-
-	$effect(() => {
-		if (!intersecting || !hasMore || loading || itemCount === lastRequestedCount) return;
-		lastRequestedCount = itemCount;
-		void onLoad();
-	});
+	// Hanya memuat SEKALI setiap kali trigger MASUK viewport (bukan berulang selama
+	// masih terlihat) — mencegah beberapa halaman termuat sekaligus tanpa user scroll.
+	let loadGuard = false;
 
 	onMount(() => {
+		void itemCount; // dipertahankan untuk kompatibilitas API
 		const observer = new IntersectionObserver(
 			(entries) => {
-				intersecting = Boolean(entries[0]?.isIntersecting);
+				if (!entries[0]?.isIntersecting) return;
+				if (!hasMore || loading || loadGuard) return;
+				loadGuard = true;
+				Promise.resolve(onLoad()).finally(() => {
+					loadGuard = false;
+				});
 			},
-			{ rootMargin: '500px 0px' }
+			{ rootMargin: '220px 0px' }
 		);
 		observer.observe(trigger);
 		return () => observer.disconnect();

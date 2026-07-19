@@ -30,6 +30,23 @@ export function startProgress() {
 	}
 }
 
+/**
+ * Paksa reset (mis. setelah navigasi selesai) agar bar tidak "nyangkut" jika ada
+ * pasangan start/finish yang tidak seimbang karena request dibatalkan saat pindah halaman.
+ */
+export function resetProgress() {
+	activeRequests = 0;
+	if (timer) {
+		clearInterval(timer);
+		timer = null;
+	}
+	if (hideTimer) {
+		clearTimeout(hideTimer);
+		hideTimer = null;
+	}
+	progressState.set({ active: false, value: 0, status: 'loading' });
+}
+
 export function finishProgress(success = true) {
 	if (activeRequests === 0) return;
 	activeRequests = Math.max(0, activeRequests - 1);

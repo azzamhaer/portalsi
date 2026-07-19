@@ -485,7 +485,10 @@
 							</li>{/each}
 					</ul>{/if}
 			</div>{/if}
-		<button onclick={fullscreen} aria-label={isFullscreen ? 'Keluar layar penuh' : 'Layar penuh'}
+		<button
+			class="fs-btn"
+			onclick={fullscreen}
+			aria-label={isFullscreen ? 'Keluar layar penuh' : 'Layar penuh'}
 			>{#if isFullscreen}<Shrink size={17} />{:else}<Expand size={17} />{/if}</button
 		>
 		</div>

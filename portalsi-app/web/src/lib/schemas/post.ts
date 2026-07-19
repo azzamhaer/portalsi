@@ -44,6 +44,7 @@ export const postSchema = z
 				})
 			)
 			.catch([]),
+		viewer_collab_status: z.enum(['pending', 'accepted']).nullish().catch(null),
 		location: z.string().nullish(),
 		is_video: booleanish.catch(false),
 		video_muted: booleanish.catch(false),

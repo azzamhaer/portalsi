@@ -186,12 +186,12 @@
 				<strong id={`post-${post.id}-author`}>
 					<a href={`/u/${post.user.username}`}>{post.user.username}</a>
 					<UserBadges verified={post.user.badgeVerified} role={post.user.role} />
-					{#if post.coAuthors && post.coAuthors.length > 0}<button
+					{#if post.coAuthors && post.coAuthors.length === 1}<span class="co-and"
+							>dan <a href={`/u/${post.coAuthors[0].username}`}>{post.coAuthors[0].username}</a
+							></span
+						>{:else if post.coAuthors && post.coAuthors.length > 1}<button
 							class="co-authors"
-							onclick={() => (collabPopupOpen = true)}
-							>&amp; {post.coAuthors.length === 1
-								? `@${post.coAuthors[0].username}`
-								: `${post.coAuthors.length} kolaborator`}</button
+							onclick={() => (collabPopupOpen = true)}>dan {post.coAuthors.length} lainnya</button
 						>{/if}
 				</strong>
 				<small>{post.createdLabel}</small>
@@ -450,6 +450,12 @@
 		font-weight: 800;
 		color: var(--color-secondary, #4b5563);
 	}
+	.co-and {
+		font-weight: 700;
+	}
+	.co-and a {
+		color: inherit;
+	}
 	.co-authors {
 		background: none;
 		border: 0;
@@ -705,6 +711,13 @@
 	.media.zoomable:focus-visible .zoom-cue {
 		opacity: 1;
 		transform: translateY(0);
+	}
+	/* Desktop: tanpa opsi perbesar/fullscreen di detail (mobile tetap). */
+	@media (min-width: 900px) {
+		.expand-media,
+		.zoom-cue {
+			display: none;
+		}
 	}
 
 	.media img {

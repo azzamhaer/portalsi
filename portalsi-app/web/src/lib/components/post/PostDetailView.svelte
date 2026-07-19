@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { CornerDownRight, Heart, Pencil, Send, Trash2, Users, X } from '@lucide/svelte';
+	import { Check, CornerDownRight, Heart, Pencil, Send, Trash2, Users, X } from '@lucide/svelte';
 	import { untrack } from 'svelte';
 	import { clientRequest } from '$lib/api/client';
 	import Avatar from '$lib/components/ui/Avatar.svelte';
@@ -129,6 +129,35 @@
 			/* abaikan */
 		} finally {
 			collabActionBusy = false;
+		}
+	}
+
+	// Banner undangan kolaborasi untuk viewer (bila diundang & belum menjawab).
+	let inviteStatus = $state<'pending' | 'done' | 'hidden'>(
+		untrack(() => (!isPostOwner && data.post.viewerCollabStatus === 'pending' ? 'pending' : 'hidden'))
+	);
+	let inviteBusy = $state(false);
+	async function respondInvite(accept: boolean) {
+		if (inviteBusy) return;
+		const confirmed = await confirmAction({
+			title: accept ? 'Terima kolaborasi?' : 'Tolak undangan?',
+			description: accept
+				? 'Postingan ini akan muncul juga di profil Anda sebagai co-author.'
+				: 'Undangan kolaborasi ini akan dihapus.',
+			confirmLabel: accept ? 'Terima' : 'Tolak',
+			tone: accept ? 'default' : 'danger'
+		});
+		if (!confirmed) return;
+		inviteBusy = true;
+		try {
+			await clientRequest(`posts/${data.post.id}/collaborators/${accept ? 'accept' : 'reject'}`, {
+				method: 'POST'
+			});
+			inviteStatus = 'done';
+		} catch {
+			/* abaikan */
+		} finally {
+			inviteBusy = false;
 		}
 	}
 
@@ -283,6 +312,24 @@
 
 <div class="post-detail-layout">
 		<div class="post-column">
+			{#if inviteStatus === 'pending'}
+				<div class="collab-invite-banner surface">
+					<div class="cib-text">
+						<strong>Kamu diundang berkolaborasi</strong>
+						<small>Terima agar postingan ini juga muncul di profilmu.</small>
+					</div>
+					<div class="cib-actions">
+						<button class="cib-accept" disabled={inviteBusy} onclick={() => respondInvite(true)}
+							><Check size={16} /> Terima</button
+						>
+						<button class="cib-reject" disabled={inviteBusy} onclick={() => respondInvite(false)}
+							><X size={16} /> Tolak</button
+						>
+					</div>
+				</div>
+			{:else if inviteStatus === 'done'}
+				<div class="collab-invite-banner surface done">Undangan kolaborasi telah diproses.</div>
+			{/if}
 			{#if isPostOwner}<details
 					class="owner-tools surface"
 					ontoggle={(e) => {
@@ -676,6 +723,59 @@
 		border-radius: 9px;
 		outline: 0;
 		font-size: 0.82rem;
+	}
+	.collab-invite-banner {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: 10px;
+		padding: 13px 15px;
+		background: var(--color-primary-soft, #fdece0);
+		border: 1px solid var(--color-primary, #f28a22);
+	}
+	.collab-invite-banner.done {
+		justify-content: center;
+		color: var(--color-muted);
+		font-size: 0.8rem;
+	}
+	.cib-text {
+		display: grid;
+		min-width: 0;
+	}
+	.cib-text strong {
+		font-size: 0.88rem;
+	}
+	.cib-text small {
+		color: var(--color-muted);
+		font-size: 0.74rem;
+	}
+	.cib-actions {
+		display: flex;
+		gap: 8px;
+	}
+	.cib-actions button {
+		display: inline-flex;
+		align-items: center;
+		gap: 5px;
+		min-height: 36px;
+		padding: 0 14px;
+		border: 0;
+		border-radius: 9px;
+		font-size: 0.78rem;
+		font-weight: 720;
+		cursor: pointer;
+	}
+	.cib-accept {
+		background: var(--color-primary);
+		color: #fff;
+	}
+	.cib-reject {
+		background: var(--color-surface, #fff);
+		color: var(--color-danger);
+	}
+	.cib-actions button:disabled {
+		opacity: 0.6;
 	}
 	.collab-manage {
 		margin-top: 14px;

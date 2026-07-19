@@ -14,6 +14,7 @@
 	} from '@lucide/svelte';
 	import { onMount, untrack } from 'svelte';
 	import { clientRequest } from '$lib/api/client';
+	import { confirmAction } from '$lib/ui/confirm';
 	import { subscribePrivate } from '$lib/realtime/client';
 	import Avatar from '$lib/components/ui/Avatar.svelte';
 	import StoryAvatarLink from '$lib/components/story/StoryAvatarLink.svelte';
@@ -51,6 +52,16 @@
 	let collabBusy = $state<number | null>(null);
 	async function decideCollab(item: (typeof items)[number], accept: boolean) {
 		if (!item.postId || collabBusy !== null) return;
+		const who = item.user ? `@${item.user.username}` : 'Postingan ini';
+		const confirmed = await confirmAction({
+			title: accept ? 'Terima kolaborasi?' : 'Tolak undangan?',
+			description: accept
+				? `Postingan dari ${who} akan muncul juga di profil Anda sebagai co-author.`
+				: `Undangan kolaborasi dari ${who} akan dihapus. Mereka masih bisa mengundang lagi.`,
+			confirmLabel: accept ? 'Terima' : 'Tolak',
+			tone: accept ? 'default' : 'danger'
+		});
+		if (!confirmed) return;
 		collabBusy = item.postId;
 		try {
 			await clientRequest(`posts/${item.postId}/collaborators/${accept ? 'accept' : 'reject'}`, {

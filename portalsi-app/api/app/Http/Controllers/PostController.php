@@ -501,6 +501,14 @@ class PostController extends Controller
         // thumbnail
         $post->thumbnail_url = $post->thumbnail_url ?? null;
 
+        // Status undangan kolaborasi untuk viewer (untuk banner accept/reject di post).
+        $post->viewer_collab_status = $authUser
+            ? (DB::table('post_collaborators')
+                ->where('post_id', $post->post_id)
+                ->where('user_id', $authUser->user_id)
+                ->value('status') ?: null)
+            : null;
+
         return response()->json($post);
     }
 

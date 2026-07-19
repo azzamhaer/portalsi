@@ -36,6 +36,8 @@ export interface PostPreview {
 	videoSources?: { quality: 'low' | 'medium' | 'original'; label: string; src: string }[];
 	/** Co-author (kolaborator) yang sudah menerima undangan. */
 	coAuthors?: { id: number; username: string; fullName: string; avatarUrl?: string; verified: boolean }[];
+	/** Status undangan kolaborasi untuk viewer saat ini (untuk banner accept/reject). */
+	viewerCollabStatus?: 'pending' | 'accepted' | null;
 	mediaAlt: string;
 	location?: string;
 	createdLabel: string;

@@ -146,11 +146,52 @@
 		background: #0b0c0d;
 		border-radius: 14px;
 	}
-	/* Beri ruang lebih lega untuk dua kolom (post + komentar) di dalam modal lebar. */
+	/* Desktop: tinggi tetap, modal TIDAK scroll; media kiri & komentar kanan scroll internal. */
 	@media (min-width: 951px) {
+		.pm-panel {
+			height: 86vh;
+			max-height: 860px;
+		}
+		.pm-scroll {
+			overflow: hidden;
+			padding: 0;
+		}
 		.pm-scroll :global(.post-detail-layout) {
-			grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
-			gap: 24px;
+			height: 100%;
+			margin: 0;
+			gap: 0;
+			align-items: stretch;
+			grid-template-columns: minmax(0, 1.15fr) minmax(340px, 0.85fr);
+		}
+		.pm-scroll :global(.post-column) {
+			overflow-y: auto;
+			padding: 20px;
+			border-right: 1px solid var(--color-border);
+		}
+		.pm-scroll :global(.comments) {
+			height: 100%;
+			display: flex;
+			flex-direction: column;
+			overflow: hidden;
+			border-radius: 0;
+		}
+		.pm-scroll :global(.comments > header) {
+			flex: none;
+		}
+		.pm-scroll :global(.comments .comment-list) {
+			flex: 1;
+			min-height: 0;
+			max-height: none;
+			overflow-y: auto;
+		}
+		.pm-scroll :global(.comments .comment-form) {
+			flex: none;
+		}
+		/* Hilangkan opsi perbesar & fullscreen video di desktop (mobile tetap ada). */
+		.pm-scroll :global(.expand-media),
+		.pm-scroll :global(.zoom-cue),
+		.pm-scroll :global(.smart-video .video-controls .fs-btn) {
+			display: none !important;
 		}
 	}
 	@media (max-width: 720px) {

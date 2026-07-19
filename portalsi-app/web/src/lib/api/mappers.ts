@@ -83,6 +83,7 @@ export function mapPost(post: BackendPost, mediaBaseUrl: string): PostPreview {
 			avatarUrl: normalizeMediaUrl(u.profile_picture_url, mediaBaseUrl) ?? undefined,
 			verified: u.is_verified
 		})),
+		viewerCollabStatus: post.viewer_collab_status ?? null,
 		mediaAlt: post.caption?.trim() || `Postingan oleh ${post.user.username}`,
 		location: post.location ?? undefined,
 		createdLabel: relativeTimeId(post.created_at),
