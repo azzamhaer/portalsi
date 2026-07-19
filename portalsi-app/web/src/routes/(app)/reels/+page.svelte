@@ -278,6 +278,7 @@
 	{@const reel = reels.find((r) => r.id === commentsFor)}
 	<CommentsSheet
 		postId={commentsFor}
+		currentUserId={data.currentUserId}
 		onClose={() => (commentsFor = null)}
 		onPosted={(n) => {
 			if (reel) reel.commentsCount = n;

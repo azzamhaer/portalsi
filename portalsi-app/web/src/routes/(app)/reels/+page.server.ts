@@ -16,6 +16,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 	const media = env.PUBLIC_MEDIA_BASE_URL?.trim() || 'https://api.portalsi.com/storage';
 	return {
 		reels: response.data.map((post) => mapPost(post, media)),
-		hasMore: response.has_more
+		hasMore: response.has_more,
+		currentUserId: locals.user?.id ?? null
 	};
 };

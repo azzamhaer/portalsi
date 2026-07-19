@@ -396,13 +396,14 @@
 					{#if !message.mine && mode === 'group'}<Avatar name={message.senderName} size="sm" />{/if}
 					<div class="bare">
 						{#if !message.mine && mode === 'group'}<strong>{message.senderName}</strong>{/if}
+						{#if note}<p class="shared-note"><MentionText text={note} /></p>{/if}
 						<SharedPostPreview postId={sharedId} />
-						{#if !note}<small
-								>{message.time}{#if message.mine}<CheckCheck
-										size={13}
-										class={message.isRead ? 'read' : undefined}
-									/>{/if}</small
-							>{/if}
+						<small
+							>{message.time}{#if message.mine}<CheckCheck
+									size={13}
+									class={message.isRead ? 'read' : undefined}
+								/>{/if}</small
+						>
 						{#if message.mine || mode === 'group'}<div class="message-tools">
 								{#if mode === 'group'}<button
 										onclick={() => (replyingTo = { id: message.id, name: message.senderName })}
@@ -414,20 +415,6 @@
 							</div>{/if}
 					</div>
 				</article>
-				{#if note}
-					<article class:mine={message.mine}>
-						{#if !message.mine && mode === 'group'}<Avatar name={message.senderName} size="sm" />{/if}
-						<div>
-							<p><MentionText text={note} /></p>
-							<small
-								>{message.time}{#if message.mine}<CheckCheck
-										size={13}
-										class={message.isRead ? 'read' : undefined}
-									/>{/if}</small
-							>
-						</div>
-					</article>
-				{/if}
 			{:else}
 				<article class:mine={message.mine}>
 					{#if !message.mine && mode === 'group'}<Avatar name={message.senderName} size="sm" />{/if}
@@ -803,6 +790,24 @@
 	.messages article > div.bare small {
 		justify-content: flex-start;
 		color: var(--color-muted);
+	}
+	/* Catatan opsional muncul menyatu di atas pratinjau post (satu kesatuan). */
+	.messages .shared-note {
+		margin: 0 0 6px;
+		padding: 8px 12px;
+		max-width: 100%;
+		background: var(--color-surface-soft, #f2f3f5);
+		border-radius: 14px 14px 4px 14px;
+		font-size: 0.86rem;
+		line-height: 1.4;
+		white-space: pre-wrap;
+		word-break: break-word;
+	}
+	.messages article.mine .shared-note {
+		background: var(--color-primary-soft, #fdece0);
+		border-radius: 14px 14px 14px 4px;
+		margin-left: auto;
+		width: fit-content;
 	}
 	.messages article.mine > div.bare {
 		background: transparent;
