@@ -173,18 +173,27 @@
 				<section class="reel" use:track={i}>
 					<div class="reel-stage">
 						<div class="reel-video">
-							<SmartVideo
-								src={reel.mediaUrl}
-								sources={reel.videoSources ?? []}
-								poster={reel.thumbnailUrl}
-								label={reel.mediaAlt}
-								fill
-								autoplay
-								preferSound
-								loop
-								minimal
-								onDoubleTap={() => doubleTapLike(reel)}
-							/>
+							{#if Math.abs(i - activeIndex) <= 1}
+								<SmartVideo
+									src={reel.mediaUrl}
+									sources={reel.videoSources ?? []}
+									poster={reel.thumbnailUrl}
+									label={reel.mediaAlt}
+									fill
+									autoplay
+									preferSound
+									loop
+									minimal
+									onDoubleTap={() => doubleTapLike(reel)}
+								/>
+							{:else}
+								<img
+									class="reel-still"
+									src={reel.thumbnailUrl ?? reel.mediaUrl}
+									alt={reel.mediaAlt}
+									loading="lazy"
+								/>
+							{/if}
 						</div>
 
 						{#if burstId === reel.id}
@@ -341,6 +350,12 @@
 		padding: 0;
 		background: #000;
 		border: 0;
+	}
+	.reel-still {
+		width: 100%;
+		height: 100%;
+		object-fit: contain;
+		background: #000;
 	}
 	.like-burst {
 		position: absolute;

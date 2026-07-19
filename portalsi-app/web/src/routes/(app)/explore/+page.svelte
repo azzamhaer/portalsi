@@ -578,6 +578,7 @@
 	.explore-grid {
 		display: grid;
 		grid-template-columns: repeat(3, minmax(0, 1fr));
+		grid-auto-flow: row dense;
 		gap: 4px;
 		overflow: hidden;
 		border-radius: var(--radius-lg);

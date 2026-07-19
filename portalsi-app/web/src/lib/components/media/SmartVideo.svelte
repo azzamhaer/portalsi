@@ -135,6 +135,22 @@
 		else video.pause();
 	}
 
+	// Lepas resource media saat komponen dibongkar (mis. keluar dari reels), supaya
+	// koneksi ke CDN & memori decoder benar-benar dibebaskan (penting di iOS).
+	$effect(() => {
+		return () => {
+			if (video) {
+				try {
+					video.pause();
+					video.removeAttribute('src');
+					video.load();
+				} catch {
+					/* abaikan */
+				}
+			}
+		};
+	});
+
 	// ---- Seek tipis untuk mode minimal (reels) ----
 	let scrubbing = $state(false);
 	let scrubTime = $state(0);
