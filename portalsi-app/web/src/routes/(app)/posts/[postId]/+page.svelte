@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { LogIn } from '@lucide/svelte';
 	import { page } from '$app/state';
-	import SectionPage from '$lib/components/layout/SectionPage.svelte';
 	import PostDetailView from '$lib/components/post/PostDetailView.svelte';
 	import type { PageProps } from './$types';
 	let { data, form }: PageProps = $props();
@@ -43,12 +42,47 @@
 		</div>
 	</main>
 {:else}
-	<SectionPage eyebrow="Diskusi" title="Detail postingan">
-		<PostDetailView {data} {form} />
-	</SectionPage>
+	<div class="detail-page-wrap">
+		<div class="detail-page-card surface">
+			<PostDetailView {data} {form} />
+		</div>
+	</div>
 {/if}
 
 <style>
+	.detail-page-wrap {
+		display: flex;
+		justify-content: center;
+		padding: 18px;
+	}
+	.detail-page-card {
+		width: min(1100px, 100%);
+		height: min(86vh, 860px);
+		overflow: hidden;
+		border-radius: 18px;
+	}
+	.detail-page-card :global(.post-detail-layout) {
+		height: 100%;
+		grid-template-rows: minmax(0, 1fr);
+	}
+	.detail-page-card :global(.comment-list) {
+		min-height: 0;
+		overflow-y: auto;
+	}
+	.detail-page-card :global(.post-column) {
+		border-radius: 18px 0 0 18px;
+	}
+	@media (max-width: 950px) {
+		.detail-page-wrap {
+			padding: 0;
+		}
+		.detail-page-card {
+			width: 100%;
+			height: auto;
+			min-height: 100dvh;
+			border-radius: 0;
+		}
+	}
 	.public-post {
 		display: grid;
 		min-height: 100vh;

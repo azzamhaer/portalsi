@@ -21,7 +21,10 @@
 		sources = [],
 		onDoubleTap,
 		minimal = false,
-		loop = false
+		loop = false,
+		musicSrc,
+		musicStart = 0,
+		musicClip = 15
 	}: {
 		src: string;
 		poster?: string;
@@ -34,7 +37,26 @@
 		onDoubleTap?: () => void;
 		minimal?: boolean;
 		loop?: boolean;
+		musicSrc?: string;
+		musicStart?: number;
+		musicClip?: number;
 	} = $props();
+
+	// Audio musik yang menyatu dengan video: ikut play/pause/seek video, dilooping pada klip.
+	let musicAudio: HTMLAudioElement | undefined;
+	function syncMusicPlay() {
+		if (!musicAudio) return;
+		if (musicAudio.currentTime < musicStart || musicAudio.currentTime > musicStart + musicClip)
+			musicAudio.currentTime = musicStart;
+		void musicAudio.play().catch(() => undefined);
+	}
+	function syncMusicPause() {
+		musicAudio?.pause();
+	}
+	function syncMusicLoop() {
+		if (musicAudio && musicAudio.currentTime > musicStart + musicClip)
+			musicAudio.currentTime = musicStart;
+	}
 
 	// Daftar kualitas (fallback ke satu sumber 'Asli' bila tak ada varian).
 	const available = $derived<VideoSource[]>(
@@ -135,18 +157,15 @@
 		else video.pause();
 	}
 
-	// Lepas resource media saat komponen dibongkar (mis. keluar dari reels), supaya
-	// koneksi ke CDN & memori decoder benar-benar dibebaskan (penting di iOS).
+	// Saat komponen dibongkar (mis. keluar/menggulir reels), cukup jeda video agar
+	// dekoder berhenti — tanpa menghapus src (menghindari race yang bikin video tak jalan).
 	$effect(() => {
+		const el = video;
 		return () => {
-			if (video) {
-				try {
-					video.pause();
-					video.removeAttribute('src');
-					video.load();
-				} catch {
-					/* abaikan */
-				}
+			try {
+				el?.pause();
+			} catch {
+				/* abaikan */
 			}
 		};
 	});
@@ -335,12 +354,22 @@
 				mediaAspect = `${video.videoWidth} / ${video.videoHeight}`;
 			loading = false;
 		}}
-		onplay={() => (playing = true)}
-		onpause={() => (playing = false)}
-		onended={() => (playing = false)}
+		onplay={() => {
+			playing = true;
+			if (musicSrc) syncMusicPlay();
+		}}
+		onpause={() => {
+			playing = false;
+			if (musicSrc) syncMusicPause();
+		}}
+		onended={() => {
+			playing = false;
+			if (musicSrc) syncMusicPause();
+		}}
 		ontimeupdate={() => {
 			current = video.currentTime;
 			duration = video.duration || duration;
+			if (musicSrc) syncMusicLoop();
 		}}
 		onseeked={() => {
 			if (scrubbing) drawPreview();
@@ -350,6 +379,7 @@
 			loading = false;
 		}}><track kind="captions" label="Takarir tidak tersedia" /></video
 	>
+	{#if musicSrc}<audio bind:this={musicAudio} src={musicSrc} preload="auto"></audio>{/if}
 	{#if loading && !failed}<div class="video-state">
 			<LoaderCircle class="spin" size={28} /><span>Menyiapkan video…</span>
 		</div>{/if}

@@ -23,6 +23,7 @@
 	import ViewportMusic from '$lib/components/media/ViewportMusic.svelte';
 	import MediaLightbox from '$lib/components/media/MediaLightbox.svelte';
 	import SharePostSheet from '$lib/components/feed/SharePostSheet.svelte';
+	import CommentsSheet from '$lib/components/reels/CommentsSheet.svelte';
 	import UserBadges from '$lib/components/ui/UserBadges.svelte';
 	import { createdCommentResponseSchema } from '$lib/schemas/comment';
 	import type { PageData } from '../../../routes/(app)/posts/[postId]/$types';
@@ -68,6 +69,34 @@
 	let collabQuery = $state('');
 	let collabResults = $state<{ id: number; username: string; avatarUrl?: string }[]>([]);
 	let collabActionBusy = $state(false);
+
+	// Pemilih lokasi (edit) — seperti saat buat post.
+	let editLocation = $state(untrack(() => data.post.location ?? ''));
+	let editLocationResults = $state<{ id: number; label: string }[]>([]);
+	let editLocationChosen = $state(untrack(() => Boolean(data.post.location)));
+	$effect(() => {
+		const q = editLocation.trim();
+		if (!ownerMenuOpen || editLocationChosen || q.length < 3) {
+			editLocationResults = [];
+			return;
+		}
+		const controller = new AbortController();
+		const timer = setTimeout(async () => {
+			try {
+				const res = await fetch(`/api/external/locations?q=${encodeURIComponent(q)}`, {
+					signal: controller.signal
+				});
+				const payload = (await res.json()) as { locations?: { id: number; label: string }[] };
+				editLocationResults = payload.locations ?? [];
+			} catch {
+				/* abaikan */
+			}
+		}, 300);
+		return () => {
+			clearTimeout(timer);
+			controller.abort();
+		};
+	});
 
 	async function loadCollaborators() {
 		try {
@@ -170,6 +199,11 @@
 	let shareOpen = $state(false);
 	let ownerMenuOpen = $state(false);
 	let collabPopupOpen = $state(false);
+	let mobileCommentsOpen = $state(false);
+	function openComments() {
+		if (isDesktop) document.querySelector<HTMLTextAreaElement>('.comment-form textarea')?.focus();
+		else mobileCommentsOpen = true;
+	}
 	let editedCountdown = $state(0);
 	// Popup countdown 3 detik saat post berhasil diedit.
 	$effect(() => {
@@ -449,7 +483,32 @@
 						<div class="emc-body">
 						<form id="editPostForm" method="POST" action="?/update">
 						<label>Caption <textarea name="caption" rows="4">{data.post.caption}</textarea></label>
-						<label>Lokasi <input name="location" value={data.post.location ?? ''} maxlength="120" placeholder="Tambahkan lokasi" /></label>
+						<div class="edit-loc">
+							<label
+								>Lokasi <input
+									name="location"
+									bind:value={editLocation}
+									oninput={() => (editLocationChosen = false)}
+									maxlength="160"
+									autocomplete="off"
+									placeholder="Cari & tambahkan lokasi"
+								/></label
+							>
+							{#if editLocationResults.length}
+								<div class="edit-loc-results">
+									{#each editLocationResults as place (place.id)}
+										<button
+											type="button"
+											onclick={() => {
+												editLocation = place.label;
+												editLocationChosen = true;
+												editLocationResults = [];
+											}}><MapPin size={14} /> {place.label}</button
+										>
+									{/each}
+								</div>
+							{/if}
+						</div>
 					</form>
 
 					<div class="collab-manage">
@@ -522,7 +581,12 @@
 						poster={data.post.thumbnailUrl}
 						label={data.post.mediaAlt}
 						fill
-						preferSound
+						autoplay
+						preferSound={!data.post.music?.previewUrl}
+						forceMuted={data.post.videoMuted || Boolean(data.post.music?.previewUrl)}
+						musicSrc={data.post.music?.previewUrl}
+						musicStart={data.post.music?.startSeconds ?? 0}
+						musicClip={data.post.music?.durationSeconds ?? 15}
 						onDoubleTap={doubleTapLike}
 					/>
 				{:else if isGallery}
@@ -604,9 +668,28 @@
 			</header>
 			<div class="comment-list">
 				{#if data.post.caption}
-					<div class="pinned-caption"><p><MentionText text={data.post.caption} /></p></div>
+					<div class="pinned-caption">
+						<StoryAvatarLink
+							userId={data.post.user.id}
+							username={data.post.user.username}
+							name={data.post.user.fullName}
+							avatarUrl={data.post.user.avatarUrl}
+							size="sm"
+							hasStory={data.post.user.hasStory}
+							seen={data.post.user.storyViewed}
+						/>
+						<p>
+							<a class="c-user" href={`/u/${data.post.user.username}`}
+								><strong>{data.post.user.username}</strong><UserBadges
+									verified={data.post.user.badgeVerified}
+									role={data.post.user.role}
+								/></a
+							>
+							<MentionText text={data.post.caption} />
+						</p>
+					</div>
 				{/if}
-				{#if data.post.music && data.post.music.previewUrl}
+				{#if data.post.music && data.post.music.previewUrl && !data.post.isVideo}
 					<div class="pinned-music">
 						<ViewportMusic
 							src={data.post.music.previewUrl}
@@ -623,16 +706,30 @@
 						<MapPin size={14} /><span>{data.post.location}</span>
 					</div>
 				{/if}
+				{#if commentCount > 0}<button
+						class="mobile-comments-link"
+						onclick={() => (mobileCommentsOpen = true)}
+						>Lihat semua {commentCount} komentar</button
+					>{/if}
+				<div class="inline-thread">
 				{#each comments as comment (comment.id)}
 					<article>
-						<Avatar name={comment.user.fullName} src={comment.user.avatarUrl} size="sm" />
+						<StoryAvatarLink
+							userId={comment.user.id}
+							username={comment.user.username}
+							name={comment.user.fullName}
+							avatarUrl={comment.user.avatarUrl ?? undefined}
+							size="sm"
+							hasStory={comment.user.hasStory}
+							seen={comment.user.storyViewed}
+						/>
 						<div>
 							<p>
-								<strong
-									>{comment.user.fullName}<UserBadges
+								<a class="c-user" href={`/u/${comment.user.username}`}
+									><strong>{comment.user.username}</strong><UserBadges
 										verified={comment.user.badgeVerified}
 										role={comment.user.role}
-									/></strong
+									/></a
 								>
 								{#if !comment.gifUrl}<MentionText text={comment.text} />{/if}
 							</p>
@@ -648,7 +745,7 @@
 									onclick={() => toggleCommentLike(comment.id)}
 									><Heart size={13} fill={comment.isLiked ? 'currentColor' : 'none'} />
 									{comment.likesCount}</button
-								><button onclick={() => startReply(comment.id, comment.user.fullName)}
+								><button onclick={() => startReply(comment.id, comment.user.username)}
 									>Balas</button
 								>
 								{#if comment.user.id === data.currentUser.id}{#if !comment.gifUrl}<button
@@ -665,18 +762,22 @@
 							{#if expandedReplies.has(comment.id)}
 								{#each comment.replies as reply (reply.id)}
 								<div class="reply">
-									<CornerDownRight size={15} class="reply-arrow" /><Avatar
+									<CornerDownRight size={15} class="reply-arrow" /><StoryAvatarLink
+										userId={reply.user.id}
+										username={reply.user.username}
 										name={reply.user.fullName}
-										src={reply.user.avatarUrl}
+										avatarUrl={reply.user.avatarUrl ?? undefined}
 										size="sm"
+										hasStory={reply.user.hasStory}
+										seen={reply.user.storyViewed}
 									/>
 									<div>
 										<p>
-											<strong
-												>{reply.user.fullName}<UserBadges
+											<a class="c-user" href={`/u/${reply.user.username}`}
+												><strong>{reply.user.username}</strong><UserBadges
 													verified={reply.user.badgeVerified}
 													role={reply.user.role}
-												/></strong
+												/></a
 											>
 											{#if !reply.gifUrl}<MentionText text={reply.text} />{/if}
 										</p>
@@ -706,17 +807,14 @@
 					</article>
 				{/each}
 				{#if comments.length === 0}<p class="empty">Jadilah yang pertama berkomentar.</p>{/if}
+				</div>
 			</div>
 			<div class="ds-actions">
 				<div class="ds-act-buttons">
 					<button class:on={liked} onclick={toggleLike} disabled={liking} aria-label="Suka"
 						><Heart size={24} fill={liked ? 'currentColor' : 'none'} /></button
 					>
-					<button
-						onclick={() =>
-							document.querySelector<HTMLTextAreaElement>('.comment-form textarea')?.focus()}
-						aria-label="Komentar"><MessageCircle size={24} /></button
-					>
+					<button onclick={openComments} aria-label="Komentar"><MessageCircle size={24} /></button>
 					<button onclick={() => (shareOpen = true)} aria-label="Bagikan"><Send size={22} /></button>
 					<button
 						class="ds-bookmark"
@@ -730,6 +828,10 @@
 					>{/if}
 				<time class="ds-time">{data.post.createdLabel}</time>
 			</div>
+			<button class="mobile-compose-bar" onclick={() => (mobileCommentsOpen = true)}>
+				<Avatar name={data.currentUser.fullName} src={data.currentUser.avatarUrl} size="sm" />
+				<span>Tulis komentar…</span>
+			</button>
 			<div class="comment-compose">
 			{#if replyTo}<div class="replying">
 					Membalas {replyTo.name}<button
@@ -775,6 +877,15 @@
 			<button onclick={() => (editedCountdown = 0)}>Tutup</button>
 		</div>
 	</div>
+{/if}
+
+{#if mobileCommentsOpen}
+	<CommentsSheet
+		postId={data.post.id}
+		currentUserId={data.currentUser.id}
+		onClose={() => (mobileCommentsOpen = false)}
+		onPosted={(n) => (commentCount = n)}
+	/>
 {/if}
 
 {#if shareOpen}
@@ -1375,14 +1486,29 @@
 		cursor: pointer;
 	}
 	.pinned-caption {
+		display: flex;
+		gap: 10px;
 		padding: 12px 16px 14px;
 	}
 	.pinned-caption p {
+		flex: 1;
+		min-width: 0;
 		margin: 0;
 		font-size: 0.84rem;
 		line-height: 1.5;
 		white-space: pre-wrap;
 		word-break: break-word;
+	}
+	.c-user {
+		display: inline-flex;
+		align-items: center;
+		gap: 5px;
+		margin-right: 5px;
+		color: var(--color-text);
+		vertical-align: baseline;
+	}
+	.c-user strong {
+		font-weight: 700;
 	}
 	.pinned-music {
 		padding: 2px 16px 12px;
@@ -1538,6 +1664,33 @@
 		min-height: 0;
 		overflow-y: auto;
 	}
+	.edit-loc {
+		display: grid;
+		gap: 5px;
+	}
+	.edit-loc-results {
+		display: grid;
+		gap: 2px;
+		padding: 4px;
+		background: var(--color-canvas);
+		border: 1px solid var(--color-border);
+		border-radius: 10px;
+	}
+	.edit-loc-results button {
+		display: flex;
+		align-items: center;
+		gap: 7px;
+		min-height: 38px;
+		padding: 0 9px;
+		background: transparent;
+		border-radius: 8px;
+		color: var(--color-text);
+		font-size: 0.8rem;
+		text-align: left;
+	}
+	.edit-loc-results button:hover {
+		background: var(--color-surface-soft, #f4f5f7);
+	}
 	.edit-modal-card form,
 	.edit-modal-card .collab-manage {
 		padding: 16px 18px;
@@ -1661,6 +1814,42 @@
 	.comment-compose {
 		background: var(--color-surface);
 		border-top: 1px solid var(--color-border);
+	}
+	.mobile-comments-link,
+	.mobile-compose-bar {
+		display: none;
+	}
+	@media (max-width: 950px) {
+		.inline-thread,
+		.comment-compose {
+			display: none;
+		}
+		.mobile-comments-link {
+			display: block;
+			width: 100%;
+			padding: 6px 16px 12px;
+			background: none;
+			border: 0;
+			color: var(--color-muted);
+			font-size: 0.82rem;
+			text-align: left;
+			cursor: pointer;
+		}
+		.mobile-compose-bar {
+			display: flex;
+			align-items: center;
+			gap: 10px;
+			width: 100%;
+			padding: 10px 15px calc(10px + env(safe-area-inset-bottom, 0px));
+			background: var(--color-surface);
+			border: 0;
+			border-top: 1px solid var(--color-border);
+			cursor: pointer;
+		}
+		.mobile-compose-bar span {
+			color: var(--color-muted);
+			font-size: 0.86rem;
+		}
 	}
 	.show-replies {
 		display: flex;
