@@ -113,10 +113,40 @@
 	let root: HTMLDivElement;
 	let loading = $state(true);
 	let hasFrame = $state(false);
-	// Apakah video SEHARUSNYA berputar (sedang di viewport). Dipakai untuk mencoba ulang
-	// play() begitu data siap — iOS sering menolak play() saat dipanggil sebelum video siap,
-	// membuat video "mentok di frame pertama". Retry saat canplay menyelesaikan ini.
+	// Apakah video SEHARUSNYA berputar (sedang di viewport). iOS kerap menolak/melewatkan
+	// play() (timing decoder, belum siap, dsb.) sehingga video "mentok di frame pertama".
+	// Solusinya: loop kecil yang terus mencoba play sampai benar-benar jalan — dihentikan
+	// otomatis begitu video berputar, keluar viewport, atau di-pause manual oleh user.
 	let shouldPlay = false;
+	let userPaused = false;
+	let playRetryTimer: ReturnType<typeof setTimeout> | null = null;
+
+	function stopPlayRetry() {
+		if (playRetryTimer) {
+			clearTimeout(playRetryTimer);
+			playRetryTimer = null;
+		}
+	}
+
+	// Coba putar; jika belum jalan, jadwalkan percobaan ulang. Aman: berhenti sendiri saat
+	// sudah playing / keluar viewport / user pause.
+	function ensurePlaying() {
+		if (!video || !shouldPlay || userPaused || failed || scrubbing) {
+			stopPlayRetry();
+			return;
+		}
+		if (!video.paused) {
+			stopPlayRetry();
+			return;
+		}
+		playWithFallback();
+		stopPlayRetry();
+		playRetryTimer = setTimeout(() => {
+			playRetryTimer = null;
+			if (shouldPlay && !userPaused && !failed && !scrubbing && video && video.paused)
+				ensurePlaying();
+		}, 350);
+	}
 	let failed = $state(false);
 	let playing = $state(false);
 	// Autoplay HARUS mulai muted agar dipercaya jalan di mobile (kebijakan browser memblokir
@@ -161,8 +191,14 @@
 
 	function togglePlayback() {
 		if (!video || failed) return;
-		if (video.paused) void video.play();
-		else video.pause();
+		if (video.paused) {
+			userPaused = false;
+			ensurePlaying();
+		} else {
+			userPaused = true;
+			stopPlayRetry();
+			video.pause();
+		}
 	}
 
 	// Saat komponen dibongkar (mis. keluar/menggulir reels), cukup jeda video agar
@@ -170,6 +206,7 @@
 	$effect(() => {
 		const el = video;
 		return () => {
+			stopPlayRetry();
 			try {
 				el?.pause();
 			} catch {
@@ -212,6 +249,7 @@
 		if (!video || !duration) return;
 		e.stopPropagation();
 		scrubbing = true;
+		stopPlayRetry();
 		wasPlayingBeforeScrub = !video.paused;
 		video.pause();
 		try {
@@ -236,7 +274,7 @@
 		} catch {
 			/* abaikan */
 		}
-		if (wasPlayingBeforeScrub) void video.play().catch(() => undefined);
+		if (wasPlayingBeforeScrub) ensurePlaying();
 	}
 
 	// Bedakan tap tunggal (play/pause) vs ganda (like) bila onDoubleTap disediakan.
@@ -319,9 +357,12 @@
 				if (!entry) return;
 				if (entry.isIntersecting && entry.intersectionRatio >= 0.55) {
 					shouldPlay = true;
-					playWithFallback();
+					userPaused = false;
+					ensurePlaying();
 				} else {
 					shouldPlay = false;
+					userPaused = false;
+					stopPlayRetry();
 					if (!el.paused) el.pause();
 				}
 			},
@@ -355,7 +396,7 @@
 			if (!hasFrame) loading = true;
 		}}
 		oncanplay={() => {
-				if (shouldPlay && video?.paused && !failed) playWithFallback();
+				ensurePlaying();
 			hasFrame = true;
 			loading = false;
 		}}

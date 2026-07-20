@@ -173,7 +173,7 @@
 				<section class="reel" use:track={i}>
 					<div class="reel-stage">
 						<div class="reel-video">
-							{#if Math.abs(i - activeIndex) <= 1}
+							{#if i === activeIndex}
 								<SmartVideo
 									src={reel.mediaUrl}
 									sources={reel.videoSources ?? []}
