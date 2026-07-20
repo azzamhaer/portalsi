@@ -115,9 +115,9 @@
 	let hasFrame = $state(false);
 	let failed = $state(false);
 	let playing = $state(false);
-	// forceMuted mengunci mute. preferSound (mis. di detail/modal) mulai dengan suara aktif;
-	// bila browser memblokir autoplay bersuara, otomatis fallback ke mute agar tetap main.
-	let muted = $state(forceMuted ? true : preferSound ? false : autoplay);
+	// Autoplay HARUS mulai muted agar dipercaya jalan di mobile (kebijakan browser memblokir
+	// autoplay bersuara). preferSound berarti "nyalakan suara pada sentuhan pertama".
+	let muted = $state(forceMuted ? true : autoplay ? true : preferSound ? false : false);
 	let current = $state(0);
 	let duration = $state(0);
 	let mediaAspect = $state('16 / 9');
@@ -234,6 +234,13 @@
 	// Bedakan tap tunggal (play/pause) vs ganda (like) bila onDoubleTap disediakan.
 	let tapTimer: ReturnType<typeof setTimeout> | null = null;
 	function onVideoTap() {
+		// Sentuhan pertama pada video autoplay yang di-mute: nyalakan suara (dalam gesture
+		// pengguna sehingga diizinkan mobile), tanpa mem-pause videonya.
+		if (preferSound && !forceMuted && video && video.muted) {
+			video.muted = false;
+			muted = false;
+			return;
+		}
 		if (!onDoubleTap) {
 			togglePlayback();
 			return;
