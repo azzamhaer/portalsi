@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { LogIn } from '@lucide/svelte';
 	import { page } from '$app/state';
+	import BackButton from '$lib/components/ui/BackButton.svelte';
 	import PostDetailView from '$lib/components/post/PostDetailView.svelte';
 	import type { PageProps } from './$types';
 	let { data, form }: PageProps = $props();
@@ -43,8 +44,11 @@
 	</main>
 {:else}
 	<div class="detail-page-wrap">
-		<div class="detail-page-card surface">
-			<PostDetailView {data} {form} />
+		<div class="detail-page-inner">
+			<div class="detail-back"><BackButton fallback="/home" /></div>
+			<div class="detail-page-card surface">
+				<PostDetailView {data} {form} />
+			</div>
 		</div>
 	</div>
 {/if}
@@ -55,8 +59,14 @@
 		justify-content: center;
 		padding: 18px;
 	}
-	.detail-page-card {
+	.detail-page-inner {
 		width: min(1100px, 100%);
+	}
+	.detail-back {
+		margin-bottom: 12px;
+	}
+	.detail-page-card {
+		width: 100%;
 		height: min(86vh, 860px);
 		overflow: hidden;
 		border-radius: 18px;
@@ -75,6 +85,16 @@
 	@media (max-width: 950px) {
 		.detail-page-wrap {
 			padding: 0;
+		}
+		.detail-page-inner {
+			position: relative;
+		}
+		.detail-back {
+			position: absolute;
+			top: calc(10px + env(safe-area-inset-top, 0px));
+			left: 10px;
+			z-index: 20;
+			margin-bottom: 0;
 		}
 		.detail-page-card {
 			width: 100%;

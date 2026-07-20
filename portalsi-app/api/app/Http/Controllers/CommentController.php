@@ -13,8 +13,10 @@ use App\Models\Notification;
 // ✅ Gunakan hanya satu event untuk setiap aksi
 use App\Models\Post;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class CommentController extends Controller
 {
@@ -151,6 +153,58 @@ class CommentController extends Controller
             ->orderByDesc('likes_count') // komentar dengan like terbanyak dulu
             ->orderBy('created_at', 'desc')
             ->get();
+
+        // Lampirkan info story (has_story & story_viewed) ke tiap user komentar & balasan,
+        // supaya lingkar story tampil di avatar komentar. Dibatch agar hemat query.
+        $userIds = collect();
+        foreach ($comments as $c) {
+            if ($c->user) {
+                $userIds->push($c->user->user_id);
+            }
+            foreach ($c->replies as $r) {
+                if ($r->user) {
+                    $userIds->push($r->user->user_id);
+                }
+            }
+        }
+        $userIds = $userIds->unique()->values();
+
+        $storiesByUser = DB::table('stories')
+            ->whereIn('user_id', $userIds)
+            ->where('created_at', '>=', Carbon::now()->subHours(24))
+            ->get(['story_id', 'user_id'])
+            ->groupBy('user_id');
+
+        $allStoryIds = $storiesByUser->flatten(1)->pluck('story_id');
+        $viewedStoryIds = ($authId && $allStoryIds->isNotEmpty())
+            ? DB::table('story_views')
+                ->whereIn('story_id', $allStoryIds)
+                ->where('viewer_id', $authId)
+                ->pluck('story_id')
+                ->flip()
+            : collect();
+
+        $attachStory = function ($user) use ($storiesByUser, $viewedStoryIds) {
+            if (! $user) {
+                return;
+            }
+            $ids = $storiesByUser->get($user->user_id);
+            if ($ids && $ids->isNotEmpty()) {
+                $user->has_story = true;
+                $viewedCount = $ids->filter(fn ($s) => $viewedStoryIds->has($s->story_id))->count();
+                $user->story_viewed = ($viewedCount === $ids->count());
+            } else {
+                $user->has_story = false;
+                $user->story_viewed = false;
+            }
+        };
+
+        foreach ($comments as $c) {
+            $attachStory($c->user);
+            foreach ($c->replies as $r) {
+                $attachStory($r->user);
+            }
+        }
 
         return response()->json([
             'post_id' => $post_id,

@@ -1487,8 +1487,9 @@
 	}
 	.pinned-caption {
 		display: flex;
+		align-items: flex-start;
 		gap: 10px;
-		padding: 12px 16px 14px;
+		padding: 14px 15px;
 	}
 	.pinned-caption p {
 		flex: 1;
@@ -1868,10 +1869,11 @@
 		height: 1px;
 		background: var(--color-border);
 	}
-	.comment-list > article {
+	.inline-thread > article {
 		display: grid;
 		grid-template-columns: auto 1fr;
-		gap: 9px;
+		gap: 10px;
+		align-items: start;
 		padding: 14px 15px;
 		border-bottom: 1px solid var(--color-border);
 	}

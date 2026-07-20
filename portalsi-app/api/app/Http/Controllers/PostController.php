@@ -829,9 +829,15 @@ class PostController extends Controller
             $post->thumbnail_url = Storage::disk($disk)->url($thumbPathNew);
         }
 
-        // Update fields
-        $post->caption = $request->caption ?? $post->caption;
-        $post->location = $request->location ?? $post->location;
+        // Update fields — pakai has() agar caption/lokasi bisa DIKOSONGKAN.
+        // (Middleware ConvertEmptyStringsToNull membuat string kosong jadi null,
+        //  sehingga "?? $post->caption" dulu selalu mempertahankan nilai lama.)
+        if ($request->has('caption')) {
+            $post->caption = $request->input('caption');
+        }
+        if ($request->has('location')) {
+            $post->location = $request->input('location');
+        }
         $post->is_archived = $request->is_archived ?? $post->is_archived;
         $post->is_video = $request->is_video ?? $post->is_video;
 
