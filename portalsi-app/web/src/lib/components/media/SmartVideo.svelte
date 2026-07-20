@@ -1,3 +1,10 @@
+<script module lang="ts">
+	// Preferensi suara reels lintas-video: sekali user menyalakan suara, video reels
+	// berikutnya ikut mencoba bersuara (tetap fallback ke muted bila browser memblokir),
+	// sehingga suara terasa "jalan terus" saat scroll.
+	let reelsSoundOn = false;
+</script>
+
 <script lang="ts">
 	import {
 		Expand,
@@ -16,6 +23,7 @@
 		label = 'Video postingan',
 		fill = false,
 		autoplay = false,
+		active = undefined,
 		forceMuted = false,
 		preferSound = false,
 		sources = [],
@@ -31,6 +39,8 @@
 		label?: string;
 		fill?: boolean;
 		autoplay?: boolean;
+		/** Kendali putar eksplisit (reels): true=putar, false=jeda. Bila undefined, pakai IntersectionObserver. */
+		active?: boolean | undefined;
 		forceMuted?: boolean;
 		preferSound?: boolean;
 		sources?: VideoSource[];
@@ -151,7 +161,9 @@
 	let playing = $state(false);
 	// Autoplay HARUS mulai muted agar dipercaya jalan di mobile (kebijakan browser memblokir
 	// autoplay bersuara). preferSound berarti "nyalakan suara pada sentuhan pertama".
-	let muted = $state(forceMuted ? true : autoplay ? true : preferSound ? false : false);
+	let muted = $state(
+		forceMuted ? true : minimal ? !reelsSoundOn : autoplay ? true : preferSound ? false : false
+	);
 	let current = $state(0);
 	let duration = $state(0);
 	let mediaAspect = $state('16 / 9');
@@ -285,6 +297,7 @@
 		if (preferSound && !forceMuted && video && video.muted) {
 			video.muted = false;
 			muted = false;
+			if (minimal) reelsSoundOn = true;
 			return;
 		}
 		if (!onDoubleTap) {
@@ -343,9 +356,32 @@
 		}
 	}
 
+	// Kendali putar EKSPLISIT (reels): halaman reels menentukan mana yang aktif berdasarkan
+	// posisi scroll, jadi tak bergantung IntersectionObserver per-video (yang timing-nya rawan).
+	$effect(() => {
+		if (active === undefined) return;
+		// Baca `active` agar efek reaktif terhadap perubahannya.
+		const isActive = active;
+		if (isActive) {
+			shouldPlay = true;
+			userPaused = false;
+			// Coba nyalakan suara bila user sudah memilih sound (fallback muted bila diblokir).
+			if (minimal && !forceMuted && reelsSoundOn && video) {
+				video.muted = false;
+				muted = false;
+			}
+			ensurePlaying();
+		} else {
+			shouldPlay = false;
+			userPaused = false;
+			stopPlayRetry();
+			if (video && !video.paused) video.pause();
+		}
+	});
+
 	// Autoplay ala Instagram: putar saat video masuk viewport, jeda saat digulir menjauh.
 	$effect(() => {
-		if (!autoplay) return;
+		if (!autoplay || active !== undefined) return;
 		const el = video;
 		const container = root;
 		if (!el || !container) return;
@@ -470,6 +506,7 @@
 						event.stopPropagation();
 						video.muted = !video.muted;
 						muted = video.muted;
+						if (minimal) reelsSoundOn = !video.muted;
 					}}
 					aria-label={muted ? 'Nyalakan suara' : 'Bisukan'}
 					>{#if muted}<VolumeX size={18} />{:else}<Volume2 size={18} />{/if}</button

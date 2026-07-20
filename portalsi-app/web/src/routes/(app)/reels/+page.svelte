@@ -173,7 +173,7 @@
 				<section class="reel" use:track={i}>
 					<div class="reel-stage">
 						<div class="reel-video">
-							{#if i === activeIndex}
+							{#if Math.abs(i - activeIndex) <= 1}
 								<SmartVideo
 									src={reel.mediaUrl}
 									sources={reel.videoSources ?? []}
@@ -181,6 +181,7 @@
 									label={reel.mediaAlt}
 									fill
 									autoplay
+									active={i === activeIndex}
 									preferSound
 									loop
 									minimal
