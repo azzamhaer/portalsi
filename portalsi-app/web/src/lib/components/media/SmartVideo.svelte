@@ -113,6 +113,10 @@
 	let root: HTMLDivElement;
 	let loading = $state(true);
 	let hasFrame = $state(false);
+	// Apakah video SEHARUSNYA berputar (sedang di viewport). Dipakai untuk mencoba ulang
+	// play() begitu data siap — iOS sering menolak play() saat dipanggil sebelum video siap,
+	// membuat video "mentok di frame pertama". Retry saat canplay menyelesaikan ini.
+	let shouldPlay = false;
 	let failed = $state(false);
 	let playing = $state(false);
 	// Autoplay HARUS mulai muted agar dipercaya jalan di mobile (kebijakan browser memblokir
@@ -142,10 +146,14 @@
 
 	function playWithFallback() {
 		if (!video) return;
+		// iOS: autoplay tanpa gesture HANYA diizinkan bila video muted + playsinline.
+		// Pastikan status muted benar sebelum play saat autoplay.
+		if (autoplay && !forceMuted && video.muted) video.defaultMuted = true;
 		void video.play().catch(() => {
 			if (!forceMuted && !video.muted) {
 				video.muted = true;
 				muted = true;
+				video.defaultMuted = true;
 				void video.play().catch(() => undefined);
 			}
 		});
@@ -303,14 +311,18 @@
 		const el = video;
 		const container = root;
 		if (!el || !container) return;
+		// iOS: cerminkan atribut muted agar autoplay diizinkan sejak awal.
+		if (!forceMuted && el.muted) el.defaultMuted = true;
 		const observer = new IntersectionObserver(
 			(entries) => {
 				const entry = entries[0];
 				if (!entry) return;
 				if (entry.isIntersecting && entry.intersectionRatio >= 0.55) {
+					shouldPlay = true;
 					playWithFallback();
-				} else if (!el.paused) {
-					el.pause();
+				} else {
+					shouldPlay = false;
+					if (!el.paused) el.pause();
 				}
 			},
 			{ threshold: [0, 0.55, 1] }
@@ -343,6 +355,7 @@
 			if (!hasFrame) loading = true;
 		}}
 		oncanplay={() => {
+				if (shouldPlay && video?.paused && !failed) playWithFallback();
 			hasFrame = true;
 			loading = false;
 		}}
@@ -407,7 +420,7 @@
 			onclick={(event) => {
 				event.stopPropagation();
 				togglePlayback();
-			}}><Play size={28} fill="currentColor" /></button
+			}}><Play size={56} fill="currentColor" strokeWidth={0} /></button
 		>{/if}
 	{#if minimal}
 		<div class="minimal-controls">
@@ -595,16 +608,14 @@
 		top: 50%;
 		left: 50%;
 		display: grid;
-		width: 58px;
-		height: 58px;
 		padding: 0;
 		place-items: center;
-		background: rgb(10 12 14 / 70%);
-		border: 1px solid rgb(255 255 255 / 25%);
-		border-radius: 50%;
-		color: white;
+		background: none;
+		border: 0;
+		border-radius: 0;
+		color: rgb(255 255 255 / 94%);
 		transform: translate(-50%, -50%);
-		backdrop-filter: blur(8px);
+		filter: drop-shadow(0 2px 10px rgb(0 0 0 / 55%));
 	}
 	.video-controls {
 		position: absolute;

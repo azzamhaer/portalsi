@@ -169,6 +169,16 @@
 
 	async function removeCollaborator(userId: number) {
 		if (collabActionBusy) return;
+		const target = collabList.find((c) => c.userId === userId);
+		const confirmed = await confirmAction({
+			title: 'Hapus kolaborator?',
+			description: target
+				? `@${target.username} akan dihapus dari kolaborator postingan ini. Salinan postingan di profilnya juga hilang.`
+				: 'Kolaborator ini akan dihapus dari postingan.',
+			confirmLabel: 'Hapus',
+			tone: 'danger'
+		});
+		if (!confirmed) return;
 		collabActionBusy = true;
 		try {
 			await clientRequest(`posts/${data.post.id}/collaborators/${userId}`, { method: 'DELETE' });
@@ -699,6 +709,15 @@
 							clipDuration={data.post.music.durationSeconds}
 							autoStart
 						/>
+					</div>
+				{:else if data.post.music && data.post.music.title && data.post.isVideo}
+					<!-- Video: musik menyatu dengan video (play/pause mengikuti video), jadi tanpa tombol. -->
+					<div class="pinned-music-static">
+						<Music2 size={15} />
+						<span
+							><strong>{data.post.music.title}</strong>{#if data.post.music.artist}
+								— {data.post.music.artist}{/if}</span
+						>
 					</div>
 				{/if}
 				{#if data.post.location}
@@ -1514,6 +1533,21 @@
 	.pinned-music {
 		padding: 2px 16px 12px;
 	}
+	.pinned-music-static {
+		display: flex;
+		align-items: center;
+		gap: 7px;
+		padding: 2px 15px 12px;
+		color: var(--color-muted);
+		font-size: 0.78rem;
+	}
+	.pinned-music-static :global(svg) {
+		flex: none;
+	}
+	.pinned-music-static strong {
+		font-weight: 600;
+		color: var(--color-text);
+	}
 	.pinned-music :global(.viewport-music) {
 		font-size: 0.78rem;
 	}
@@ -1535,7 +1569,6 @@
 		color: inherit;
 	}
 	.pinned-caption strong {
-		margin-right: 5px;
 		font-weight: 700;
 	}
 	.pc-music {
@@ -2002,6 +2035,8 @@
 		.comments {
 			position: static;
 			background: var(--color-surface);
+			/* Menyatu dengan media di atasnya — tanpa lengkung atas. */
+			border-radius: 0;
 		}
 		/* Media: penuh selebar layar, tinggi dibatasi agar info tetap terlihat. */
 		.post-column {

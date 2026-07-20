@@ -86,14 +86,8 @@
 		.detail-page-wrap {
 			padding: 0;
 		}
-		.detail-page-inner {
-			position: relative;
-		}
 		.detail-back {
-			position: absolute;
-			top: calc(10px + env(safe-area-inset-top, 0px));
-			left: 10px;
-			z-index: 20;
+			padding: 8px 10px;
 			margin-bottom: 0;
 		}
 		.detail-page-card {
