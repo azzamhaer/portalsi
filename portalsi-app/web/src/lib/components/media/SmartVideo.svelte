@@ -213,14 +213,19 @@
 		}
 	}
 
-	// Saat komponen dibongkar (mis. keluar/menggulir reels), cukup jeda video agar
-	// dekoder berhenti — tanpa menghapus src (menghindari race yang bikin video tak jalan).
+	// Saat komponen dibongkar (keluar/menggulir reels), jeda DAN batalkan unduhan video
+	// agar koneksi bebas — kalau tidak, video preload="auto" yang masih mengunduh menyandera
+	// pool koneksi browser sehingga gambar di halaman lain (explore/profil) tidak mau load.
+	// Efek ini tanpa dependensi reaktif → cleanup hanya jalan saat komponen benar-benar dibongkar,
+	// jadi aman melepas src (tidak mengganggu pemutaran yang sedang berjalan).
 	$effect(() => {
 		const el = video;
 		return () => {
 			stopPlayRetry();
 			try {
 				el?.pause();
+				el?.removeAttribute('src');
+				el?.load();
 			} catch {
 				/* abaikan */
 			}
@@ -423,13 +428,13 @@
 		{poster}
 		bind:muted
 		{loop}
-		preload={autoplay ? 'auto' : 'metadata'}
+		preload={active === false ? 'metadata' : autoplay ? 'auto' : 'metadata'}
 		playsinline
 		aria-label={label}
 		onclick={onVideoTap}
 		onloadstart={() => (loading = true)}
 		onwaiting={() => {
-			if (!hasFrame) loading = true;
+			loading = true;
 		}}
 		oncanplay={() => {
 				ensurePlaying();
@@ -466,9 +471,17 @@
 		ontimeupdate={() => {
 			current = video.currentTime;
 			duration = video.duration || duration;
-			if (musicSrc) syncMusicLoop();
+			if (loading) loading = false;
+				if (musicSrc) syncMusicLoop();
 		}}
-		onseeked={() => {
+		onplaying={() => {
+				playing = true;
+				loading = false;
+			}}
+			onstalled={() => {
+				if (video && video.readyState < 3) loading = true;
+			}}
+			onseeked={() => {
 			if (scrubbing) drawPreview();
 		}}
 		onerror={() => {
@@ -477,8 +490,8 @@
 		}}><track kind="captions" label="Takarir tidak tersedia" /></video
 	>
 	{#if musicSrc}<audio bind:this={musicAudio} src={musicSrc} preload="auto"></audio>{/if}
-	{#if loading && !failed}<div class="video-state">
-			<LoaderCircle class="spin" size={28} /><span>Menyiapkan video…</span>
+	{#if loading && !failed}<div class="video-loading" aria-label="Memuat video">
+			<LoaderCircle class="spin" size={30} />
 		</div>{/if}
 	{#if failed}<div class="video-state error">
 			<span>Video belum dapat diputar.</span><button
@@ -670,6 +683,22 @@
 		color: white;
 		font-size: 0.75rem;
 		backdrop-filter: blur(4px);
+	}
+	/* Loader ringkas di tengah (tidak menggelapkan seluruh video). */
+	.video-loading {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		display: grid;
+		place-items: center;
+		width: 56px;
+		height: 56px;
+		transform: translate(-50%, -50%);
+		background: rgb(8 10 12 / 52%);
+		border-radius: 50%;
+		color: white;
+		backdrop-filter: blur(4px);
+		pointer-events: none;
 	}
 	.video-state.error button {
 		padding: 7px 11px;
