@@ -237,6 +237,17 @@
 		mq.addEventListener('change', sync);
 		return () => mq.removeEventListener('change', sync);
 	});
+	// Cocok dengan breakpoint layout mobile di <style> (max-width: 950px). Dipakai untuk
+	// TIDAK merender identitas uploader di baris caption — kalau hanya disembunyikan lewat
+	// CSS, spasi antara username dan caption ikut tertinggal di depan kata pertama.
+	let isNarrow = $state(false);
+	$effect(() => {
+		const mq = window.matchMedia('(max-width: 950px)');
+		const sync = () => (isNarrow = mq.matches);
+		sync();
+		mq.addEventListener('change', sync);
+		return () => mq.removeEventListener('change', sync);
+	});
 	const shareUrl = $derived(
 		typeof window !== 'undefined'
 			? new URL(`/posts/${data.post.id}`, window.location.origin).toString()
@@ -686,25 +697,27 @@
 			<div class="comment-list">
 				{#if data.post.caption}
 					<div class="pinned-caption">
-						<span class="pc-avatar">
-							<StoryAvatarLink
-								userId={data.post.user.id}
-								username={data.post.user.username}
-								name={data.post.user.fullName}
-								avatarUrl={data.post.user.avatarUrl}
-								size="sm"
-								hasStory={data.post.user.hasStory}
-								seen={data.post.user.storyViewed}
-							/>
-						</span>
+						{#if !isNarrow}
+							<span class="pc-avatar">
+								<StoryAvatarLink
+									userId={data.post.user.id}
+									username={data.post.user.username}
+									name={data.post.user.fullName}
+									avatarUrl={data.post.user.avatarUrl}
+									size="sm"
+									hasStory={data.post.user.hasStory}
+									seen={data.post.user.storyViewed}
+								/>
+							</span>
+						{/if}
 						<p>
-							<a class="c-user" href={`/u/${data.post.user.username}`}
-								><strong>{data.post.user.username}</strong><UserBadges
-									verified={data.post.user.badgeVerified}
-									role={data.post.user.role}
-								/></a
-							>
-							<MentionText text={data.post.caption} />
+							{#if !isNarrow}<a class="c-user" href={`/u/${data.post.user.username}`}
+									><strong>{data.post.user.username}</strong><UserBadges
+										verified={data.post.user.badgeVerified}
+										role={data.post.user.role}
+									/></a
+								>
+							{/if}<MentionText text={data.post.caption} />
 						</p>
 					</div>
 				{/if}
@@ -2076,12 +2089,8 @@
 		.comments > .ds-head {
 			padding: 12px 14px;
 		}
-		/* Mobile: identitas uploader sudah tampil di header tepat di atasnya —
-		   jangan diulang lagi di baris caption. Sisakan teks captionnya saja. */
-		.pinned-caption .pc-avatar,
-		.pinned-caption .c-user {
-			display: none;
-		}
+		/* Mobile: identitas uploader sudah tampil di header tepat di atasnya, jadi baris
+		   caption hanya berisi teksnya (lihat `isNarrow` di script). */
 		.pinned-caption {
 			padding-top: 4px;
 		}

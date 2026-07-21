@@ -1,14 +1,38 @@
 <script module lang="ts">
-	// Preferensi suara reels lintas-video: sekali user menyalakan suara, video reels
-	// berikutnya ikut mencoba bersuara (tetap fallback ke muted bila browser memblokir),
-	// sehingga suara terasa "jalan terus" saat scroll.
-	let reelsSoundOn = false;
+	// Preferensi suara lintas-video (reels DAN feed): sekali user menyalakan suara, video
+	// berikutnya ikut bersuara sehingga terasa "jalan terus" saat scroll/navigasi.
+	//
+	// Aturan mainnya penting: video TIDAK PERNAH mulai dengan suara. Browser mobile hanya
+	// mengizinkan autoplay bila muted, jadi kalau kita menyalakan suara sebelum play,
+	// `play()` bisa ditolak lalu jatuh ke muted — inilah kenapa dulu sebagian video
+	// "tidak ikut ter-unmute". Sekarang: selalu autoplay muted dulu, baru suara dinyalakan
+	// SETELAH video benar-benar berjalan (lihat `applySoundPreference`). Menyalakan suara
+	// pada video yang sudah jalan diizinkan browser karena halaman sudah punya aktivasi user.
+	const SOUND_KEY = 'psi_video_sound_on';
+	let soundOn = false;
+	if (typeof localStorage !== 'undefined') {
+		try {
+			soundOn = localStorage.getItem(SOUND_KEY) === '1';
+		} catch {
+			/* abaikan */
+		}
+	}
+	function setSoundPreference(on: boolean) {
+		soundOn = on;
+		try {
+			localStorage.setItem(SOUND_KEY, on ? '1' : '0');
+		} catch {
+			/* abaikan */
+		}
+	}
 </script>
 
 <script lang="ts">
 	import {
+		Check,
 		Expand,
 		LoaderCircle,
+		MoreVertical,
 		Pause,
 		Play,
 		Settings2,
@@ -16,6 +40,7 @@
 		Volume2,
 		VolumeX
 	} from '@lucide/svelte';
+	import type { Snippet } from 'svelte';
 	type VideoSource = { quality: 'low' | 'medium' | 'original'; label: string; src: string };
 	let {
 		src,
@@ -32,7 +57,8 @@
 		loop = false,
 		musicSrc,
 		musicStart = 0,
-		musicClip = 15
+		musicClip = 15,
+		menuExtra
 	}: {
 		src: string;
 		poster?: string;
@@ -50,6 +76,8 @@
 		musicSrc?: string;
 		musicStart?: number;
 		musicClip?: number;
+		/** Item tambahan untuk menu titik tiga (mode minimal). Menerima fungsi penutup menu. */
+		menuExtra?: Snippet<[() => void]>;
 	} = $props();
 
 	// Audio musik yang menyatu dengan video: ikut play/pause/seek video, dilooping pada klip.
@@ -161,9 +189,9 @@
 	let playing = $state(false);
 	// Autoplay HARUS mulai muted agar dipercaya jalan di mobile (kebijakan browser memblokir
 	// autoplay bersuara). preferSound berarti "nyalakan suara pada sentuhan pertama".
-	let muted = $state(
-		forceMuted ? true : minimal ? !reelsSoundOn : autoplay ? true : preferSound ? false : false
-	);
+	// Selalu mulai muted untuk video autoplay — satu-satunya kondisi yang dijamin boleh
+	// autoplay di semua browser. Suara dinyalakan menyusul lewat `applySoundPreference()`.
+	let muted = $state(forceMuted ? true : autoplay ? true : false);
 	let current = $state(0);
 	let duration = $state(0);
 	let mediaAspect = $state('16 / 9');
@@ -219,6 +247,28 @@
 			document.removeEventListener('webkitfullscreenchange', sync);
 		};
 	});
+
+	/**
+	 * Terapkan preferensi suara pada video yang SUDAH berjalan.
+	 *
+	 * Dipanggil dari event `playing` (bukan sebelum play) supaya autoplay tak pernah gagal
+	 * gara-gara suara. Bila ternyata browser menolak dan video ikut terjeda, kembalikan ke
+	 * muted lalu lanjutkan pemutaran — pemutaran lebih penting daripada suara.
+	 */
+	function applySoundPreference() {
+		if (forceMuted || !video || !soundOn || !video.muted) return;
+		video.muted = false;
+		muted = false;
+		// Beberapa browser menjeda video bila unmute dianggap tanpa aktivasi user.
+		queueMicrotask(() => {
+			if (!video) return;
+			if (video.paused && shouldPlay && !userPaused) {
+				video.muted = true;
+				muted = true;
+				ensurePlaying();
+			}
+		});
+	}
 
 	function playWithFallback() {
 		if (!video) return;
@@ -336,7 +386,7 @@
 		if (preferSound && !forceMuted && video && video.muted) {
 			video.muted = false;
 			muted = false;
-			if (minimal) reelsSoundOn = true;
+			setSoundPreference(true);
 			return;
 		}
 		if (!onDoubleTap) {
@@ -404,11 +454,8 @@
 		if (isActive) {
 			shouldPlay = true;
 			userPaused = false;
-			// Coba nyalakan suara bila user sudah memilih sound (fallback muted bila diblokir).
-			if (minimal && !forceMuted && reelsSoundOn && video) {
-				video.muted = false;
-				muted = false;
-			}
+			// Suara TIDAK dinyalakan di sini — biarkan autoplay jalan muted dulu, lalu
+			// `applySoundPreference()` di event `playing` yang menyalakannya.
 			ensurePlaying();
 		} else {
 			shouldPlay = false;
@@ -541,6 +588,8 @@
 		onplaying={() => {
 				playing = true;
 				loading = false;
+				// Video sudah benar-benar berjalan → aman menyalakan suara bila user memilihnya.
+				applySoundPreference();
 			}}
 			onstalled={() => {
 				if (video && video.readyState < 3) loading = true;
@@ -577,38 +626,65 @@
 			}}><Play size={56} fill="currentColor" strokeWidth={0} /></button
 		>{/if}
 	{#if minimal}
+		<!-- Satu tombol titik tiga menampung semua opsi (suara, kualitas, plus item dari
+		     halaman induk) supaya tidak ada tombol yang bertabrakan di layar sempit. -->
 		<div class="minimal-controls">
-			{#if !forceMuted}<button
+			<button
+				class="menu-btn"
+				aria-haspopup="menu"
+				aria-expanded={qualityMenuOpen}
+				aria-label="Opsi video"
+				onclick={(event) => {
+					event.stopPropagation();
+					qualityMenuOpen = !qualityMenuOpen;
+				}}><MoreVertical size={18} /></button
+			>
+			{#if qualityMenuOpen}
+				<div
+					class="menu-scrim"
+					role="presentation"
 					onclick={(event) => {
 						event.stopPropagation();
-						video.muted = !video.muted;
-						muted = video.muted;
-						if (minimal) reelsSoundOn = !video.muted;
+						qualityMenuOpen = false;
 					}}
-					aria-label={muted ? 'Nyalakan suara' : 'Bisukan'}
-					>{#if muted}<VolumeX size={18} />{:else}<Volume2 size={18} />{/if}</button
-				>{/if}
-			{#if available.length > 1}<div class="quality">
-					<button
-						class="quality-btn"
-						onclick={(event) => {
-							event.stopPropagation();
-							qualityMenuOpen = !qualityMenuOpen;
-						}}
-						aria-label="Kualitas video"><Settings2 size={16} /></button
-					>
-					{#if qualityMenuOpen}<ul class="quality-menu">
-							{#each available as opt (opt.quality)}<li>
-									<button
-										class:active={opt.quality === activeQuality}
-										onclick={(event) => {
-											event.stopPropagation();
-											setQuality(opt.quality);
-										}}>{opt.label}</button
-									>
-								</li>{/each}
-						</ul>{/if}
-				</div>{/if}
+				></div>
+				<div class="menu-panel" role="menu" tabindex="-1">
+					{#if !forceMuted}
+						<button
+							role="menuitem"
+							onclick={(event) => {
+								event.stopPropagation();
+								video.muted = !video.muted;
+								muted = video.muted;
+								setSoundPreference(!video.muted);
+								qualityMenuOpen = false;
+							}}
+							>{#if muted}<VolumeX size={16} />{:else}<Volume2 size={16} />{/if}
+							<span>{muted ? 'Nyalakan suara' : 'Bisukan'}</span></button
+						>
+					{/if}
+					{#if available.length > 1}
+						<div class="menu-group">
+							<small>Kualitas</small>
+							{#each available as opt (opt.quality)}
+								<button
+									role="menuitem"
+									class:active={opt.quality === activeQuality}
+									onclick={(event) => {
+										event.stopPropagation();
+										setQuality(opt.quality);
+									}}
+									><Settings2 size={16} /><span>{opt.label}</span
+									>{#if opt.quality === activeQuality}<Check size={15} class="menu-check" />{/if}</button
+								>
+							{/each}
+						</div>
+					{/if}
+					{#if menuExtra}
+						<div class="menu-group">{@render menuExtra(() => (qualityMenuOpen = false))}</div>
+					{/if}
+				</div>
+			{/if}
 		</div>
 
 		<!-- Seek tipis di paling bawah + preview saat drag -->
@@ -850,18 +926,14 @@
 		position: absolute;
 		top: 12px;
 		right: 12px;
-		z-index: 4;
-		display: flex;
-		align-items: flex-start;
-		gap: 8px;
+		z-index: 8;
 	}
-	.minimal-controls > button,
-	.minimal-controls .quality-btn {
-		display: grid !important;
-		width: 36px !important;
+	.minimal-controls .menu-btn {
+		display: grid;
+		width: 36px;
 		height: 36px;
 		place-items: center;
-		padding: 0 !important;
+		padding: 0;
 		background: rgb(0 0 0 / 42%);
 		border: 0;
 		border-radius: 50%;
@@ -869,9 +941,69 @@
 		cursor: pointer;
 		backdrop-filter: blur(6px);
 	}
-	.minimal-controls .quality-menu {
-		top: calc(100% + 6px);
-		bottom: auto;
+	/* Lapisan tak terlihat: sekali ketuk di luar menu untuk menutup, tanpa mengenai video. */
+	.menu-scrim {
+		position: fixed;
+		inset: 0;
+		z-index: 1;
+	}
+	.menu-panel {
+		position: absolute;
+		top: calc(100% + 8px);
+		right: 0;
+		z-index: 2;
+		display: grid;
+		width: max-content;
+		min-width: 190px;
+		max-width: min(78vw, 260px);
+		gap: 2px;
+		padding: 6px;
+		background: rgb(22 24 27 / 94%);
+		border: 1px solid rgb(255 255 255 / 12%);
+		border-radius: 14px;
+		box-shadow: 0 18px 44px rgb(0 0 0 / 45%);
+		backdrop-filter: blur(14px);
+	}
+	.menu-panel :global(button) {
+		display: flex;
+		width: 100%;
+		align-items: center;
+		gap: 10px;
+		padding: 9px 10px;
+		background: transparent;
+		border: 0;
+		border-radius: 9px;
+		color: #fff;
+		cursor: pointer;
+		font-size: 0.78rem;
+		text-align: left;
+	}
+	.menu-panel :global(button > span) {
+		flex: 1;
+		min-width: 0;
+	}
+	.menu-panel :global(button:hover),
+	.menu-panel :global(button:focus-visible) {
+		background: rgb(255 255 255 / 12%);
+	}
+	.menu-panel :global(button.active) {
+		color: #ffd7a8;
+	}
+	.menu-group {
+		display: grid;
+		gap: 2px;
+		padding-top: 5px;
+		border-top: 1px solid rgb(255 255 255 / 10%);
+		margin-top: 3px;
+	}
+	/* `:global` karena item tambahan (mis. dari halaman reels) dirender lewat snippet
+	   milik komponen induk, sehingga tidak membawa kelas scope komponen ini. */
+	.menu-group > :global(small) {
+		padding: 2px 10px 4px;
+		color: rgb(255 255 255 / 55%);
+		font-size: 0.63rem;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
 	}
 	.seek {
 		position: absolute;

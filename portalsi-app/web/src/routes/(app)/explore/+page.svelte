@@ -187,11 +187,7 @@
 <svelte:head><title>Jelajah — Portal SI</title><meta name="robots" content="noindex" /></svelte:head
 >
 
-<SectionPage
-	eyebrow="Temukan hal baru"
-	title="Jelajah"
-	description="Karya, cerita, dan orang-orang dari seluruh komunitas Portal SI."
->
+<SectionPage title="Jelajah">
 	<form
 		class="search-row"
 		onsubmit={(event) => {

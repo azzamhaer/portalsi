@@ -10,7 +10,9 @@
 		Music2,
 		Send,
 		Eye,
-		EyeOff
+		EyeOff,
+		Check,
+		MousePointerClick
 	} from '@lucide/svelte';
 	import { clientRequest } from '$lib/api/client';
 	import { setPostLike } from '$lib/api/likes';
@@ -38,8 +40,20 @@
 	let burstId = $state<number | null>(null);
 	let expanded = $state(new Set<number>());
 	// Clear view: sembunyikan seluruh overlay (back, caption, aksi, navigasi) agar video
-	// bisa dinikmati penuh. Tombol toggle sendiri tetap terlihat samar.
+	// bisa dinikmati penuh. Diatur dari menu titik tiga pada video.
 	let clearView = $state(false);
+	// Bila aktif, setiap pindah reel otomatis kembali ke tampilan bersih.
+	const CLEAR_ON_SCROLL_KEY = 'psi_reels_clear_on_scroll';
+	let clearOnScroll = $state(false);
+	function setClearOnScroll(on: boolean) {
+		clearOnScroll = on;
+		if (on) clearView = true;
+		try {
+			localStorage.setItem(CLEAR_ON_SCROLL_KEY, on ? '1' : '0');
+		} catch {
+			/* abaikan */
+		}
+	}
 
 	let itemEls: HTMLElement[] = [];
 	const seen = new Set<number>();
@@ -60,8 +74,33 @@
 	function nf(n: number) {
 		return n >= 1000 ? `${(n / 1000).toFixed(n >= 10_000 ? 0 : 1)}rb` : String(n);
 	}
-	function isLongCaption(c?: string) {
-		return !!c && (c.length > 90 || c.includes('\n'));
+	// Tombol "selengkapnya" dulu ditebak dari panjang teks, jadi sering muncul padahal
+	// caption sudah tampil utuh. Sekarang diukur langsung: apakah teksnya benar-benar
+	// terpotong oleh line-clamp (scrollHeight > clientHeight).
+	let overflowingIds = $state(new Set<number>());
+	function capText(node: HTMLElement, id: number) {
+		function measure() {
+			// Saat sedang dibuka, biarkan status terakhir (elemen tak lagi ter-clamp).
+			if (expanded.has(id)) return;
+			const isOverflowing = node.scrollHeight - node.clientHeight > 1;
+			const has = overflowingIds.has(id);
+			if (isOverflowing === has) return;
+			const next = new Set(overflowingIds);
+			if (isOverflowing) next.add(id);
+			else next.delete(id);
+			overflowingIds = next;
+		}
+		measure();
+		// Font/lebar bisa berubah (rotasi layar, font telat dimuat) → ukur ulang.
+		const ro = new ResizeObserver(measure);
+		ro.observe(node);
+		const raf = requestAnimationFrame(measure);
+		return {
+			destroy() {
+				ro.disconnect();
+				cancelAnimationFrame(raf);
+			}
+		};
 	}
 
 	async function toggleLike(reel: (typeof reels)[number]) {
@@ -87,6 +126,48 @@
 		setTimeout(() => {
 			if (burstId === reel.id) burstId = null;
 		}, 850);
+	}
+
+	// ---- Tombol follow ----
+	// Hanya muncul untuk penulis yang BELUM diikuti saat reel-nya dimuat. Kalau sudah lama
+	// diikuti, tombol tidak pernah tampil (tak perlu mengulang aksi yang sudah dilakukan).
+	// Setelah ditekan, tombol tetap ada agar bisa langsung dibatalkan.
+	let followableIds = $state(new Set<number>());
+	let followedNow = $state(new Set<number>());
+	let followBusy = $state(new Set<number>());
+
+	function registerFollowable(list: typeof reels) {
+		const next = new Set(followableIds);
+		for (const r of list) {
+			if (!r.user.isSelf && !r.user.isFollowing) next.add(r.user.id);
+		}
+		followableIds = next;
+	}
+
+	async function toggleFollow(userId: number) {
+		if (followBusy.has(userId)) return;
+		const wasFollowed = followedNow.has(userId);
+		const busy = new Set(followBusy);
+		busy.add(userId);
+		followBusy = busy;
+		const next = new Set(followedNow);
+		if (wasFollowed) next.delete(userId);
+		else next.add(userId);
+		followedNow = next;
+		try {
+			await clientRequest(wasFollowed ? `unfollow/${userId}` : `follow/${userId}`, {
+				method: wasFollowed ? 'DELETE' : 'POST'
+			});
+		} catch {
+			const revert = new Set(followedNow);
+			if (wasFollowed) revert.add(userId);
+			else revert.delete(userId);
+			followedNow = revert;
+		} finally {
+			const done = new Set(followBusy);
+			done.delete(userId);
+			followBusy = done;
+		}
 	}
 
 	async function toggleSave(reel: (typeof reels)[number]) {
@@ -124,6 +205,7 @@
 				.map((p) => mapPost(p, mediaBaseUrl))
 				.filter((m) => !known.has(m.id));
 			reels.push(...mapped);
+			registerFollowable(mapped);
 			hasMore = res.has_more || mapped.length > 0;
 		} catch {
 			/* diamkan */
@@ -137,7 +219,10 @@
 		const io = new IntersectionObserver(
 			([entry]) => {
 				if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
+					const changed = activeIndex !== index;
 					activeIndex = index;
+					// "Bersih saat scroll": tiap ganti reel, overlay disembunyikan lagi.
+					if (changed && clearOnScroll) clearView = true;
 					markSeen(reels[index]?.id);
 					void maybeLoadMore();
 				}
@@ -155,7 +240,16 @@
 		} catch {
 			/* abaikan */
 		}
+		try {
+			if (localStorage.getItem(CLEAR_ON_SCROLL_KEY) === '1') {
+				clearOnScroll = true;
+				clearView = true;
+			}
+		} catch {
+			/* abaikan */
+		}
 		if (reels[0]) markSeen(reels[0].id);
+		registerFollowable(reels);
 
 		function onKey(e: KeyboardEvent) {
 			if (commentsFor !== null || shareFor !== null) return;
@@ -176,15 +270,6 @@
 
 <div class="reels-page" class:clear={clearView}>
 	<div class="reels-topbar"><BackButton /></div>
-	<button
-		class="reels-clear-toggle"
-		onclick={() => (clearView = !clearView)}
-		aria-pressed={clearView}
-		title={clearView ? 'Tampilkan navigasi' : 'Sembunyikan navigasi'}
-		aria-label={clearView ? 'Tampilkan navigasi' : 'Sembunyikan navigasi'}
-	>
-		{#if clearView}<Eye size={18} />{:else}<EyeOff size={18} />{/if}
-	</button>
 	{#if reels.length === 0}
 		<div class="reels-empty">Belum ada video untuk ditampilkan.</div>
 	{:else}
@@ -206,7 +291,32 @@
 									loop
 									minimal
 									onDoubleTap={() => doubleTapLike(reel)}
-								/>
+								>
+									{#snippet menuExtra(close: () => void)}
+										<small>Tampilan</small>
+										<button
+											onclick={(event) => {
+												event.stopPropagation();
+												clearView = !clearView;
+												close();
+											}}
+											>{#if clearView}<Eye size={16} />{:else}<EyeOff size={16} />{/if}
+											<span>{clearView ? 'Tampilkan navigasi' : 'Sembunyikan navigasi'}</span
+											></button
+										>
+										<button
+											class:active={clearOnScroll}
+											onclick={(event) => {
+												event.stopPropagation();
+												setClearOnScroll(!clearOnScroll);
+												close();
+											}}
+											><MousePointerClick size={16} />
+											<span>Bersih tiap ganti reel</span>
+											{#if clearOnScroll}<Check size={15} />{/if}</button
+										>
+									{/snippet}
+								</SmartVideo>
 							{:else}
 								<img
 									class="reel-still"
@@ -222,23 +332,43 @@
 						{/if}
 
 						<div class="reel-meta">
-							<a class="reel-author" href={`/u/${reel.user.username}`}>
-								<Avatar name={reel.user.fullName} src={reel.user.avatarUrl ?? undefined} size="sm" />
-								<strong>{reel.user.username}</strong>
-								<UserBadges verified={reel.user.badgeVerified} role={reel.user.role} />
-							</a>
+							<div class="reel-author-row">
+								<a class="reel-author" href={`/u/${reel.user.username}`}>
+									<Avatar
+										name={reel.user.fullName}
+										src={reel.user.avatarUrl ?? undefined}
+										size="sm"
+									/>
+									<strong>{reel.user.username}</strong>
+									<UserBadges verified={reel.user.badgeVerified} role={reel.user.role} />
+								</a>
+								{#if followableIds.has(reel.user.id)}
+									<button
+										class="reel-follow"
+										class:following={followedNow.has(reel.user.id)}
+										disabled={followBusy.has(reel.user.id)}
+										onclick={() => void toggleFollow(reel.user.id)}
+										>{followedNow.has(reel.user.id) ? 'Mengikuti' : 'Ikuti'}</button
+									>
+								{/if}
+							</div>
 							{#if reel.caption}
 								<div class="reel-caption" class:open={expanded.has(reel.id)}>
-									<div class="cap-text"><MentionText text={reel.caption} /></div>
-									{#if isLongCaption(reel.caption)}
+									<div class="cap-text" use:capText={reel.id}>
+										<MentionText text={reel.caption} />
+									</div>
+									{#if overflowingIds.has(reel.id) || expanded.has(reel.id)}
 										<button
 											class="cap-toggle"
+											aria-label={expanded.has(reel.id)
+												? 'Tutup caption'
+												: 'Tampilkan caption selengkapnya'}
 											onclick={() => {
 												const s = new Set(expanded);
 												if (s.has(reel.id)) s.delete(reel.id);
 												else s.add(reel.id);
 												expanded = s;
-											}}>{expanded.has(reel.id) ? 'tutup' : '… selengkapnya'}</button
+											}}>{expanded.has(reel.id) ? 'tutup' : '…'}</button
 										>
 									{/if}
 								</div>
@@ -329,37 +459,9 @@
 		left: 14px;
 		z-index: 5;
 	}
-	/* Tombol clear view: kecil & samar di kanan atas, tetap bisa diakses saat mode bersih. */
-	.reels-clear-toggle {
-		position: absolute;
-		top: 14px;
-		right: 14px;
-		z-index: 6;
-		display: grid;
-		place-items: center;
-		width: 34px;
-		height: 34px;
-		padding: 0;
-		border: 0;
-		border-radius: 999px;
-		background: rgb(0 0 0 / 40%);
-		color: #fff;
-		opacity: 0.75;
-		backdrop-filter: blur(6px);
-		cursor: pointer;
-		transition: opacity 0.2s ease;
-	}
-	.reels-clear-toggle:hover {
-		opacity: 1;
-	}
-	.reels-page.clear .reels-clear-toggle {
-		opacity: 0.25;
-	}
-	.reels-page.clear .reels-clear-toggle:hover,
-	.reels-page.clear .reels-clear-toggle:focus-visible {
-		opacity: 1;
-	}
-	/* Mode clear view → semua overlay meredup & tidak bisa diklik (video tetap jalan). */
+	/* Mode clear view → semua overlay meredup & tidak bisa diklik (video tetap jalan).
+	   Menu titik tiga milik SmartVideo sengaja TIDAK ikut disembunyikan supaya user
+	   selalu punya jalan untuk mengembalikan navigasi. */
 	.reels-page.clear .reels-topbar,
 	.reels-page.clear .reel-meta,
 	.reels-page.clear .reel-actions,
@@ -513,7 +615,41 @@
 		font-size: 0.78rem;
 		font-weight: 700;
 		cursor: pointer;
-		padding: 0;
+		padding: 0 2px;
+		line-height: 1;
+	}
+	.reel-author-row {
+		display: flex;
+		align-items: center;
+		gap: 9px;
+		min-width: 0;
+	}
+	/* Tombol follow: outline tipis agar tidak mencuri perhatian dari video. */
+	.reel-follow {
+		flex: none;
+		padding: 5px 13px;
+		background: transparent;
+		border: 1px solid rgb(255 255 255 / 70%);
+		border-radius: 8px;
+		color: #fff;
+		font-size: 0.74rem;
+		font-weight: 700;
+		cursor: pointer;
+		transition:
+			background 0.15s ease,
+			border-color 0.15s ease,
+			opacity 0.15s ease;
+	}
+	.reel-follow:hover {
+		background: rgb(255 255 255 / 14%);
+	}
+	.reel-follow.following {
+		border-color: rgb(255 255 255 / 35%);
+		color: rgb(255 255 255 / 78%);
+	}
+	.reel-follow:disabled {
+		opacity: 0.6;
+		cursor: default;
 	}
 	.reel-music {
 		display: inline-flex;

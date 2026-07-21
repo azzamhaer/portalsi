@@ -180,9 +180,7 @@
 >
 
 <SectionPage
-	eyebrow="Aktivitas terbaru"
 	title="Notifikasi"
-	description="Kabar tentang interaksi, teman, dan komunitas Anda."
 >
 	{#snippet actions()}<button
 			class="read-all"

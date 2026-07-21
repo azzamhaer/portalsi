@@ -1063,7 +1063,18 @@ class PostController extends Controller
             array_splice($pool, $pickIndex, 1);
         }
 
-        $data = $ordered->map(function ($post) use ($authUser) {
+        // Status follow untuk semua pemilik reel sekaligus (dipakai tombol follow di UI).
+        $authorIds = $ordered->pluck('user_id')->filter()->unique()->values();
+        $followingSet = collect();
+        if ($authUser && $authorIds->isNotEmpty()) {
+            $followingSet = $authUser->following()
+                ->wherePivot('status', 'accepted')
+                ->whereIn('users.user_id', $authorIds)
+                ->pluck('users.user_id')
+                ->flip();
+        }
+
+        $data = $ordered->map(function ($post) use ($authUser, $followingSet) {
             $post->is_liked = $authUser
                 ? $post->likes()->where('user_id', $authUser->user_id)->exists()
                 : false;
@@ -1071,6 +1082,8 @@ class PostController extends Controller
                 ? $post->bookmarks()->where('user_id', $authUser->user_id)->exists()
                 : false;
             $post->user->is_verified = (bool) $post->user->is_verified;
+            $post->user->is_self = $authUser ? ($post->user_id === $authUser->user_id) : false;
+            $post->user->is_following = $followingSet->has($post->user_id);
             $post->music_track_name = $post->music_track_name ?? null;
             $post->music_artist_name = $post->music_artist_name ?? null;
             $post->music_preview_url = $post->music_preview_url ?? null;

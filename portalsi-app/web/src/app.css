@@ -170,11 +170,12 @@ p {
 	color: var(--color-muted);
 }
 
-@media (prefers-reduced-motion: no-preference) {
-	:root {
-		scroll-behavior: smooth;
-	}
+/* Catatan: `scroll-behavior: smooth` global sengaja TIDAK dipakai. Aturan itu ikut
+   membuat pemulihan posisi scroll (kembali ke beranda, back/forward) beranimasi turun
+   perlahan alih-alih langsung di tempat. Scroll yang memang perlu halus sudah meminta
+   `behavior: 'smooth'` sendiri dari kode (reels, chat, carousel). */
 
+@media (prefers-reduced-motion: no-preference) {
 	a,
 	button,
 	input {

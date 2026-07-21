@@ -1,3 +1,11 @@
+<script module lang="ts">
+	// ID unik per dokumen. Nilainya bertahan selama navigasi SPA (modul tidak dimuat ulang)
+	// tetapi berganti setiap kali halaman benar-benar dimuat ulang / dibuka baru.
+	// Dipakai untuk membedakan "kembali ke beranda dari halaman lain" (feed & posisi scroll
+	// dipulihkan) dari "refresh halaman" (harus dapat feed baru).
+	const DOCUMENT_ID = Math.random().toString(36).slice(2);
+</script>
+
 <script lang="ts">
 	import { env } from '$env/dynamic/public';
 	import { beforeNavigate } from '$app/navigation';
@@ -50,13 +58,29 @@
 						hasMore?: boolean;
 						scrollY?: number;
 						savedAt?: number;
+						documentId?: string;
 				  }
 				| null;
-			if (cached && Date.now() - (cached.savedAt ?? 0) < 20 * 60_000 && cached.posts?.length) {
+			// Hanya pulihkan bila cache ditulis oleh dokumen yang SAMA (artinya user pindah
+			// halaman lalu kembali). Setelah refresh, documentId berbeda → cache dibuang dan
+			// feed baru dari server yang dipakai.
+			const sameDocument = cached?.documentId === DOCUMENT_ID;
+			if (
+				cached &&
+				sameDocument &&
+				Date.now() - (cached.savedAt ?? 0) < 20 * 60_000 &&
+				cached.posts?.length
+			) {
 				posts = cached.posts;
 				nextPage = cached.nextPage ?? nextPage;
 				hasMore = cached.hasMore ?? hasMore;
-				requestAnimationFrame(() => window.scrollTo({ top: cached.scrollY ?? 0 }));
+				// `behavior: instant` penting: app.css memasang `scroll-behavior: smooth`
+				// secara global, sehingga tanpa ini posisi scroll dipulihkan sambil beranimasi.
+				requestAnimationFrame(() =>
+					window.scrollTo({ top: cached.scrollY ?? 0, behavior: 'instant' })
+				);
+			} else if (cached && !sameDocument) {
+				sessionStorage.removeItem(feedCacheKey);
 			}
 		} catch {
 			// Abaikan cache rusak.
@@ -68,7 +92,14 @@
 		try {
 			sessionStorage.setItem(
 				feedCacheKey,
-				JSON.stringify({ posts, nextPage, hasMore, scrollY: window.scrollY, savedAt: Date.now() })
+				JSON.stringify({
+					posts,
+					nextPage,
+					hasMore,
+					scrollY: window.scrollY,
+					savedAt: Date.now(),
+					documentId: DOCUMENT_ID
+				})
 			);
 		} catch {
 			// Storage bisa penuh/ditolak; feed tetap jalan normal.
@@ -486,7 +517,9 @@
 		font-size: 0.66rem;
 		font-weight: 720;
 	}
-	.history-row {
+	/* Harus lebih spesifik dari `.home-results > div` (yang hanya 2 kolom), kalau tidak
+	   tombol hapus terdorong turun ke baris berikutnya alih-alih duduk di kanan item. */
+	.home-results > .history-row {
 		display: grid;
 		grid-template-columns: auto minmax(0, 1fr) auto;
 		align-items: center;

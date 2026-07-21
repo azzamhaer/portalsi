@@ -37,11 +37,7 @@
 
 <svelte:head><title>Pesan — Portal SI</title><meta name="robots" content="noindex" /></svelte:head>
 
-<SectionPage
-	eyebrow="Percakapan"
-	title="Pesan"
-	description="Kirim pesan dan tetap terhubung dengan teman maupun grup."
->
+<SectionPage title="Pesan">
 	{#snippet actions()}<div class="page-actions">
 			<a class="new-message secondary" href="/groups/new"><Plus size={18} /> Buat grup</a><a
 				class="new-message"
@@ -391,13 +387,16 @@
 	}
 	@media (max-width: 767px) {
 		.page-actions {
-			gap: 5px;
+			gap: 6px;
 		}
+		/* Mobile tetap berlabel: ikon saja bikin fungsi tombol tidak jelas.
+		   Dikompakkan (padding & font lebih kecil) agar dua tombol tetap muat. */
 		.new-message {
-			width: 44px;
-			padding: 0;
-			justify-content: center;
-			font-size: 0;
+			min-height: 40px;
+			gap: 6px;
+			padding: 0 11px;
+			font-size: 0.74rem;
+			white-space: nowrap;
 		}
 		.new-message.secondary {
 			display: flex;
