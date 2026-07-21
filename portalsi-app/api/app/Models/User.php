@@ -107,9 +107,37 @@ class User extends Authenticatable implements MustVerifyEmail
         self::$viewerFollowerCacheFor = null;
     }
 
+    /**
+     * ID pengguna yang sedang melihat.
+     *
+     * TIDAK cukup memakai `Auth::id()` saja: sebagian rute (mis. `GET /profile/{username}`)
+     * berada DI LUAR middleware `auth:sanctum` karena boleh diakses tanpa login, sehingga
+     * guard default tidak pernah terisi walaupun request membawa token. Di rute seperti itu
+     * `Auth::id()` mengembalikan null dan status "mengikuti kita" selalu terbaca false.
+     * Karena itu guard sanctum diperiksa sebagai cadangan.
+     */
+    private static function viewerId(): ?int
+    {
+        $id = \Illuminate\Support\Facades\Auth::id();
+        if ($id) {
+            return (int) $id;
+        }
+        // Di CLI (cron, queue worker) tidak ada request → jangan sentuh guard sanctum.
+        if (app()->runningInConsole()) {
+            return null;
+        }
+        try {
+            $sanctumId = \Illuminate\Support\Facades\Auth::guard('sanctum')->id();
+        } catch (\Throwable $e) {
+            return null;
+        }
+
+        return $sanctumId ? (int) $sanctumId : null;
+    }
+
     public function getIsFollowedByAttribute(): bool
     {
-        $authId = \Illuminate\Support\Facades\Auth::id();
+        $authId = self::viewerId();
         if (! $authId || (int) $this->user_id === (int) $authId) {
             return false;
         }
