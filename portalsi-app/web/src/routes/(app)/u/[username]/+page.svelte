@@ -84,7 +84,7 @@
 			if (following) {
 				const confirmed = await confirmAction({
 					title: `Berhenti mengikuti ${data.profile.fullName}?`,
-					description: `Postingan ${data.profile.fullName} tidak lagi diprioritaskan di beranda Anda. Anda tetap dapat mengikuti kembali kapan saja.`,
+					description: `Anda tetap dapat mengikuti kembali kapan saja.`,
 					confirmLabel: 'Berhenti mengikuti',
 					tone: 'danger'
 				});
@@ -101,7 +101,7 @@
 					description: data.profile.isPrivate
 						? 'Akun ini privat. Permintaan Anda akan menunggu persetujuan.'
 						: `Postingan ${data.profile.fullName} akan mulai muncul di beranda Anda.`,
-					confirmLabel: data.profile.isPrivate ? 'Kirim permintaan' : 'Ikuti sekarang'
+					confirmLabel: data.profile.isPrivate ? 'Kirim permintaan' : 'Ya, ikuti'
 				});
 				if (!confirmed) return;
 				const response = await clientRequest<{ status?: string; message?: string }>(
@@ -182,8 +182,8 @@
 						onclick={toggleFollow}
 						disabled={!data.canFollow || connectionBusy}
 					>
-						{#if following}<UserCheck size={18} /> Following{:else}<UserPlus size={18} />
-							{pending ? 'Requested' : data.followsYou ? 'Ikuti balik' : 'Follow'}{/if}
+						{#if following}<UserCheck size={18} /> Diikuti{:else}<UserPlus size={18} />
+							{pending ? 'Diminta' : data.followsYou ? 'Ikuti balik' : 'Ikuti'}{/if}
 					</button>
 					<a
 						class="icon-action"
@@ -193,7 +193,7 @@
 					>
 				{:else}
 					<a class="follow-main" href={`/login?next=${encodeURIComponent(`/u/${data.profile.username}`)}`}
-						><UserPlus size={18} /> Follow</a
+						><UserPlus size={18} /> Ikuti</a
 					>
 				{/if}
 				<button class="icon-action" onclick={shareProfile} aria-label="Bagikan profil"
