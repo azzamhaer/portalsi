@@ -66,11 +66,13 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 				requestId: locals.requestId,
 				schema: commentsResponseSchema
 			}),
+			// Daftar penyuka hanya pelengkap. Kalau gagal (data lama yang tak sesuai kontrak,
+			// backend lambat), tampilkan postingannya saja daripada memberi 500 ke user.
 			backendRequest(`posts/${postId}/likes`, {
 				token: locals.token,
 				requestId: locals.requestId,
 				schema: postLikesSchema
-			})
+			}).catch(() => [])
 		]);
 	} catch (cause) {
 		// Akun privat & belum di-follow: jangan 500 — arahkan ke profil pemiliknya.
@@ -102,10 +104,14 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 			image: mappedPost.isVideo ? mappedPost.thumbnailUrl || mappedPost.mediaUrl : mappedPost.mediaUrl
 		},
 		post: mappedPost,
-		likers: likes.map((like) => ({
-			...mapCompactUser(like.user, mediaBaseUrl),
-			isFollowing: like.is_following_status
-		})),
+		likers: likes
+			.filter((like): like is typeof like & { user: NonNullable<typeof like.user> } =>
+				Boolean(like.user)
+			)
+			.map((like) => ({
+				...mapCompactUser(like.user, mediaBaseUrl),
+				isFollowing: like.is_following_status
+			})),
 		comments: comments.comments.map((comment) => ({
 			...mapComment(comment),
 			replies: comment.replies.map(mapComment)

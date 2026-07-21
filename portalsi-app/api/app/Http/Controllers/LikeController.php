@@ -134,17 +134,22 @@ public function index($post_id)
     $likes = Like::where('post_id', $post_id)
         ->with('user') // pastikan Like model ada relasi user()
         ->get()
+        // Baris like yang usernya sudah tidak ada (mis. sisa data lama) dilewati —
+        // dulu ikut terkirim sebagai user null dan menjatuhkan seluruh halaman post.
+        ->filter(fn ($like) => $like->user !== null)
         ->map(function ($like) use ($followingIds, $authUser) {
             return [
                 'id' => $like->like_id,
                 'post_id' => $like->post_id,
                 'user' => $like->user,
-                'created_at' => $like->created_at,
-                'is_following_status' => $authUser 
-                    ? in_array($like->user_id, $followingIds) 
+                // Sebagian baris lama tidak punya timestamp; kirim string kosong, bukan null.
+                'created_at' => optional($like->created_at)->toIso8601String() ?? '',
+                'is_following_status' => $authUser
+                    ? in_array($like->user_id, $followingIds)
                     : false,
             ];
-        });
+        })
+        ->values();
 
     return response()->json($likes);
 }

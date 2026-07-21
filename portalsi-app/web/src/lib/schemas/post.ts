@@ -139,15 +139,24 @@ export const onlineFollowersResponseSchema = z.object({
 	followers: z.array(compactUserSchema)
 });
 
-export const postLikesSchema = z.array(
-	z.object({
-		id: z.coerce.number().int().positive(),
-		post_id: z.coerce.number().int().positive(),
-		user: compactUserSchema,
-		created_at: z.string(),
-		is_following_status: booleanish.catch(false)
-	})
-);
+/**
+ * Daftar penyuka bersifat pelengkap, jadi skemanya sengaja longgar: satu baris cacat
+ * (user sudah terhapus, timestamp kosong) TIDAK boleh menjatuhkan seluruh halaman post.
+ * Entri tanpa user disaring belakangan di sisi pemakai.
+ */
+export const postLikesSchema = z
+	.array(
+		z
+			.object({
+				id: z.coerce.number().int().positive(),
+				post_id: z.coerce.number().int().positive(),
+				user: compactUserSchema.nullish(),
+				created_at: z.string().nullish(),
+				is_following_status: booleanish.catch(false)
+			})
+			.passthrough()
+	)
+	.catch([]);
 
 export const reelsFeedSchema = z.object({
 	data: z.array(postSchema),
