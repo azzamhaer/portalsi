@@ -383,11 +383,14 @@ class PostController extends Controller
         $page = max(1, (int) $request->input('page', 1));
         $perPage = max(1, (int) $request->input('per_page', 15));
 
+        // Explore adalah permukaan penemuan untuk orang asing, jadi aturannya paling ketat:
+        // HANYA akun publik. Tanpa pengecualian untuk akun yang diikuti maupun akun sendiri —
+        // kalau akun Anda privat, postingannya tidak boleh muncul di sini sama sekali.
         $query = Post::with(['user', 'tags'])
             ->withCount(['likes', 'comments'])
             ->where('is_archived', false)
             ->where('is_draft', false)
-            ->whereHas('user', fn ($q) => $q->whereNotNull('email_verified_at'));
+            ->whereHas('user', fn ($q) => $q->whereNotNull('email_verified_at')->where('is_private', false));
 
         if ($request->filled('tag')) {
             $tagName = $request->tag;
@@ -861,13 +864,22 @@ class PostController extends Controller
         $post->is_archived = $request->is_archived ?? $post->is_archived;
         $post->is_video = $request->is_video ?? $post->is_video;
 
-        // musik
-        $post->music_track_name = $request->music_track_name ?? $post->music_track_name;
-        $post->music_artist_name = $request->music_artist_name ?? $post->music_artist_name;
-        $post->music_preview_url = $request->music_preview_url ?? $post->music_preview_url;
-        $post->music_album_art_url = $request->music_album_art_url ?? $post->music_album_art_url;
-        $post->music_start_position_ms = $request->music_start_position_ms ?? $post->music_start_position_ms;
-        $post->music_clip_duration_ms = $request->music_clip_duration_ms ?? $post->music_clip_duration_ms;
+        // Musik — pakai has(), BUKAN `??`.
+        // Middleware ConvertEmptyStringsToNull mengubah string kosong menjadi null, sehingga
+        // pola `$request->x ?? $post->x` selalu mempertahankan nilai lama dan musik menjadi
+        // MUSTAHIL dihapus (persis masalah yang dulu terjadi pada caption).
+        foreach ([
+            'music_track_name',
+            'music_artist_name',
+            'music_preview_url',
+            'music_album_art_url',
+            'music_start_position_ms',
+            'music_clip_duration_ms',
+        ] as $musicField) {
+            if ($request->has($musicField)) {
+                $post->{$musicField} = $request->input($musicField);
+            }
+        }
 
         $post->save();
 
@@ -1052,11 +1064,28 @@ class PostController extends Controller
         $excludeIds[] = $id;
 
         // Ambil clip utama
+        // Akun yang boleh dilihat isinya: publik, milik sendiri, atau yang sudah di-follow.
+        $allowedPrivateIds = $authUser
+            ? $authUser->following()->wherePivot('status', 'accepted')->pluck('users.user_id')->toArray()
+            : [];
+        if ($authUser) {
+            $allowedPrivateIds[] = $authUser->user_id;
+        }
+        $visibleToViewer = function ($u) use ($allowedPrivateIds) {
+            $u->where(function ($w) use ($allowedPrivateIds) {
+                $w->where('is_private', false);
+                if (! empty($allowedPrivateIds)) {
+                    $w->orWhereIn('users.user_id', $allowedPrivateIds);
+                }
+            });
+        };
+
         $mainClip = Post::with(['user', 'tags'])
             ->withCount(['likes', 'comments'])
             ->where('is_video', true)
             ->where('is_archived', false)
             ->where('is_draft', false)
+            ->whereHas('user', $visibleToViewer)
             ->findOrFail($id);
 
         $mainClip->is_liked = $authUser
@@ -1081,11 +1110,13 @@ class PostController extends Controller
         $mainClip->thumbnail_url = $mainClip->thumbnail_url ?? null;
 
         // Ambil 1 clip random, exclude id utama + exclude dari param
+        // Rekomendasi "clip berikutnya" = penemuan konten baru, jadi publik saja.
         $nextClips = Post::with(['user', 'tags'])
             ->withCount(['likes', 'comments'])
             ->where('is_video', true)
             ->where('is_archived', false)
             ->where('is_draft', false)
+            ->whereHas('user', fn ($u) => $u->where('is_private', false))
             ->whereNotIn('post_id', $excludeIds)
             ->inRandomOrder()
             ->take(1)

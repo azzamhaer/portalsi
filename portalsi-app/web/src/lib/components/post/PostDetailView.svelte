@@ -37,6 +37,7 @@
 	import { env } from '$env/dynamic/public';
 	import { normalizeMediaUrl } from '$lib/utils/media';
 	import { postCollaboratorsSchema } from '$lib/schemas/collab';
+	import MusicPicker, { type MusicTrack } from '$lib/components/composer/MusicPicker.svelte';
 	import { searchResponseSchema } from '$lib/schemas/search';
 
 	type PrivatePostData = Extract<PageData, { isPublic: false }>;
@@ -286,6 +287,50 @@
 	// ---- Draft ----
 	let isDraft = $state(untrack(() => data.post.isDraft ?? false));
 	let publishing = $state(false);
+
+	// Musik draft: bisa diganti/dihapus sebelum terbit. Dipakai ulang dari komponen yang
+	// sama dengan composer, jadi hasil pencarian & rekomendasinya identik.
+	let draftMusic = $state<MusicTrack | null>(
+		untrack(() =>
+			data.post.music
+				? {
+						id: data.post.music.title,
+						title: data.post.music.title,
+						artist: data.post.music.artist,
+						durationSeconds: data.post.music.durationSeconds ?? 15,
+						previewUrl: data.post.music.previewUrl ?? null,
+						artworkUrl: null
+					}
+				: null
+		)
+	);
+	let savingMusic = $state(false);
+	let musicSaved = $state(false);
+
+	async function saveDraftMusic() {
+		if (savingMusic) return;
+		savingMusic = true;
+		musicSaved = false;
+		try {
+			const body = new FormData();
+			// String kosong = hapus musik. Backend memakai `??` untuk field musik, sehingga
+			// nilai kosong dibiarkan apa adanya — cukup untuk mengganti, dan untuk menghapus
+			// kita kirim string kosong yang akan tersimpan sebagai null oleh middleware.
+			body.set('music_track_name', draftMusic?.title ?? '');
+			body.set('music_artist_name', draftMusic?.artist ?? '');
+			body.set('music_preview_url', draftMusic?.previewUrl ?? '');
+			body.set('music_album_art_url', draftMusic?.artworkUrl ?? '');
+			body.set('music_start_position_ms', '0');
+			body.set('music_clip_duration_ms', String((draftMusic?.durationSeconds ?? 15) * 1000));
+			await clientRequest(`posts/${data.post.id}/update`, { method: 'POST', body });
+			musicSaved = true;
+			setTimeout(() => (musicSaved = false), 2500);
+		} catch {
+			formMessage = 'Musik belum dapat disimpan. Coba lagi.';
+		} finally {
+			savingMusic = false;
+		}
+	}
 
 	async function publishDraft() {
 		if (publishing) return;
@@ -672,6 +717,15 @@
 						</div>
 					</form>
 
+					{#if isDraft}
+						<div class="draft-music">
+							<MusicPicker bind:selected={draftMusic} disabled={savingMusic} />
+							<button type="button" disabled={savingMusic} onclick={saveDraftMusic}>
+								{#if savingMusic}Menyimpan…{:else if musicSaved}Musik tersimpan{:else}Simpan musik{/if}
+							</button>
+						</div>
+					{/if}
+
 					<div class="pin-manage">
 						<strong><Pin size={15} /> Sematkan di profil</strong>
 						<p>
@@ -751,17 +805,6 @@
 			{#if form?.message && !form.success}<p class="notice" role="status">
 					{form.message}
 				</p>{/if}
-			{#if isDraft && isPostOwner}
-				<div class="draft-banner" role="status">
-					<div>
-						<strong>Ini masih draft</strong>
-						<small>Hanya Anda yang bisa melihatnya. Edit dulu lewat menu titik tiga bila perlu.</small>
-					</div>
-					<button type="button" disabled={publishing} onclick={publishDraft}>
-						{publishing ? 'Menerbitkan…' : 'Terbitkan'}
-					</button>
-				</div>
-			{/if}
 			<div
 				class="detail-media"
 				class:framed={frameAspect !== null && !data.post.isVideo}
@@ -832,6 +875,20 @@
 			</div>
 		</div>
 		<section class="comments surface" id="comments">
+			<!-- Banner draft sengaja diletakkan di kolom komentar, bukan kolom media: kolom
+			     media berlatar gelap, tingginya dikunci, dan overflow-nya disembunyikan —
+			     apa pun yang ditaruh di sana ikut terpotong dan tidak pernah terlihat. -->
+			{#if isDraft && isPostOwner}
+				<div class="draft-banner" role="status">
+					<div>
+						<strong>Ini masih draft</strong>
+						<small>Hanya Anda yang bisa melihatnya.</small>
+					</div>
+					<button type="button" disabled={publishing} onclick={publishDraft}>
+						{publishing ? 'Menerbitkan…' : 'Terbitkan'}
+					</button>
+				</div>
+			{/if}
 			<header class="ds-head">
 				<StoryAvatarLink
 					userId={data.post.user.id}
@@ -1374,13 +1431,13 @@
 	}
 	.draft-banner {
 		display: flex;
+		flex: none;
 		align-items: center;
 		justify-content: space-between;
-		gap: 14px;
-		margin: 0 0 10px;
-		padding: 12px 14px;
+		gap: 12px;
+		padding: 12px 16px;
 		background: var(--color-primary-soft);
-		border-radius: 12px;
+		border-bottom: 1px solid var(--color-border);
 	}
 	.draft-banner strong {
 		display: block;
@@ -1404,6 +1461,30 @@
 		cursor: pointer;
 	}
 	.draft-banner button:disabled {
+		opacity: 0.6;
+		cursor: default;
+	}
+	.draft-music {
+		display: grid;
+		gap: 10px;
+		margin-top: 14px;
+		padding-top: 12px;
+		border-top: 1px solid var(--color-border);
+	}
+	.draft-music > button {
+		min-height: 40px;
+		background: transparent;
+		border: 1px solid var(--color-border);
+		border-radius: 11px;
+		color: var(--color-text);
+		font-size: 0.82rem;
+		font-weight: 700;
+		cursor: pointer;
+	}
+	.draft-music > button:hover:not(:disabled) {
+		background: var(--color-primary-soft);
+	}
+	.draft-music > button:disabled {
 		opacity: 0.6;
 		cursor: default;
 	}
@@ -2038,6 +2119,7 @@
 		background: var(--color-surface-soft, #f4f5f7);
 	}
 	.edit-modal-card form,
+	.edit-modal-card .draft-music,
 	.edit-modal-card .pin-manage {
 		padding: 16px 18px 0;
 		border-top: 0;

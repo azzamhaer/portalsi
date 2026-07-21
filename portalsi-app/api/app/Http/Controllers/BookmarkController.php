@@ -57,8 +57,26 @@ class BookmarkController extends Controller
             return response()->json(['error' => 'Unauthenticated'], 401);
         }
 
+        // Privasi dicek ULANG saat menampilkan, bukan hanya saat menyimpan. Sebuah post
+        // bisa berubah setelah di-bookmark: pemiliknya menjadikan akunnya privat, atau
+        // post-nya diarsipkan/dikembalikan jadi draft. Tanpa penyaringan ini, bookmark
+        // menjadi celah untuk terus melihat konten yang seharusnya sudah tertutup.
+        $allowedPrivateIds = $user->following()
+            ->wherePivot('status', 'accepted')
+            ->pluck('users.user_id')
+            ->toArray();
+        $allowedPrivateIds[] = $user->user_id;
+
         $bookmarks = $user->bookmarkedPosts()
             ->with('user')
+            ->where('is_archived', false)
+            ->where('is_draft', false)
+            ->whereHas('user', function ($u) use ($allowedPrivateIds) {
+                $u->where(function ($w) use ($allowedPrivateIds) {
+                    $w->where('is_private', false)
+                        ->orWhereIn('users.user_id', $allowedPrivateIds);
+                });
+            })
             ->latest()
             ->get();
 
