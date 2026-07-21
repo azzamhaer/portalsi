@@ -105,8 +105,11 @@
 	let uploadFileIndex = $state(0);
 	let uploadFileTotal = $state(0);
 	let activeUpload = $state<XMLHttpRequest | null>(null);
+	// Rasio WAJIB dipilih (tidak ada lagi "asli"): tanpa rasio yang seragam, tiap post
+	// datang dengan ukuran berbeda dan feed/carousel jadi belang. 'original' masih ada di
+	// tipe supaya draft lama yang sudah tersimpan tidak rusak saat dibuka.
 	let cropMode = $state<'original' | 'square' | 'portrait' | 'landscape' | 'story'>(
-		untrack(() => (kind === 'story' ? 'story' : 'original'))
+		untrack(() => (kind === 'story' ? 'story' : 'square'))
 	);
 	// Rasio landscape mengikuti standar yang aman untuk pratinjau tautan (OG image).
 	const LANDSCAPE_ASPECT = 1.91;
@@ -272,7 +275,7 @@
 					: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
 			file: source,
 			url: URL.createObjectURL(source),
-			crop: 'original',
+			crop: 'square',
 			region: null,
 			filter: 'normal',
 			aspect: 1
@@ -360,7 +363,7 @@
 				file = draft.file instanceof File ? draft.file : null;
 				selectedMusic = draft.music ?? null;
 				musicQuery = selectedMusic?.title ?? '';
-				cropMode = draft.cropMode ?? 'original';
+				cropMode = draft.cropMode ?? 'square';
 				cropRegion = draft.cropRegion ?? null;
 				filter = draft.filter ?? 'normal';
 				musicStartSeconds = draft.musicStartSeconds ?? 0;
@@ -477,7 +480,7 @@
 		file = candidate;
 		clearGallery();
 		resetThumbnailSelection();
-		cropMode = kind === 'story' ? 'story' : 'original';
+		cropMode = kind === 'story' ? 'story' : 'square';
 		sourceAspect = 1;
 		cropRegion = null;
 		filter = 'normal';
@@ -1289,7 +1292,9 @@
 								}}
 							>
 								<img src={item.url} alt={`Foto ${index + 1}`} draggable="false" />
-								{#if item.filter !== 'normal' || item.crop !== 'original'}<span class="g-edited"
+								<!-- Penanda "sudah disesuaikan": rasio default kini Kotak, jadi yang dihitung
+								     berbeda adalah filter atau rasio selain itu. -->
+								{#if item.filter !== 'normal' || item.crop !== 'square'}<span class="g-edited"
 										><Sparkles size={11} /></span
 									>{/if}
 								<button
@@ -1388,19 +1393,17 @@
 					</div>{/if}
 				{#if selectedFileKind === 'image'}<div class="crop-controls" aria-label="Framing gambar">
 						<span>Framing</span><button
-							class:active={cropMode === 'original'}
-							onclick={() => setCropMode('original')}>Asli</button
-						><button class:active={cropMode === 'square'} onclick={() => setCropMode('square')}
-							>1:1</button
+							class:active={cropMode === 'square'}
+							onclick={() => setCropMode('square')}>Kotak</button
 						><button class:active={cropMode === 'portrait'} onclick={() => setCropMode('portrait')}
-							>4:5</button
+							>Potret</button
 						><button
 							class:active={cropMode === 'landscape'}
-							onclick={() => setCropMode('landscape')}>1.91:1</button
+							onclick={() => setCropMode('landscape')}>Lanskap</button
 						>
 						{#if kind === 'story'}<button
 								class:active={cropMode === 'story'}
-								onclick={() => setCropMode('story')}>9:16</button
+								onclick={() => setCropMode('story')}>Story</button
 							>{/if}
 					</div>
 					<div class="filter-controls" aria-label="Filter gambar">
@@ -1696,16 +1699,14 @@
 		</div>
 		<div class="crop-controls" aria-label="Rasio gambar">
 			<span>Rasio</span><button
-				class:active={editingItem.crop === 'original'}
-				onclick={() => setEditCrop('original')}>Asli</button
-			><button class:active={editingItem.crop === 'square'} onclick={() => setEditCrop('square')}
-				>1:1</button
+				class:active={editingItem.crop === 'square'}
+				onclick={() => setEditCrop('square')}>Kotak</button
 			><button
 				class:active={editingItem.crop === 'portrait'}
-				onclick={() => setEditCrop('portrait')}>4:5</button
+				onclick={() => setEditCrop('portrait')}>Potret</button
 			><button
 				class:active={editingItem.crop === 'landscape'}
-				onclick={() => setEditCrop('landscape')}>1.91:1</button
+				onclick={() => setEditCrop('landscape')}>Lanskap</button
 			>
 		</div>
 		{#if galleryItems.length > 1}
