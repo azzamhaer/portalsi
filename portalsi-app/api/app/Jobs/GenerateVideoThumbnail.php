@@ -47,6 +47,14 @@ class GenerateVideoThumbnail implements ShouldQueue
             }
         }
 
+        // Cek dulu: banyak server mematikan shell_exec lewat disable_functions, dan
+        // memanggilnya tetap menghasilkan fatal error yang tidak bisa diredam `@`.
+        if (! \App\Services\MediaVariantService::shellAvailable()) {
+            Log::warning('GenerateVideoThumbnail: shell_exec dimatikan di server, dilewati.');
+
+            return;
+        }
+
         $ffmpeg = trim((string) @shell_exec('command -v ffmpeg 2>/dev/null'));
         if ($ffmpeg === '' || ! @is_executable($ffmpeg)) {
             Log::warning('GenerateVideoThumbnail: ffmpeg tidak tersedia di server, dilewati.');

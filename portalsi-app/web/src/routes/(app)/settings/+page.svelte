@@ -32,13 +32,13 @@
 				},
 				{
 					label: 'Ubah email',
-					desc: 'Ganti alamat email dengan konfirmasi',
+					desc: 'Ganti alamat email dan konfirmasi',
 					href: '/settings/email',
 					icon: AtSign
 				},
 				{
 					label: 'Ubah kata sandi',
-					desc: 'Perbarui keamanan akun',
+					desc: 'Perbarui sandi Anda',
 					href: '/settings/password',
 					icon: KeyRound
 				},
@@ -133,7 +133,7 @@
 			<img src="/assets/logo-mark.png" alt="" />
 			<h2>Portal SI Web</h2>
 			<p>Terkoneksi dengan iman, menginspirasi dalam kebaikan.</p>
-			<small>Versi 2.3.4 · Stabil</small>
+			<small>Versi 2.5.1 · Stabil</small>
 		</aside>
 	</div>
 </SectionPage>

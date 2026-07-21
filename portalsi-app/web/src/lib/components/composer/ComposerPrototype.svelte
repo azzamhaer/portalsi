@@ -686,7 +686,7 @@
 						? 'Bagikan clips sekarang?'
 						: 'Bagikan postingan sekarang?',
 			description:
-				'Periksa kembali media, caption, lokasi, dan musik. Konten akan langsung terlihat oleh audiens Anda.',
+				'Periksa kembali media, caption, dan musik. Konten akan langsung terlihat oleh audiens Anda.',
 			confirmLabel: 'Ya, bagikan'
 		});
 		if (!confirmed) return;

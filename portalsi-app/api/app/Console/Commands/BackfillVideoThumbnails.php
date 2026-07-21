@@ -47,6 +47,11 @@ class BackfillVideoThumbnails extends Command
         $chunk = max(10, (int) $this->option('chunk'));
 
         // ---- Pastikan ffmpeg ada (kecuali dry-run) --------------------------
+        if (! \App\Services\MediaVariantService::shellAvailable()) {
+            $this->error('shell_exec dimatikan pada PHP ini (disable_functions). Jalankan lewat PHP CLI yang mengizinkannya.');
+
+            return self::FAILURE;
+        }
         $this->ffmpeg = trim((string) @shell_exec('command -v ffmpeg 2>/dev/null'));
         if (! $dryRun && ($this->ffmpeg === '' || ! @is_executable($this->ffmpeg))) {
             $this->error('ffmpeg tidak ditemukan di server. Install dulu: sudo apt-get install -y ffmpeg');

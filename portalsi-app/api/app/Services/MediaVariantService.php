@@ -42,13 +42,44 @@ class MediaVariantService
     public function __construct()
     {
         $this->disk = (string) config('filesystems.default', 'r2');
-        $this->ffmpeg = trim((string) @shell_exec('command -v ffmpeg 2>/dev/null'));
-        $this->ffprobe = trim((string) @shell_exec('command -v ffprobe 2>/dev/null'));
+        $this->ffmpeg = $this->which('ffmpeg');
+        $this->ffprobe = $this->which('ffprobe');
+    }
+
+    /**
+     * Apakah PHP di server ini boleh menjalankan perintah shell?
+     *
+     * Banyak hosting (termasuk konfigurasi PHP-FPM bawaan HestiaCP) mematikan `shell_exec`
+     * lewat `disable_functions`. Memanggilnya tetap = fatal error
+     * "Call to undefined function", DAN operator `@` tidak bisa meredamnya karena itu Error,
+     * bukan warning. Karena pemanggilan pertama ada di constructor, seluruh service gagal
+     * dibuat sebelum penjaga `hasFfmpeg()` sempat jalan. Jadi cek dulu di sini.
+     */
+    public static function shellAvailable(): bool
+    {
+        return function_exists('shell_exec');
+    }
+
+    /** Jalankan perintah shell bila diizinkan; null bila tidak. */
+    protected function sh(string $cmd): ?string
+    {
+        if (! self::shellAvailable()) {
+            return null;
+        }
+
+        return @shell_exec($cmd);
+    }
+
+    /** Cari lokasi binary tanpa membuat fatal error saat shell dimatikan server. */
+    protected function which(string $binary): string
+    {
+        return trim((string) $this->sh('command -v '.escapeshellarg($binary).' 2>/dev/null'));
     }
 
     public function hasFfmpeg(): bool
     {
-        return $this->ffmpeg !== '' && @is_executable($this->ffmpeg)
+        return self::shellAvailable()
+            && $this->ffmpeg !== '' && @is_executable($this->ffmpeg)
             && $this->ffprobe !== '' && @is_executable($this->ffprobe);
     }
 
@@ -127,7 +158,7 @@ class MediaVariantService
             escapeshellarg($this->ffprobe),
             escapeshellarg($input)
         );
-        $out = @shell_exec($cmd);
+        $out = $this->sh($cmd);
         if (! $out) {
             return null;
         }
@@ -187,7 +218,7 @@ class MediaVariantService
             escapeshellarg($scale),
             escapeshellarg($dest)
         );
-        @shell_exec($cmd);
+        $this->sh($cmd);
 
         return file_exists($dest) && filesize($dest) > 1000;
     }
@@ -207,7 +238,7 @@ class MediaVariantService
                 escapeshellarg($vf),
                 escapeshellarg($dest)
             );
-            @shell_exec($cmd);
+            $this->sh($cmd);
             if (! file_exists($dest) || filesize($dest) < 100) {
                 // Fallback ke frame awal bila detik-1 kosong.
                 $cmd0 = sprintf(
@@ -217,7 +248,7 @@ class MediaVariantService
                     escapeshellarg($vf),
                     escapeshellarg($dest)
                 );
-                @shell_exec($cmd0);
+                $this->sh($cmd0);
             }
         } else {
             $cmd = sprintf(
@@ -227,7 +258,7 @@ class MediaVariantService
                 escapeshellarg($vf),
                 escapeshellarg($dest)
             );
-            @shell_exec($cmd);
+            $this->sh($cmd);
         }
 
         return file_exists($dest) && filesize($dest) > 100;
