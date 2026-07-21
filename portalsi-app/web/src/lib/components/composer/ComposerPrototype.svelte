@@ -58,7 +58,7 @@
 	let file = $state<File | null>(null);
 	// Galeri multi-foto (khusus post). Aktif saat berisi >1 foto. Tiap foto punya
 	// pengaturan crop & filter sendiri, dan bisa diurutkan ulang lewat drag.
-	type GalleryCrop = 'original' | 'square' | 'portrait';
+	type GalleryCrop = 'original' | 'square' | 'portrait' | 'landscape';
 	type GalleryItem = {
 		id: string;
 		file: File;
@@ -105,9 +105,11 @@
 	let uploadFileIndex = $state(0);
 	let uploadFileTotal = $state(0);
 	let activeUpload = $state<XMLHttpRequest | null>(null);
-	let cropMode = $state<'original' | 'square' | 'portrait' | 'story'>(
+	let cropMode = $state<'original' | 'square' | 'portrait' | 'landscape' | 'story'>(
 		untrack(() => (kind === 'story' ? 'story' : 'original'))
 	);
+	// Rasio landscape mengikuti standar yang aman untuk pratinjau tautan (OG image).
+	const LANDSCAPE_ASPECT = 1.91;
 	let sourceAspect = $state(1);
 	let cropRegion = $state<CropRegion | null>(null);
 	let filter = $state<'normal' | 'bright' | 'warm' | 'mono' | 'contrast'>('normal');
@@ -157,9 +159,11 @@
 			? 1
 			: cropMode === 'portrait'
 				? 4 / 5
-				: cropMode === 'story'
-					? 9 / 16
-					: sourceAspect
+				: cropMode === 'landscape'
+					? LANDSCAPE_ASPECT
+					: cropMode === 'story'
+						? 9 / 16
+						: sourceAspect
 	);
 
 	const acceptedTypes = $derived(
@@ -184,7 +188,9 @@
 				? 1
 				: editingItem.crop === 'portrait'
 					? 4 / 5
-					: editingItem.aspect
+					: editingItem.crop === 'landscape'
+						? LANDSCAPE_ASPECT
+						: editingItem.aspect
 			: 1
 	);
 	const editFilterCss = $derived(
@@ -624,6 +630,23 @@
 		if (!editingItem) return;
 		editingItem.crop = mode;
 		editingItem.region = null;
+	}
+
+	/**
+	 * Samakan rasio semua gambar dengan gambar yang sedang diedit.
+	 *
+	 * Rasio boleh berbeda-beda per gambar, tapi carousel baru terasa mulus kalau semuanya
+	 * sama tinggi. Regionnya direset supaya tiap gambar diposisikan ulang mengikuti
+	 * rasio baru — posisinya tetap bisa digeser sendiri setelah ini.
+	 */
+	function applyCropToAll() {
+		if (!editingItem) return;
+		const mode = editingItem.crop;
+		for (const item of galleryItems) {
+			if (item.crop === mode) continue;
+			item.crop = mode;
+			item.region = null;
+		}
 	}
 	function setEditFilter(id: GalleryItem['filter']) {
 		if (editingItem) editingItem.filter = id;
@@ -1371,6 +1394,9 @@
 							>1:1</button
 						><button class:active={cropMode === 'portrait'} onclick={() => setCropMode('portrait')}
 							>4:5</button
+						><button
+							class:active={cropMode === 'landscape'}
+							onclick={() => setCropMode('landscape')}>1.91:1</button
 						>
 						{#if kind === 'story'}<button
 								class:active={cropMode === 'story'}
@@ -1677,8 +1703,20 @@
 			><button
 				class:active={editingItem.crop === 'portrait'}
 				onclick={() => setEditCrop('portrait')}>4:5</button
+			><button
+				class:active={editingItem.crop === 'landscape'}
+				onclick={() => setEditCrop('landscape')}>1.91:1</button
 			>
 		</div>
+		{#if galleryItems.length > 1}
+			<button class="apply-all" onclick={applyCropToAll}>
+				Samakan rasio semua gambar ({galleryItems.length})
+			</button>
+			<small class="apply-all-hint">
+				Rasio yang sama membuat carousel tidak meloncat saat digeser. Posisi tiap gambar tetap bisa
+				diatur sendiri.
+			</small>
+		{/if}
 		<div class="filter-controls" aria-label="Filter gambar">
 			{#each filterOptions as option (option.id)}<button
 					class:active={editingItem.filter === option.id}
@@ -2154,6 +2192,25 @@
 		border-radius: 12px;
 		color: white;
 		font-weight: 720;
+	}
+	.apply-all {
+		min-height: 40px;
+		background: transparent;
+		border: 1px solid var(--color-border, rgb(0 0 0 / 14%));
+		border-radius: 11px;
+		color: var(--color-text);
+		font-size: 0.82rem;
+		font-weight: 700;
+		cursor: pointer;
+	}
+	.apply-all:hover {
+		background: var(--color-primary-soft);
+	}
+	.apply-all-hint {
+		margin-top: -4px;
+		color: var(--color-muted);
+		font-size: 0.72rem;
+		line-height: 1.45;
 	}
 	.crop-remove {
 		position: absolute;

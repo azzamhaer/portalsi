@@ -1418,8 +1418,11 @@
 		width: 100%;
 		height: 100%;
 	}
-	/* Frame berasio tetap: gambar mengisi penuh, tidak ada garis hitam kiri-kanan, dan
-	   tinggi tidak meloncat saat galeri digeser. Rasionya dari gambar pertama. */
+	/* Frame mengikuti rasio gambar pertama, jadi kotak medianya pas dengan gambarnya dan
+	   garis hitam kiri-kanan hilang dengan sendirinya — TANPA memotong apa pun.
+	   Post lama yang rasionya di luar 4:5–1.91:1 tetap utuh (disisakan ruang, bukan
+	   dipotong); post baru yang sudah di-crop saat upload akan mengisi frame dengan pas.
+	   Tinggi frame juga tidak meloncat saat galeri digeser. */
 	.detail-media.framed {
 		width: 100%;
 		height: auto;
@@ -1431,7 +1434,7 @@
 		height: 100%;
 		max-width: none;
 		max-height: none;
-		object-fit: cover;
+		object-fit: contain;
 	}
 	.dm-img {
 		display: block;
