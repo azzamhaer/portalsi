@@ -165,8 +165,8 @@
 					{#if post.isVideo}<span aria-label="Video"><Play size={14} fill="currentColor" /></span
 						>{:else if post.isMultiple}<span aria-label="Beberapa foto"><Copy size={14} /></span
 						>{/if}
-					{#if post.isPinned}<span class="pin-badge" aria-label="Disematkan"
-							><Pin size={13} fill="currentColor" /></span
+					{#if post.isPinned}<span class="pin-badge"
+							><Pin size={12} fill="currentColor" /> Pinned</span
 						>{/if}
 				</a>
 			{/each}
@@ -403,11 +403,20 @@
 		object-fit: cover;
 	}
 	/* Penanda sematan: kiri atas supaya tidak bertabrakan dengan ikon video/multi-foto
-	   yang menempati kanan atas. */
+	   yang menempati kanan atas. Berlabel teks supaya maksudnya langsung jelas. */
 	.profile-grid a .pin-badge {
 		right: auto;
 		left: 7px;
+		width: auto;
+		height: 22px;
+		grid-auto-flow: column;
+		gap: 4px;
+		padding: 0 8px;
 		background: var(--color-primary);
+		border-radius: 999px;
+		font-size: 0.62rem;
+		font-weight: 750;
+		letter-spacing: 0.02em;
 	}
 	.profile-grid a span {
 		position: absolute;

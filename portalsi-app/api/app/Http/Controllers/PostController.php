@@ -489,6 +489,7 @@ class PostController extends Controller
 
         // Dipakai modal edit untuk menampilkan status sematan.
         $post->is_pinned = $post->pinned_at !== null;
+        $post->is_draft = (bool) $post->is_draft;
 
         if ($authUser) {
             if ($authUser->user_id === $owner->user_id) {

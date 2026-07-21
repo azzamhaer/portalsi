@@ -194,12 +194,17 @@ class ProfileController extends Controller
         })
             ->where('is_archived', false)
             ->where('is_draft', false)
+            // Sama seperti profil publik: sematan di atas, yang paling baru disematkan duluan.
+            ->orderByRaw('CASE WHEN pinned_at IS NOT NULL AND user_id = ? THEN 0 ELSE 1 END', [$user->user_id])
+            ->orderByDesc('pinned_at')
             ->latest()
-            ->select('post_id', 'caption', 'media_url', 'media_urls', 'is_video', 'created_at', 'thumbnail_url', 'media_variants');
+            ->select('post_id', 'user_id', 'caption', 'media_url', 'media_urls', 'is_video', 'created_at', 'thumbnail_url', 'media_variants', 'pinned_at');
 
         $paginatedPosts = $postsQuery->paginate($perPage, ['*'], 'page', $page);
+        $profileOwnerId = $user->user_id;
 
-        $recentPosts = $paginatedPosts->getCollection()->map(function ($post) {
+        $recentPosts = $paginatedPosts->getCollection()->map(function ($post) use ($profileOwnerId) {
+            $isPinned = $post->pinned_at !== null && (int) $post->user_id === (int) $profileOwnerId;
             try {
                 $mediaUrl = $post->media_url;
 
@@ -211,6 +216,7 @@ class ProfileController extends Controller
                         'is_video' => 0,
                         'thumbnail_url' => null,
                         'created_at' => $post->created_at,
+                        'is_pinned' => $isPinned,
                     ];
                 }
 
@@ -225,6 +231,7 @@ class ProfileController extends Controller
                     'is_multiple' => (is_array($post->media_urls) && count($post->media_urls) > 1) ? 1 : 0,
                     'thumbnail_url' => $thumbnail,
                     'created_at' => $post->created_at,
+                    'is_pinned' => $isPinned,
                 ];
             } catch (Throwable $e) {
                 Log::error('Failed to map post in me()', [

@@ -283,6 +283,30 @@
 	let shareOpen = $state(false);
 	let ownerMenuOpen = $state(false);
 
+	// ---- Draft ----
+	let isDraft = $state(untrack(() => data.post.isDraft ?? false));
+	let publishing = $state(false);
+
+	async function publishDraft() {
+		if (publishing) return;
+		const confirmed = await confirmAction({
+			title: 'Terbitkan draft ini?',
+			description:
+				'Setelah terbit, postingan langsung muncul di beranda pengikut Anda dan tidak bisa dikembalikan menjadi draft.',
+			confirmLabel: 'Ya, terbitkan'
+		});
+		if (!confirmed) return;
+		publishing = true;
+		try {
+			await clientRequest(`posts/${data.post.id}/publish`, { method: 'POST' });
+			isDraft = false;
+		} catch {
+			formMessage = 'Draft belum dapat diterbitkan. Coba lagi.';
+		} finally {
+			publishing = false;
+		}
+	}
+
 	// ---- Sematkan postingan ----
 	// Batas 3 juga divalidasi di server; angka di sini hanya untuk teks & popup.
 	const MAX_PINNED = 3;
@@ -727,6 +751,17 @@
 			{#if form?.message && !form.success}<p class="notice" role="status">
 					{form.message}
 				</p>{/if}
+			{#if isDraft && isPostOwner}
+				<div class="draft-banner" role="status">
+					<div>
+						<strong>Ini masih draft</strong>
+						<small>Hanya Anda yang bisa melihatnya. Edit dulu lewat menu titik tiga bila perlu.</small>
+					</div>
+					<button type="button" disabled={publishing} onclick={publishDraft}>
+						{publishing ? 'Menerbitkan…' : 'Terbitkan'}
+					</button>
+				</div>
+			{/if}
 			<div
 				class="detail-media"
 				class:framed={frameAspect !== null && !data.post.isVideo}
@@ -1336,6 +1371,41 @@
 	}
 	.cib-actions button:disabled {
 		opacity: 0.6;
+	}
+	.draft-banner {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 14px;
+		margin: 0 0 10px;
+		padding: 12px 14px;
+		background: var(--color-primary-soft);
+		border-radius: 12px;
+	}
+	.draft-banner strong {
+		display: block;
+		font-size: 0.86rem;
+	}
+	.draft-banner small {
+		color: var(--color-muted);
+		font-size: 0.74rem;
+		line-height: 1.45;
+	}
+	.draft-banner button {
+		flex: none;
+		min-height: 38px;
+		padding: 0 15px;
+		background: var(--color-primary);
+		border: 0;
+		border-radius: 10px;
+		color: white;
+		font-size: 0.82rem;
+		font-weight: 720;
+		cursor: pointer;
+	}
+	.draft-banner button:disabled {
+		opacity: 0.6;
+		cursor: default;
 	}
 	.pin-manage {
 		display: grid;

@@ -31,7 +31,9 @@
 	{:else}
 		<section class="draft-grid" aria-label="Daftar draft">
 			{#each data.drafts as draft (draft.id)}
-				<a href={`/profile/drafts/${draft.id}`}>
+				<!-- Draft dibuka di halaman detail post biasa: pemiliknya diizinkan melihat draft,
+			     dan di sana sudah ada modal edit (caption, lokasi, kolaborator) + tombol terbit. -->
+			<a href={`/posts/${draft.id}`} data-no-modal>
 					<img src={draft.thumbnailUrl ?? draft.mediaUrl} alt={draft.caption} loading="lazy" />
 					{#if draft.isVideo}<span aria-label="Video"><Play size={14} fill="currentColor" /></span
 						>{:else if draft.isMultiple}<span aria-label="Beberapa foto"><Copy size={14} /></span
