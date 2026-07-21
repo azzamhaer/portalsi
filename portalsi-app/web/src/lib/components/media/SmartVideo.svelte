@@ -10,6 +10,10 @@
 	// pada video yang sudah jalan diizinkan browser karena halaman sudah punya aktivasi user.
 	const SOUND_KEY = 'psi_video_sound_on';
 	let soundOn = false;
+	// Diset true bila browser menolak unmute otomatis. Mencegah SEMUA video mencoba lagi
+	// (percobaan berulang = video play/pause berkejaran & halaman macet). Direset hanya
+	// ketika user menyalakan suara lewat gesture langsung.
+	let soundBlocked = false;
 	if (typeof localStorage !== 'undefined') {
 		try {
 			soundOn = localStorage.getItem(SOUND_KEY) === '1';
@@ -19,6 +23,9 @@
 	}
 	function setSoundPreference(on: boolean) {
 		soundOn = on;
+		// Dipanggil dari aksi user (tap video / tombol menu) → ada aktivasi user, jadi
+		// blokir sebelumnya tidak lagi berlaku.
+		if (on) soundBlocked = false;
 		try {
 			localStorage.setItem(SOUND_KEY, on ? '1' : '0');
 		} catch {
@@ -214,6 +221,9 @@
 	}
 	/** Tampilkan kontrol; `autoHide` menjadwalkan penyembunyian otomatis. */
 	function revealControls(autoHide = true) {
+		// Mode minimal (reels) tidak punya bilah kontrol — jangan buang kerja sama sekali,
+		// termasuk saat jari menyapu layar untuk scroll.
+		if (minimal) return;
 		clearControlsTimer();
 		controlsVisible = true;
 		if (!autoHide || hoveringPointer || scrubbing || qualityMenuOpen) return;
@@ -225,6 +235,7 @@
 		}, CONTROLS_HIDE_MS);
 	}
 	function hideControlsNow() {
+		if (minimal) return;
 		clearControlsTimer();
 		controlsVisible = false;
 	}
@@ -248,26 +259,38 @@
 		};
 	});
 
+	/** Sudah pernah mencoba menyalakan suara untuk video INI (cegah percobaan berulang). */
+	let soundAttempted = false;
+
 	/**
 	 * Terapkan preferensi suara pada video yang SUDAH berjalan.
 	 *
-	 * Dipanggil dari event `playing` (bukan sebelum play) supaya autoplay tak pernah gagal
-	 * gara-gara suara. Bila ternyata browser menolak dan video ikut terjeda, kembalikan ke
-	 * muted lalu lanjutkan pemutaran — pemutaran lebih penting daripada suara.
+	 * Dipanggil dari event `playing` supaya autoplay tak pernah gagal gara-gara suara.
+	 *
+	 * PENTING — kenapa ada dua penjaga (`soundAttempted` & `soundBlocked`):
+	 * event `playing` bisa terjadi berkali-kali (buffering, resume, ganti kualitas). Kalau
+	 * browser menolak unmute lalu kita mem-*mute* ulang dan memutar lagi, `playing` menyala
+	 * lagi → mencoba unmute lagi → ditolak lagi. Itu bikin video play/pause berkejaran
+	 * sangat cepat sampai halaman macet total. Jadi: satu percobaan per video, dan begitu
+	 * satu video ditolak, video lain tidak ikut mencoba lagi sampai user benar-benar
+	 * menyentuh tombol suara (gesture user = izin yang sah).
 	 */
 	function applySoundPreference() {
-		if (forceMuted || !video || !soundOn || !video.muted) return;
-		video.muted = false;
+		if (forceMuted || !video || !soundOn || soundBlocked || soundAttempted || !video.muted)
+			return;
+		soundAttempted = true;
+		const el = video;
+		el.muted = false;
 		muted = false;
-		// Beberapa browser menjeda video bila unmute dianggap tanpa aktivasi user.
-		queueMicrotask(() => {
-			if (!video) return;
-			if (video.paused && shouldPlay && !userPaused) {
-				video.muted = true;
-				muted = true;
-				ensurePlaying();
-			}
-		});
+		// Sebagian browser menjeda video bila unmute dianggap tanpa aktivasi user.
+		setTimeout(() => {
+			if (!el || !el.paused) return;
+			soundBlocked = true;
+			el.muted = true;
+			muted = true;
+			// Satu kali play, TANPA ensurePlaying() — retry-loop di sini yang memicu macet.
+			if (shouldPlay && !userPaused) void el.play().catch(() => undefined);
+		}, 0);
 	}
 
 	function playWithFallback() {
@@ -505,17 +528,17 @@
 	style:aspect-ratio={fill ? undefined : mediaAspect}
 	onpointerenter={(event) => {
 		// Hanya pointer presisi (mouse/trackpad) yang dianggap "hover".
-		if (event.pointerType !== 'mouse') return;
+		if (minimal || event.pointerType !== 'mouse') return;
 		hoveringPointer = true;
 		revealControls(false);
 	}}
 	onpointermove={(event) => {
-		if (event.pointerType !== 'mouse') return;
+		if (minimal || event.pointerType !== 'mouse' || (hoveringPointer && controlsVisible)) return;
 		hoveringPointer = true;
 		revealControls(false);
 	}}
 	onpointerleave={(event) => {
-		if (event.pointerType !== 'mouse') return;
+		if (minimal || event.pointerType !== 'mouse') return;
 		hoveringPointer = false;
 		// Keluar hover: sembunyikan bila sedang diputar, jeda tetap tampil sebentar.
 		if (playing) hideControlsNow();
@@ -523,7 +546,7 @@
 	}}
 	onpointerdown={(event) => {
 		// Sentuhan di mana pun pada video memunculkan kembali kontrol.
-		if (event.pointerType === 'mouse') return;
+		if (minimal || event.pointerType === 'mouse') return;
 		revealControls();
 	}}
 >

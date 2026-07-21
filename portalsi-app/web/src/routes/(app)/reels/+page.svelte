@@ -79,9 +79,11 @@
 	// terpotong oleh line-clamp (scrollHeight > clientHeight).
 	let overflowingIds = $state(new Set<number>());
 	function capText(node: HTMLElement, id: number) {
+		let raf = 0;
 		function measure() {
 			// Saat sedang dibuka, biarkan status terakhir (elemen tak lagi ter-clamp).
 			if (expanded.has(id)) return;
+			if (node.clientHeight === 0) return;
 			const isOverflowing = node.scrollHeight - node.clientHeight > 1;
 			const has = overflowingIds.has(id);
 			if (isOverflowing === has) return;
@@ -90,15 +92,24 @@
 			else next.delete(id);
 			overflowingIds = next;
 		}
-		measure();
+		// Pengukuran selalu ditunda ke frame berikutnya. Menulis state langsung di dalam
+		// callback ResizeObserver bisa memicu putaran notifikasi (RO → render → RO → …)
+		// yang bikin scroll tersendat.
+		function scheduleMeasure() {
+			if (raf) return;
+			raf = requestAnimationFrame(() => {
+				raf = 0;
+				measure();
+			});
+		}
+		scheduleMeasure();
 		// Font/lebar bisa berubah (rotasi layar, font telat dimuat) → ukur ulang.
-		const ro = new ResizeObserver(measure);
+		const ro = new ResizeObserver(scheduleMeasure);
 		ro.observe(node);
-		const raf = requestAnimationFrame(measure);
 		return {
 			destroy() {
 				ro.disconnect();
-				cancelAnimationFrame(raf);
+				if (raf) cancelAnimationFrame(raf);
 			}
 		};
 	}
