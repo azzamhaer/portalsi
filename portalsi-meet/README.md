@@ -110,7 +110,7 @@ portalsi-meet/
 | `LIVEKIT_API_SECRET` | ✅ | Secret untuk sign JWT (min 32 chars) |
 | `LIVEKIT_HTTP_URL` | ✅ | HTTP URL ke LiveKit server (internal: `http://livekit:7880`) |
 | `REDIS_URL` | ✅ | Connection string Redis (`redis://redis:6379`) |
-| `PORTALSI_API_URL` | optional | Base URL Portal SI API untuk login/register host meeting. Default: `https://api-new.portalsi.com/api` |
+| `PORTALSI_API_URL` | optional | Base URL Portal SI API untuk login/register host meeting. Default: `https://api..portalsi.com/api` |
 | `PORTALSI_API_TIMEOUT_MS` | optional | Timeout request auth Portal SI dalam milidetik. Default: `12000` |
 | `PUBLIC_IP` | ✅ | IP publik VPS untuk coturn |
 | `TURN_REALM` | ✅ | Domain TURN realm |

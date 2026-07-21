@@ -17,6 +17,7 @@
 	} from '@lucide/svelte';
 	import { untrack } from 'svelte';
 	import { clientRequest } from '$lib/api/client';
+	import { setPostLike } from '$lib/api/likes';
 	import Avatar from '$lib/components/ui/Avatar.svelte';
 	import StoryAvatarLink from '$lib/components/story/StoryAvatarLink.svelte';
 	import SmartVideo from '$lib/components/media/SmartVideo.svelte';
@@ -245,13 +246,19 @@
 	async function toggleLike() {
 		if (liking) return;
 		liking = true;
-		liked = !liked;
-		likesCount += liked ? 1 : -1;
+		const previousLiked = liked;
+		const previousCount = likesCount;
+		const target = !liked;
+		liked = target;
+		likesCount += target ? 1 : -1;
 		try {
-			await clientRequest(`posts/${data.post.id}/like`, { method: 'POST' });
+			const result = await setPostLike(data.post.id, target);
+			// Samakan dengan state server agar tidak desinkron (like "hilang" setelah refresh).
+			liked = result.liked;
+			if (result.likesCount !== null) likesCount = result.likesCount;
 		} catch {
-			liked = !liked;
-			likesCount += liked ? 1 : -1;
+			liked = previousLiked;
+			likesCount = previousCount;
 		} finally {
 			liking = false;
 		}
@@ -679,15 +686,17 @@
 			<div class="comment-list">
 				{#if data.post.caption}
 					<div class="pinned-caption">
-						<StoryAvatarLink
-							userId={data.post.user.id}
-							username={data.post.user.username}
-							name={data.post.user.fullName}
-							avatarUrl={data.post.user.avatarUrl}
-							size="sm"
-							hasStory={data.post.user.hasStory}
-							seen={data.post.user.storyViewed}
-						/>
+						<span class="pc-avatar">
+							<StoryAvatarLink
+								userId={data.post.user.id}
+								username={data.post.user.username}
+								name={data.post.user.fullName}
+								avatarUrl={data.post.user.avatarUrl}
+								size="sm"
+								hasStory={data.post.user.hasStory}
+								seen={data.post.user.storyViewed}
+							/>
+						</span>
 						<p>
 							<a class="c-user" href={`/u/${data.post.user.username}`}
 								><strong>{data.post.user.username}</strong><UserBadges
@@ -1510,6 +1519,10 @@
 		gap: 10px;
 		padding: 14px 15px;
 	}
+	.pc-avatar {
+		display: inline-flex;
+		flex: none;
+	}
 	.pinned-caption p {
 		flex: 1;
 		min-width: 0;
@@ -2062,6 +2075,15 @@
 		}
 		.comments > .ds-head {
 			padding: 12px 14px;
+		}
+		/* Mobile: identitas uploader sudah tampil di header tepat di atasnya —
+		   jangan diulang lagi di baris caption. Sisakan teks captionnya saja. */
+		.pinned-caption .pc-avatar,
+		.pinned-caption .c-user {
+			display: none;
+		}
+		.pinned-caption {
+			padding-top: 4px;
 		}
 		.ds-actions {
 			padding: 10px 14px 4px;

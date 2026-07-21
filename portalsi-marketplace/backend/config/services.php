@@ -24,7 +24,7 @@ return [
     'frontend_url' => env('FRONTEND_URL', 'http://localhost:5173'),
 
     'portal_si' => [
-        'api_url' => env('PORTALSI_API_URL', 'https://api-new.portalsi.com/api'),
+        'api_url' => env('PORTALSI_API_URL', 'https://api..portalsi.com/api'),
         'timeout' => (int) env('PORTALSI_API_TIMEOUT', 12),
     ],
 ];

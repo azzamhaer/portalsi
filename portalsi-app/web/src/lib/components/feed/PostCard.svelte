@@ -19,6 +19,7 @@
 	import ViewportMusic from '$lib/components/media/ViewportMusic.svelte';
 	import MediaLightbox from '$lib/components/media/MediaLightbox.svelte';
 	import { clientRequest } from '$lib/api/client';
+	import { setPostLike } from '$lib/api/likes';
 	import type { PostPreview } from '$lib/types/domain';
 	import MentionText from '$lib/components/ui/MentionText.svelte';
 	import SharePostSheet from '$lib/components/feed/SharePostSheet.svelte';
@@ -98,13 +99,19 @@
 		if (liking) return;
 		liking = true;
 		interactionError = '';
-		interaction.liked = !interaction.liked;
-		interaction.likesCount += interaction.liked ? 1 : -1;
+		const previousLiked = interaction.liked;
+		const previousCount = interaction.likesCount;
+		const target = !interaction.liked;
+		interaction.liked = target;
+		interaction.likesCount += target ? 1 : -1;
 		try {
-			await clientRequest(`posts/${post.id}/like`, { method: 'POST' });
+			const result = await setPostLike(post.id, target);
+			// Samakan dengan state server agar tidak desinkron (like "hilang" setelah refresh).
+			interaction.liked = result.liked;
+			if (result.likesCount !== null) interaction.likesCount = result.likesCount;
 		} catch {
-			interaction.liked = !interaction.liked;
-			interaction.likesCount += interaction.liked ? 1 : -1;
+			interaction.liked = previousLiked;
+			interaction.likesCount = previousCount;
 			interactionError = 'Like belum tersimpan. Coba lagi.';
 		} finally {
 			liking = false;

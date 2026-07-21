@@ -31,7 +31,7 @@ import {
   X,
 } from 'lucide-react';
 
-const PORTAL_API = (import.meta.env.VITE_PORTALSI_API_URL || 'https://api-new.portalsi.com/api').replace(/\/+$/, '');
+const PORTAL_API = (import.meta.env.VITE_PORTALSI_API_URL || 'https://api..portalsi.com/api').replace(/\/+$/, '');
 const MEET_API = (import.meta.env.VITE_MEET_API_URL || 'https://meet.portalsi.com/api').replace(/\/+$/, '');
 const STORAGE_KEY = 'portalsi-admin-session';
 

@@ -169,6 +169,40 @@
 	let mediaAspect = $state('16 / 9');
 	let isFullscreen = $state(false);
 
+	// ---- Auto-hide kontrol (global untuk semua pemakaian SmartVideo) ----
+	// Saat video diputar, bilah kontrol menyingkir agar tampilan bersih. Saat dijeda
+	// (mis. user menyentuh video) kontrol muncul lagi, lalu menghilang sendiri setelah
+	// beberapa detik. Di desktop, hover/unhover tetap mengendalikan tampilnya kontrol.
+	const CONTROLS_HIDE_MS = 2600;
+	let controlsVisible = $state(true);
+	let hoveringPointer = $state(false);
+	let controlsTimer: ReturnType<typeof setTimeout> | null = null;
+
+	function clearControlsTimer() {
+		if (controlsTimer) {
+			clearTimeout(controlsTimer);
+			controlsTimer = null;
+		}
+	}
+	/** Tampilkan kontrol; `autoHide` menjadwalkan penyembunyian otomatis. */
+	function revealControls(autoHide = true) {
+		clearControlsTimer();
+		controlsVisible = true;
+		if (!autoHide || hoveringPointer || scrubbing || qualityMenuOpen) return;
+		controlsTimer = setTimeout(() => {
+			controlsTimer = null;
+			// Jangan sembunyikan bila user sedang berinteraksi dengan kontrol.
+			if (hoveringPointer || scrubbing || qualityMenuOpen) return;
+			controlsVisible = false;
+		}, CONTROLS_HIDE_MS);
+	}
+	function hideControlsNow() {
+		clearControlsTimer();
+		controlsVisible = false;
+	}
+	// Bersihkan timer saat komponen dilepas.
+	$effect(() => () => clearControlsTimer());
+
 	// Lacak status fullscreen agar tombol bisa toggle & keluar (termasuk WebKit).
 	$effect(() => {
 		function sync() {
@@ -420,7 +454,31 @@
 	class:playing
 	class:failed
 	class:fill
+	class:controls-visible={controlsVisible}
 	style:aspect-ratio={fill ? undefined : mediaAspect}
+	onpointerenter={(event) => {
+		// Hanya pointer presisi (mouse/trackpad) yang dianggap "hover".
+		if (event.pointerType !== 'mouse') return;
+		hoveringPointer = true;
+		revealControls(false);
+	}}
+	onpointermove={(event) => {
+		if (event.pointerType !== 'mouse') return;
+		hoveringPointer = true;
+		revealControls(false);
+	}}
+	onpointerleave={(event) => {
+		if (event.pointerType !== 'mouse') return;
+		hoveringPointer = false;
+		// Keluar hover: sembunyikan bila sedang diputar, jeda tetap tampil sebentar.
+		if (playing) hideControlsNow();
+		else revealControls();
+	}}
+	onpointerdown={(event) => {
+		// Sentuhan di mana pun pada video memunculkan kembali kontrol.
+		if (event.pointerType === 'mouse') return;
+		revealControls();
+	}}
 >
 	<video
 		bind:this={video}
@@ -458,14 +516,20 @@
 		}}
 		onplay={() => {
 			playing = true;
+			// Mulai diputar → bersihkan tampilan (kecuali kursor sedang di atas video).
+			if (hoveringPointer) revealControls(false);
+			else hideControlsNow();
 			if (musicSrc) syncMusicPlay();
 		}}
 		onpause={() => {
 			playing = false;
+			// Dijeda → kontrol muncul, lalu hilang sendiri setelah beberapa detik.
+			revealControls();
 			if (musicSrc) syncMusicPause();
 		}}
 		onended={() => {
 			playing = false;
+			revealControls();
 			if (musicSrc) syncMusicPause();
 		}}
 		ontimeupdate={() => {
@@ -743,11 +807,19 @@
 		transition: 180ms ease;
 		backdrop-filter: blur(12px);
 	}
-	.smart-video:hover .video-controls,
-	.smart-video:focus-within .video-controls,
-	.smart-video:not(.playing) .video-controls {
+	/* Kontrol tampil bila: JS menandai terlihat (jeda / baru disentuh), sedang difokus,
+	   atau kursor presisi sedang hover. Hover dibatasi ke perangkat ber-mouse supaya
+	   di layar sentuh tidak "nyangkut" terlihat karena hover yang diemulasi. */
+	.smart-video.controls-visible .video-controls,
+	.smart-video:focus-within .video-controls {
 		opacity: 1;
 		transform: none;
+	}
+	@media (hover: hover) and (pointer: fine) {
+		.smart-video:hover .video-controls {
+			opacity: 1;
+			transform: none;
+		}
 	}
 	.video-controls button {
 		display: grid;

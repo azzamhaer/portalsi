@@ -8,9 +8,12 @@
 		Heart,
 		MessageCircle,
 		Music2,
-		Send
+		Send,
+		Eye,
+		EyeOff
 	} from '@lucide/svelte';
 	import { clientRequest } from '$lib/api/client';
+	import { setPostLike } from '$lib/api/likes';
 	import { mapPost } from '$lib/api/mappers';
 	import { reelsFeedSchema } from '$lib/schemas/post';
 	import SmartVideo from '$lib/components/media/SmartVideo.svelte';
@@ -34,6 +37,9 @@
 	let shareFor = $state<number | null>(null);
 	let burstId = $state<number | null>(null);
 	let expanded = $state(new Set<number>());
+	// Clear view: sembunyikan seluruh overlay (back, caption, aksi, navigasi) agar video
+	// bisa dinikmati penuh. Tombol toggle sendiri tetap terlihat samar.
+	let clearView = $state(false);
 
 	let itemEls: HTMLElement[] = [];
 	const seen = new Set<number>();
@@ -60,13 +66,18 @@
 
 	async function toggleLike(reel: (typeof reels)[number]) {
 		const was = reel.isLiked;
-		reel.isLiked = !was;
-		reel.likesCount += was ? -1 : 1;
+		const previousCount = reel.likesCount;
+		const target = !was;
+		reel.isLiked = target;
+		reel.likesCount += target ? 1 : -1;
 		try {
-			await clientRequest(`posts/${reel.id}/like`, { method: 'POST' });
+			const result = await setPostLike(reel.id, target);
+			// Samakan dengan state server agar tidak desinkron (like "hilang" setelah refresh).
+			reel.isLiked = result.liked;
+			if (result.likesCount !== null) reel.likesCount = result.likesCount;
 		} catch {
 			reel.isLiked = was;
-			reel.likesCount += was ? 1 : -1;
+			reel.likesCount = previousCount;
 		}
 	}
 
@@ -163,8 +174,17 @@
 
 <svelte:head><title>Reels — Portal SI</title><meta name="robots" content="noindex" /></svelte:head>
 
-<div class="reels-page">
+<div class="reels-page" class:clear={clearView}>
 	<div class="reels-topbar"><BackButton /></div>
+	<button
+		class="reels-clear-toggle"
+		onclick={() => (clearView = !clearView)}
+		aria-pressed={clearView}
+		title={clearView ? 'Tampilkan navigasi' : 'Sembunyikan navigasi'}
+		aria-label={clearView ? 'Tampilkan navigasi' : 'Sembunyikan navigasi'}
+	>
+		{#if clearView}<Eye size={18} />{:else}<EyeOff size={18} />{/if}
+	</button>
 	{#if reels.length === 0}
 		<div class="reels-empty">Belum ada video untuk ditampilkan.</div>
 	{:else}
@@ -308,6 +328,59 @@
 		top: 14px;
 		left: 14px;
 		z-index: 5;
+	}
+	/* Tombol clear view: kecil & samar di kanan atas, tetap bisa diakses saat mode bersih. */
+	.reels-clear-toggle {
+		position: absolute;
+		top: 14px;
+		right: 14px;
+		z-index: 6;
+		display: grid;
+		place-items: center;
+		width: 34px;
+		height: 34px;
+		padding: 0;
+		border: 0;
+		border-radius: 999px;
+		background: rgb(0 0 0 / 40%);
+		color: #fff;
+		opacity: 0.75;
+		backdrop-filter: blur(6px);
+		cursor: pointer;
+		transition: opacity 0.2s ease;
+	}
+	.reels-clear-toggle:hover {
+		opacity: 1;
+	}
+	.reels-page.clear .reels-clear-toggle {
+		opacity: 0.25;
+	}
+	.reels-page.clear .reels-clear-toggle:hover,
+	.reels-page.clear .reels-clear-toggle:focus-visible {
+		opacity: 1;
+	}
+	/* Mode clear view → semua overlay meredup & tidak bisa diklik (video tetap jalan). */
+	.reels-page.clear .reels-topbar,
+	.reels-page.clear .reel-meta,
+	.reels-page.clear .reel-actions,
+	.reels-page.clear .reels-nav {
+		opacity: 0;
+		pointer-events: none;
+	}
+	.reels-topbar,
+	.reel-meta,
+	.reel-actions,
+	.reels-nav {
+		transition: opacity 0.25s ease;
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.reels-topbar,
+		.reel-meta,
+		.reel-actions,
+		.reels-nav,
+		.reels-clear-toggle {
+			transition: none;
+		}
 	}
 	.reels-topbar :global(a),
 	.reels-topbar :global(button) {

@@ -38,10 +38,38 @@ class LikeController extends Controller
             ->where('post_id', $post_id)
             ->first();
 
+        // Klien boleh mengirim state yang DIINGINKAN (`liked=true/false`) agar operasi
+        // idempoten: dua request beruntun (mis. double-tap + klik) tidak lagi saling
+        // membatalkan sehingga UI dan DB tidak pernah desinkron.
+        $desired = $request->input('liked');
+        if ($desired !== null) {
+            $desired = filter_var($desired, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+        }
+        $shouldLike = $desired === null ? ! $like : $desired;
+
+        if (! $shouldLike) {
+            if ($like) {
+                $like->delete();
+            }
+
+            return response()->json([
+                'message' => 'Post unliked',
+                'liked' => false,
+                'likes_count' => $post->likes()->count(),
+            ]);
+        }
+
         if ($like) {
-            $like->delete();
-            return response()->json(['message' => 'Post unliked']);
-        } else {
+            // Sudah disukai & memang diminta tetap disukai → tidak ada perubahan.
+            return response()->json([
+                'message' => 'Post liked',
+                'liked' => true,
+                'likes_count' => $post->likes()->count(),
+            ]);
+        }
+
+        // Belum disukai → buat like baru + notifikasi.
+        {
             $like = Like::create([
                 'user_id' => $user_id,
                 'post_id' => $post_id,
@@ -86,7 +114,11 @@ class LikeController extends Controller
                 }
             }
 
-            return response()->json(['message' => 'Post liked']);
+            return response()->json([
+                'message' => 'Post liked',
+                'liked' => true,
+                'likes_count' => $post->likes()->count(),
+            ]);
         }
     }
 

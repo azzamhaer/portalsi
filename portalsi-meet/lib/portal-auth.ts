@@ -17,7 +17,7 @@ export class PortalAuthError extends Error {
 
 export const PORTAL_TOKEN_COOKIE = 'ps_meet_token';
 
-const PORTAL_API_URL = (process.env.PORTALSI_API_URL || 'https://api-new.portalsi.com/api').replace(/\/+$/, '');
+const PORTAL_API_URL = (process.env.PORTALSI_API_URL || 'https://api..portalsi.com/api').replace(/\/+$/, '');
 const REQUEST_TIMEOUT_MS = Number(process.env.PORTALSI_API_TIMEOUT_MS || 12000);
 
 export function portalDisplayName(user: PortalSiUser): string {
