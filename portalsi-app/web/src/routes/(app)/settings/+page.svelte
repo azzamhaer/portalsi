@@ -133,7 +133,7 @@
 			<img src="/assets/logo-mark.png" alt="" />
 			<h2>Portal SI Web</h2>
 			<p>Terkoneksi dengan iman, menginspirasi dalam kebaikan.</p>
-			<small>Versi 2.5.1 · Stabil</small>
+			<small>Versi 2.5.2 · Stabil</small>
 		</aside>
 	</div>
 </SectionPage>
