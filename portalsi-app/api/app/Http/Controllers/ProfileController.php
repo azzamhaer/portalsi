@@ -151,6 +151,8 @@ class ProfileController extends Controller
             'is_private' => $user->is_private,
             'has_story' => $hasStory,
             'follow_status' => $followStatus,
+            // Apakah pemilik profil ini mengikuti kita → tombol jadi "Ikuti balik".
+            'is_followed_by' => $authUser ? $user->is_followed_by : false,
             'followers_count' => $user->followers_count,
             'following_count' => $user->following_count,
             'posts_count' => $user->posts_count,

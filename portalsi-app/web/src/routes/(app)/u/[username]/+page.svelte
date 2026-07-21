@@ -183,7 +183,7 @@
 						disabled={!data.canFollow || connectionBusy}
 					>
 						{#if following}<UserCheck size={18} /> Following{:else}<UserPlus size={18} />
-							{pending ? 'Requested' : 'Follow'}{/if}
+							{pending ? 'Requested' : data.followsYou ? 'Ikuti balik' : 'Follow'}{/if}
 					</button>
 					<a
 						class="icon-action"

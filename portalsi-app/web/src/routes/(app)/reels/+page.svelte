@@ -408,7 +408,11 @@
 										class:following={followedNow.has(reel.user.id)}
 										disabled={followBusy.has(reel.user.id)}
 										onclick={() => void toggleFollow(reel.user.id)}
-										>{followedNow.has(reel.user.id) ? 'Mengikuti' : 'Ikuti'}</button
+										>{followedNow.has(reel.user.id)
+											? 'Mengikuti'
+											: reel.user.followsYou
+												? 'Ikuti balik'
+												: 'Ikuti'}</button
 									>
 								{/if}
 							</div>

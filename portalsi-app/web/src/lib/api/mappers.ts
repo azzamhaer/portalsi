@@ -21,7 +21,8 @@ export function mapCompactUser(user: CompactUser, mediaBaseUrl?: string): Portal
 		storyViewed: user.story_viewed ?? false,
 		isFollowing: user.is_following ?? false,
 		isRequested: user.is_requested ?? false,
-		isSelf: user.is_self ?? false
+		isSelf: user.is_self ?? false,
+		followsYou: user.is_followed_by ?? false
 	};
 }
 

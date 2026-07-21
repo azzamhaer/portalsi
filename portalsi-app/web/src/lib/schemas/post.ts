@@ -15,7 +15,9 @@ export const compactUserSchema = z
 		story_viewed: booleanish.optional().catch(false),
 		is_following: booleanish.optional().catch(false),
 		is_requested: booleanish.optional().catch(false),
-		is_self: booleanish.optional().catch(false)
+		is_self: booleanish.optional().catch(false),
+		// Orang ini sudah mengikuti kita → tombol follow menampilkan "Ikuti balik".
+		is_followed_by: booleanish.optional().catch(false)
 	})
 	.passthrough();
 

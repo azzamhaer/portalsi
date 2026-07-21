@@ -210,7 +210,8 @@
 				class:following
 				onclick={toggleFollow}
 				disabled={followBusy}
-				aria-pressed={following}>{following ? 'Mengikuti' : 'Ikuti'}</button
+				aria-pressed={following}
+				>{following ? 'Mengikuti' : post.user.followsYou ? 'Ikuti balik' : 'Ikuti'}</button
 			>
 		{/if}
 	</header>

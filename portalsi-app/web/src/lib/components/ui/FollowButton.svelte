@@ -6,13 +6,17 @@
 	let {
 		user,
 		size = 'md',
-		followsYou = false
+		followsYou
 	}: {
 		user: PortalUser;
 		size?: 'sm' | 'md';
-		/** Orang ini sudah mengikuti kita → ajakan berubah jadi "Ikuti balik". */
+		/** Paksa label "Ikuti balik". Normalnya tidak perlu diisi — status diambil
+		 *  langsung dari data user (`followsYou`), jadi berlaku otomatis di mana pun. */
 		followsYou?: boolean;
 	} = $props();
+
+	// Sumber kebenaran = data user dari server; prop hanya sebagai penimpa manual.
+	const showFollowBack = $derived(followsYou ?? user.followsYou ?? false);
 
 	let following = $state(user.isFollowing ?? false);
 	let requested = $state(user.isRequested ?? false);
@@ -56,7 +60,7 @@
 	>
 		{#if following}<UserCheck size={15} /> Diikuti
 		{:else if requested}<Clock size={15} /> Diminta
-		{:else}<UserPlus size={15} /> {followsYou ? 'Ikuti balik' : 'Ikuti'}{/if}
+		{:else}<UserPlus size={15} /> {showFollowBack ? 'Ikuti balik' : 'Ikuti'}{/if}
 	</button>
 {/if}
 

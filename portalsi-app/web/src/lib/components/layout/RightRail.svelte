@@ -90,7 +90,12 @@
 					class="follow"
 					class:on={followed.has(user.id)}
 					onclick={() => toggleFollow(user.id)}
-					disabled={busy.has(user.id)}>{followed.has(user.id) ? 'Mengikuti' : 'Ikuti'}</button
+					disabled={busy.has(user.id)}
+					>{followed.has(user.id)
+						? 'Mengikuti'
+						: user.followsYou
+							? 'Ikuti balik'
+							: 'Ikuti'}</button
 				>
 			</div>
 		{/each}

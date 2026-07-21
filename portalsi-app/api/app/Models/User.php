@@ -81,6 +81,55 @@ class User extends Authenticatable implements MustVerifyEmail
     ];
 
     /**
+     * Selalu sertakan `is_followed_by` di setiap serialisasi user.
+     *
+     * Dipakai agar tombol follow di SELURUH aplikasi (reels, daftar pengikut, detail post,
+     * saran, pencarian, dsb.) bisa berubah menjadi "Ikuti balik" saat orang tersebut sudah
+     * lebih dulu mengikuti kita. Ditaruh di model, bukan di tiap controller, supaya tidak
+     * ada satu pun tempat yang kelewatan.
+     */
+    protected $appends = ['is_followed_by'];
+
+    /**
+     * Cache daftar pengikut viewer selama satu request.
+     *
+     * Tanpa ini, setiap user yang diserialisasi memicu satu query sendiri (N+1) — berat
+     * sekali di halaman berisi puluhan user. Dengan cache: satu query untuk seluruh request.
+     * `$viewerFollowerCacheFor` menyimpan ID pemilik cache agar tidak salah pakai bila
+     * proses hidup melayani lebih dari satu pengguna (mis. queue worker).
+     */
+    private static ?array $viewerFollowerIds = null;
+    private static ?int $viewerFollowerCacheFor = null;
+
+    public static function forgetViewerFollowerCache(): void
+    {
+        self::$viewerFollowerIds = null;
+        self::$viewerFollowerCacheFor = null;
+    }
+
+    public function getIsFollowedByAttribute(): bool
+    {
+        $authId = \Illuminate\Support\Facades\Auth::id();
+        if (! $authId || (int) $this->user_id === (int) $authId) {
+            return false;
+        }
+
+        if (self::$viewerFollowerIds === null || self::$viewerFollowerCacheFor !== (int) $authId) {
+            self::$viewerFollowerIds = array_flip(
+                \Illuminate\Support\Facades\DB::table('follows')
+                    ->where('followed_id', $authId)
+                    ->where('status', 'accepted')
+                    ->pluck('follower_id')
+                    ->map(fn ($id) => (int) $id)
+                    ->all()
+            );
+            self::$viewerFollowerCacheFor = (int) $authId;
+        }
+
+        return isset(self::$viewerFollowerIds[(int) $this->user_id]);
+    }
+
+    /**
      * Scope: hanya user yang sudah verifikasi email.
      * Dipakai untuk menyembunyikan user belum-verified dari area publik
      * (feed, explore, rekomendasi, search).

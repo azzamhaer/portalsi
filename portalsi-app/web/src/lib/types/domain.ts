@@ -12,6 +12,8 @@ export interface PortalUser {
 	hasStory?: boolean;
 	storyViewed?: boolean;
 	isFollowing?: boolean;
+	/** Orang ini mengikuti user yang sedang login. */
+	followsYou?: boolean;
 	isRequested?: boolean;
 	isSelf?: boolean;
 }

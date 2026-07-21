@@ -84,6 +84,8 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 		hasMore: Boolean(
 			profile.pagination && profile.pagination.current_page < profile.pagination.last_page
 		),
+		// Dipakai tombol follow untuk berubah menjadi "Ikuti balik".
+		followsYou: profile.is_followed_by ?? false,
 		isFollowing:
 			profile.follow_status === 'accepted' ||
 			(followingResult.status === 'fulfilled' &&
