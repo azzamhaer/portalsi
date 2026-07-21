@@ -78,10 +78,13 @@
 	// saat videonya memang masih bisu (beri kesempatan preferensi suara diterapkan dulu).
 	let mutedHint = $state(false);
 	let mutedHintDone = false;
-	let activeMuted = false;
+	// Status bisu DITELUSURI PER REEL, bukan satu variabel global.
+	// Dulu satu variabel dipakai bersama: reel tetangga yang ikut ter-render sempat
+	// melaporkan "muted" dan menimpa status reel yang sedang aktif, sehingga hint muncul
+	// padahal videonya sudah bersuara. Sekarang nilainya dibaca ulang saat hint mau tampil.
+	const mutedByReel = new Map<number, boolean>();
 	function handleMutedChange(isMuted: boolean, reelId: number) {
-		if (reelId !== activeReelId) return;
-		activeMuted = isMuted;
+		mutedByReel.set(reelId, isMuted);
 	}
 
 	let itemEls: HTMLElement[] = [];
@@ -285,7 +288,10 @@
 
 		// Cek setelah jeda: kalau video pertama masih bisu, beri tahu cara menyalakannya.
 		const hintTimer = setTimeout(() => {
-			if (!activeMuted || mutedHintDone) return;
+			if (mutedHintDone) return;
+			// Baca status reel yang BENAR-BENAR aktif saat ini.
+			const currentId = reels[activeIndex]?.id;
+			if (currentId === undefined || mutedByReel.get(currentId) !== true) return;
 			mutedHintDone = true;
 			mutedHint = true;
 			setTimeout(() => (mutedHint = false), 4000);
@@ -673,9 +679,11 @@
 		line-height: 1;
 	}
 	/* Hint bisu: transparan, di atas video, memudar sendiri. */
+	/* Ditaruh di BAWAH, bukan atas: area atas sudah dipakai tombol back (kiri) dan menu
+	   titik tiga (kanan), dan pil ini melebar mengikuti teksnya sehingga pasti menabrak. */
 	.muted-hint {
 		position: absolute;
-		top: 62px;
+		bottom: 96px;
 		left: 50%;
 		z-index: 7;
 		display: flex;
@@ -700,7 +708,7 @@
 	@keyframes muted-hint-fade {
 		0% {
 			opacity: 0;
-			transform: translate(-50%, -6px);
+			transform: translate(-50%, 6px);
 		}
 		12% {
 			opacity: 1;
@@ -715,7 +723,7 @@
 	}
 	@media (max-width: 480px) {
 		.muted-hint {
-			top: 58px;
+			bottom: 88px;
 			padding: 8px 12px;
 			font-size: 0.72rem;
 		}

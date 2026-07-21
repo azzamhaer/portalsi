@@ -14,8 +14,9 @@
 <script lang="ts">
 	import { LoaderCircle, Music2, X } from '@lucide/svelte';
 
+	// $bindable() tanpa parameter tipe generik — tipenya diambil dari anotasi props.
 	let {
-		selected = $bindable<MusicTrack | null>(null),
+		selected = $bindable(null),
 		disabled = false
 	}: { selected?: MusicTrack | null; disabled?: boolean } = $props();
 

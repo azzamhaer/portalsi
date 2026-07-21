@@ -674,7 +674,14 @@
 				<div class="collab-invite-banner surface done">Undangan kolaborasi telah diproses.</div>
 			{/if}
 			{#if ownerMenuOpen}
-				<div class="edit-modal-scrim" role="presentation" onclick={() => (ownerMenuOpen = false)}>
+				<!-- use:portal → dipindah ke <body>. Tanpa ini popup terjebak di dalam kolom
+				     media/panel post yang ber-overflow hidden, sehingga ujungnya terpotong. -->
+				<div
+					class="edit-modal-scrim"
+					use:portal
+					role="presentation"
+					onclick={() => (ownerMenuOpen = false)}
+				>
 					<div
 						class="edit-modal-card"
 						role="dialog"
@@ -793,7 +800,7 @@
 									confirmButtonAction(event, {
 										title: 'Hapus postingan?',
 										description:
-											'Foto/video, komentar, interaksi, DAN salinan di profil kolaborator akan dihapus permanen.',
+											'Foto/video, komentar, interaksi, dan salinan di profil kolaborator akan dihapus permanen.',
 										confirmLabel: 'Hapus postingan',
 										tone: 'danger'
 									})}><Trash2 size={14} /> Hapus</button
@@ -1438,6 +1445,11 @@
 		padding: 12px 16px;
 		background: var(--color-primary-soft);
 		border-bottom: 1px solid var(--color-border);
+		/* Banner ini anak pertama kolom komentar yang sudut atasnya membulat. Tanpa
+		   mewarisi radius, latarnya menimpa sudut itu dan ujungnya terlihat terpotong. */
+		border-radius: inherit;
+		border-bottom-left-radius: 0;
+		border-bottom-right-radius: 0;
 	}
 	.draft-banner strong {
 		display: block;
@@ -1690,6 +1702,17 @@
 		width: 100%;
 		height: auto;
 		aspect-ratio: var(--frame-aspect);
+	}
+	/* Desktop: kolom media tingginya dikunci mengikuti panel modal. Kalau frame dihitung
+	   dari LEBAR (seperti di mobile), foto potret jadi lebih tinggi dari kolomnya lalu
+	   terpotong overflow — hasilnya terlihat kotak. Di sini frame dihitung dari TINGGI,
+	   jadi rasio potret tetap utuh dan sisa ruang kiri-kanan diisi latar gelap. */
+	@media (min-width: 951px) {
+		.detail-media.framed {
+			width: auto;
+			height: 100%;
+			max-width: 100%;
+		}
 	}
 	.detail-media.framed .dm-img,
 	.detail-media.framed .dm-track img {

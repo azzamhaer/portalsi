@@ -43,6 +43,8 @@
 	let searchFocused = $state(false);
 	type SearchHistoryView = SearchHistoryItem & { user?: PortalUser };
 	let searchHistory = $state<SearchHistoryView[]>([]);
+	// Post video yang sedang di-hover (desktop) → diputar tanpa suara sebagai pratinjau.
+	let previewId = $state<number | null>(null);
 	const visiblePeople = $derived(searchQuery.trim().length >= 2 ? livePeople : data.people);
 
 	function mapHistory(item: SearchHistoryItem): SearchHistoryView {
@@ -317,7 +319,33 @@
 	</section>{/if}
 	<section class="explore-grid" aria-label="Konten jelajah">
 		{#each posts as post, index (post.id)}
-			<a href={`/posts/${post.id}`} class:wide={index % 7 === 0}>
+			<a
+				href={`/posts/${post.id}`}
+				class:wide={index % 7 === 0}
+				onpointerenter={(event) => {
+					// Hanya kursor presisi. Di layar sentuh "hover" tidak punya makna dan
+					// justru akan memutar video tiap kali jari menyentuh saat scroll.
+					if (event.pointerType !== 'mouse' || !post.isVideo) return;
+					previewId = post.id;
+				}}
+				onpointerleave={(event) => {
+					if (event.pointerType !== 'mouse') return;
+					if (previewId === post.id) previewId = null;
+				}}
+			>
+				{#if post.isVideo && previewId === post.id}
+					<!-- Dipasang HANYA saat di-hover, jadi tidak ada video yang diunduh
+					     duluan untuk seluruh grid. -->
+					<video
+						class="hover-preview"
+						src={post.mediaUrl}
+						muted
+						autoplay
+						loop
+						playsinline
+						preload="auto"
+					></video>
+				{/if}
 				{#if post.isVideo && !post.thumbnailUrl}<video
 						src={post.mediaUrl}
 						muted
@@ -600,6 +628,16 @@
 		background: var(--color-text);
 		border-color: var(--color-text);
 		color: white;
+	}
+	/* Pratinjau hover menutupi thumbnail sepenuhnya. Sengaja TANPA z-index: elemen
+	   berposisi tanpa z-index digambar sesuai urutan DOM, dan pratinjau ini ada lebih
+	   dulu daripada penanda video & nama pengguna — jadi keduanya tetap di atasnya. */
+	.hover-preview {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
 	}
 	.explore-grid {
 		display: grid;
