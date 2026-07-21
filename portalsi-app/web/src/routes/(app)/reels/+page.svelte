@@ -12,7 +12,8 @@
 		Eye,
 		EyeOff,
 		Check,
-		MousePointerClick
+		MousePointerClick,
+		VolumeX
 	} from '@lucide/svelte';
 	import { clientRequest } from '$lib/api/client';
 	import { setPostLike } from '$lib/api/likes';
@@ -39,20 +40,48 @@
 	let shareFor = $state<number | null>(null);
 	let burstId = $state<number | null>(null);
 	let expanded = $state(new Set<number>());
-	// Clear view: sembunyikan seluruh overlay (back, caption, aksi, navigasi) agar video
-	// bisa dinikmati penuh. Diatur dari menu titik tiga pada video.
-	let clearView = $state(false);
-	// Bila aktif, setiap pindah reel otomatis kembali ke tampilan bersih.
+	// ---- Clear view ----
+	// Dua hal yang berbeda:
+	// 1. "Sembunyikan navigasi" = sekali pakai, HANYA untuk reel yang sedang dibuka.
+	//    Begitu geser ke reel lain, navigasi kembali seperti biasa.
+	// 2. "Bersih tiap ganti reel" = setelan menetap; semua reel dimulai tanpa overlay,
+	//    dan override manual di atas tetap bisa dipakai untuk memunculkannya sesaat.
 	const CLEAR_ON_SCROLL_KEY = 'psi_reels_clear_on_scroll';
 	let clearOnScroll = $state(false);
+	let navOverrideId = $state<number | null>(null);
+	let navOverrideClear = $state(false);
+
+	const activeReelId = $derived(reels[activeIndex]?.id ?? null);
+	// Override hanya berlaku selama masih di reel tempat tombol ditekan.
+	const clearView = $derived(
+		navOverrideId !== null && navOverrideId === activeReelId ? navOverrideClear : clearOnScroll
+	);
+
+	function toggleClearView() {
+		navOverrideId = activeReelId;
+		navOverrideClear = !clearView;
+	}
+
 	function setClearOnScroll(on: boolean) {
 		clearOnScroll = on;
-		if (on) clearView = true;
+		// Setelan baru berlaku penuh; buang override reel yang sedang aktif.
+		navOverrideId = null;
 		try {
 			localStorage.setItem(CLEAR_ON_SCROLL_KEY, on ? '1' : '0');
 		} catch {
 			/* abaikan */
 		}
+	}
+
+	// ---- Hint "video di-mute" ----
+	// Ditampilkan sekali tiap kali halaman reels dibuka, dan hanya kalau setelah beberapa
+	// saat videonya memang masih bisu (beri kesempatan preferensi suara diterapkan dulu).
+	let mutedHint = $state(false);
+	let mutedHintDone = false;
+	let activeMuted = false;
+	function handleMutedChange(isMuted: boolean, reelId: number) {
+		if (reelId !== activeReelId) return;
+		activeMuted = isMuted;
 	}
 
 	let itemEls: HTMLElement[] = [];
@@ -230,10 +259,7 @@
 		const io = new IntersectionObserver(
 			([entry]) => {
 				if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
-					const changed = activeIndex !== index;
 					activeIndex = index;
-					// "Bersih saat scroll": tiap ganti reel, overlay disembunyikan lagi.
-					if (changed && clearOnScroll) clearView = true;
 					markSeen(reels[index]?.id);
 					void maybeLoadMore();
 				}
@@ -252,13 +278,18 @@
 			/* abaikan */
 		}
 		try {
-			if (localStorage.getItem(CLEAR_ON_SCROLL_KEY) === '1') {
-				clearOnScroll = true;
-				clearView = true;
-			}
+			if (localStorage.getItem(CLEAR_ON_SCROLL_KEY) === '1') clearOnScroll = true;
 		} catch {
 			/* abaikan */
 		}
+
+		// Cek setelah jeda: kalau video pertama masih bisu, beri tahu cara menyalakannya.
+		const hintTimer = setTimeout(() => {
+			if (!activeMuted || mutedHintDone) return;
+			mutedHintDone = true;
+			mutedHint = true;
+			setTimeout(() => (mutedHint = false), 4000);
+		}, 1500);
 		if (reels[0]) markSeen(reels[0].id);
 		registerFollowable(reels);
 
@@ -273,7 +304,10 @@
 			}
 		}
 		window.addEventListener('keydown', onKey);
-		return () => window.removeEventListener('keydown', onKey);
+		return () => {
+			window.removeEventListener('keydown', onKey);
+			clearTimeout(hintTimer);
+		};
 	});
 </script>
 
@@ -281,6 +315,12 @@
 
 <div class="reels-page" class:clear={clearView}>
 	<div class="reels-topbar"><BackButton /></div>
+	{#if mutedHint}
+		<div class="muted-hint" role="status">
+			<VolumeX size={15} />
+			<span>Video di-mute, unmute di menu kanan atas</span>
+		</div>
+	{/if}
 	{#if reels.length === 0}
 		<div class="reels-empty">Belum ada video untuk ditampilkan.</div>
 	{:else}
@@ -302,17 +342,20 @@
 									loop
 									minimal
 									onDoubleTap={() => doubleTapLike(reel)}
+									onMutedChange={(m) => handleMutedChange(m, reel.id)}
 								>
 									{#snippet menuExtra(close: () => void)}
 										<small>Tampilan</small>
 										<button
 											onclick={(event) => {
 												event.stopPropagation();
-												clearView = !clearView;
+												toggleClearView();
 												close();
 											}}
 											>{#if clearView}<Eye size={16} />{:else}<EyeOff size={16} />{/if}
-											<span>{clearView ? 'Tampilkan navigasi' : 'Sembunyikan navigasi'}</span
+											<span
+												>{clearView ? 'Tampilkan navigasi' : 'Sembunyikan navigasi'}
+												<em>reel ini saja</em></span
 											></button
 										>
 										<button
@@ -323,7 +366,7 @@
 												close();
 											}}
 											><MousePointerClick size={16} />
-											<span>Bersih tiap ganti reel</span>
+											<span>Bersih tiap ganti reel <em>setelan tetap</em></span>
 											{#if clearOnScroll}<Check size={15} />{/if}</button
 										>
 									{/snippet}
@@ -628,6 +671,66 @@
 		cursor: pointer;
 		padding: 0 2px;
 		line-height: 1;
+	}
+	/* Hint bisu: transparan, di atas video, memudar sendiri. */
+	.muted-hint {
+		position: absolute;
+		top: 62px;
+		left: 50%;
+		z-index: 7;
+		display: flex;
+		max-width: min(88vw, 340px);
+		align-items: center;
+		gap: 8px;
+		padding: 9px 14px;
+		background: rgb(12 14 17 / 62%);
+		border: 1px solid rgb(255 255 255 / 12%);
+		border-radius: 999px;
+		color: rgb(255 255 255 / 92%);
+		font-size: 0.76rem;
+		line-height: 1.25;
+		pointer-events: none;
+		backdrop-filter: blur(10px);
+		transform: translateX(-50%);
+		animation: muted-hint-fade 4s ease forwards;
+	}
+	.muted-hint span {
+		min-width: 0;
+	}
+	@keyframes muted-hint-fade {
+		0% {
+			opacity: 0;
+			transform: translate(-50%, -6px);
+		}
+		12% {
+			opacity: 1;
+			transform: translate(-50%, 0);
+		}
+		72% {
+			opacity: 1;
+		}
+		100% {
+			opacity: 0;
+		}
+	}
+	@media (max-width: 480px) {
+		.muted-hint {
+			top: 58px;
+			padding: 8px 12px;
+			font-size: 0.72rem;
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.muted-hint {
+			animation: none;
+		}
+	}
+	/* Keterangan kecil pembeda dua opsi tampilan di menu titik tiga. */
+	.reel-video :global(.menu-panel em) {
+		display: block;
+		color: rgb(255 255 255 / 52%);
+		font-size: 0.63rem;
+		font-style: normal;
 	}
 	.reel-author-row {
 		display: flex;

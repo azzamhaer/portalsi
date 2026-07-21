@@ -85,6 +85,8 @@
 		musicClip?: number;
 		/** Item tambahan untuk menu titik tiga (mode minimal). Menerima fungsi penutup menu. */
 		menuExtra?: Snippet<[() => void]>;
+		/** Dipanggil setiap status bisu berubah (dipakai reels untuk memberi tahu user). */
+		onMutedChange?: (muted: boolean) => void;
 	} = $props();
 
 	// Audio musik yang menyatu dengan video: ikut play/pause/seek video, dilooping pada klip.
@@ -208,7 +210,7 @@
 	// Saat video diputar, bilah kontrol menyingkir agar tampilan bersih. Saat dijeda
 	// (mis. user menyentuh video) kontrol muncul lagi, lalu menghilang sendiri setelah
 	// beberapa detik. Di desktop, hover/unhover tetap mengendalikan tampilnya kontrol.
-	const CONTROLS_HIDE_MS = 2600;
+	const CONTROLS_HIDE_MS = 2500;
 	let controlsVisible = $state(true);
 	let hoveringPointer = $state(false);
 	let controlsTimer: ReturnType<typeof setTimeout> | null = null;
@@ -241,6 +243,11 @@
 	}
 	// Bersihkan timer saat komponen dilepas.
 	$effect(() => () => clearControlsTimer());
+
+	// Beri tahu induk setiap status bisu berubah (reels memakainya untuk hint "video di-mute").
+	$effect(() => {
+		onMutedChange?.(muted);
+	});
 
 	// Lacak status fullscreen agar tombol bisa toggle & keluar (termasuk WebKit).
 	$effect(() => {
@@ -738,63 +745,69 @@
 			</div>
 		</div>
 	{:else}
+		<!-- Saat kontrol tersembunyi (video jalan), sisakan garis tipis penunjuk posisi
+		     supaya tetap kelihatan sudah sampai mana tanpa menutupi konten. -->
+		<div class="video-progress" aria-hidden="true">
+			<i style:width={`${progress * 100}%`}></i>
+		</div>
 		<div class="video-controls">
-		<button onclick={togglePlayback} aria-label={playing ? 'Jeda video' : 'Putar video'}
-			>{#if playing}<Pause size={18} fill="currentColor" />{:else}<Play
-					size={18}
-					fill="currentColor"
-				/>{/if}</button
-		>
-		<span>{format(current)}</span>
-		<input
-			aria-label="Posisi video"
-			type="range"
-			min="0"
-			max={duration || 0}
-			step="0.1"
-			value={current}
-			oninput={seek}
-		/>
-		<span>{format(duration)}</span>
-		{#if !forceMuted}<button
-				onclick={() => {
-					video.muted = !video.muted;
-					muted = video.muted;
-				}}
-				aria-label={muted ? 'Nyalakan suara' : 'Bisukan'}
-				>{#if muted}<VolumeX size={18} />{:else}<Volume2 size={18} />{/if}</button
-			>{/if}
-		{#if available.length > 1}<div class="quality">
-				<button
-					class="quality-btn"
-					onclick={(event) => {
-						event.stopPropagation();
-						qualityMenuOpen = !qualityMenuOpen;
+			<button
+				class="vc-play"
+				onclick={togglePlayback}
+				aria-label={playing ? 'Jeda video' : 'Putar video'}
+				>{#if playing}<Pause size={15} fill="currentColor" />{:else}<Play
+						size={15}
+						fill="currentColor"
+					/>{/if}</button
+			>
+			<input
+				class="vc-seek"
+				aria-label="Posisi video"
+				type="range"
+				min="0"
+				max={duration || 0}
+				step="0.1"
+				value={current}
+				oninput={seek}
+			/>
+			<span class="vc-time">{format(current)} / {format(duration)}</span>
+			{#if !forceMuted}<button
+					onclick={() => {
+						video.muted = !video.muted;
+						muted = video.muted;
+						setSoundPreference(!video.muted);
 					}}
-					aria-label="Kualitas video"
-					aria-expanded={qualityMenuOpen}
-					><Settings2 size={16} /><small
-						>{available.find((s) => s.quality === activeQuality)?.label ?? 'Asli'}</small
-					></button
-				>
-				{#if qualityMenuOpen}<ul class="quality-menu">
-						{#each available as opt (opt.quality)}<li>
-								<button
-									class:active={opt.quality === activeQuality}
-									onclick={(event) => {
-										event.stopPropagation();
-										setQuality(opt.quality);
-									}}>{opt.label}</button
-								>
-							</li>{/each}
-					</ul>{/if}
-			</div>{/if}
-		<button
-			class="fs-btn"
-			onclick={fullscreen}
-			aria-label={isFullscreen ? 'Keluar layar penuh' : 'Layar penuh'}
-			>{#if isFullscreen}<Shrink size={17} />{:else}<Expand size={17} />{/if}</button
-		>
+					aria-label={muted ? 'Nyalakan suara' : 'Bisukan'}
+					>{#if muted}<VolumeX size={15} />{:else}<Volume2 size={15} />{/if}</button
+				>{/if}
+			{#if available.length > 1}<div class="quality">
+					<button
+						class="quality-btn"
+						onclick={(event) => {
+							event.stopPropagation();
+							qualityMenuOpen = !qualityMenuOpen;
+						}}
+						aria-label="Kualitas video"
+						aria-expanded={qualityMenuOpen}><Settings2 size={15} /></button
+					>
+					{#if qualityMenuOpen}<ul class="quality-menu">
+							{#each available as opt (opt.quality)}<li>
+									<button
+										class:active={opt.quality === activeQuality}
+										onclick={(event) => {
+											event.stopPropagation();
+											setQuality(opt.quality);
+										}}>{opt.label}</button
+									>
+								</li>{/each}
+						</ul>{/if}
+				</div>{/if}
+			<button
+				class="fs-btn"
+				onclick={fullscreen}
+				aria-label={isFullscreen ? 'Keluar layar penuh' : 'Layar penuh'}
+				>{#if isFullscreen}<Shrink size={15} />{:else}<Expand size={15} />{/if}</button
+			>
 		</div>
 	{/if}
 </div>
@@ -887,24 +900,49 @@
 		transform: translate(-50%, -50%);
 		filter: drop-shadow(0 2px 10px rgb(0 0 0 / 55%));
 	}
+	/* Garis posisi tipis di dasar video. Muncul justru KETIKA bilah kontrol tersembunyi,
+	   jadi tampilan tetap bersih tapi progres video masih terbaca. */
+	.video-progress {
+		position: absolute;
+		right: 0;
+		bottom: 0;
+		left: 0;
+		height: 3px;
+		background: rgb(255 255 255 / 20%);
+		opacity: 1;
+		pointer-events: none;
+		transition: opacity 160ms ease;
+	}
+	.video-progress i {
+		display: block;
+		height: 100%;
+		background: #f28a22;
+	}
+	.smart-video.controls-visible .video-progress,
+	.smart-video:focus-within .video-progress {
+		opacity: 0;
+	}
+	@media (hover: hover) and (pointer: fine) {
+		.smart-video:hover .video-progress {
+			opacity: 0;
+		}
+	}
 	.video-controls {
 		position: absolute;
-		right: 10px;
-		bottom: 10px;
-		left: 10px;
+		right: 8px;
+		bottom: 8px;
+		left: 8px;
 		display: flex;
-		min-height: 44px;
 		align-items: center;
-		gap: 8px;
-		padding: 7px 9px;
-		background: linear-gradient(135deg, rgb(12 15 18 / 82%), rgb(36 42 49 / 72%));
-		border: 1px solid rgb(255 255 255 / 14%);
-		border-radius: 13px;
+		gap: 4px;
+		padding: 4px 6px;
+		background: rgb(12 14 17 / 62%);
+		border-radius: 10px;
 		color: white;
 		opacity: 0;
-		transform: translateY(8px);
+		transform: translateY(6px);
 		transition: 180ms ease;
-		backdrop-filter: blur(12px);
+		backdrop-filter: blur(10px);
 	}
 	/* Kontrol tampil bila: JS menandai terlihat (jeda / baru disentuh), sedang difokus,
 	   atau kursor presisi sedang hover. Hover dibatasi ke perangkat ber-mouse supaya
@@ -922,28 +960,39 @@
 	}
 	.video-controls button {
 		display: grid;
-		width: 30px;
-		height: 30px;
+		width: 26px;
+		height: 26px;
 		flex: none;
 		padding: 0;
 		place-items: center;
 		background: transparent;
 		border: 0;
-		border-radius: 8px;
+		border-radius: 7px;
 		color: inherit;
 	}
 	.video-controls button:hover {
-		background: rgb(255 255 255 / 14%);
+		background: rgb(255 255 255 / 16%);
 	}
-	.video-controls span {
+	.vc-time {
 		flex: none;
-		font-size: 0.6rem;
+		padding: 0 2px;
+		color: rgb(255 255 255 / 82%);
+		font-size: 0.58rem;
 		font-variant-numeric: tabular-nums;
+		white-space: nowrap;
 	}
-	.video-controls input {
+	.vc-seek {
 		min-width: 40px;
+		height: 14px;
 		flex: 1;
+		margin: 0 2px;
 		accent-color: #f28a22;
+	}
+	/* Layar sempit: waktu disembunyikan supaya slider tetap punya ruang gerak. */
+	@media (max-width: 420px) {
+		.vc-time {
+			display: none;
+		}
 	}
 	.minimal-controls {
 		position: absolute;
@@ -1101,15 +1150,8 @@
 		flex: none;
 	}
 	.quality-btn {
-		display: inline-flex !important;
-		width: auto !important;
-		align-items: center;
-		gap: 3px;
-		padding: 0 6px !important;
-	}
-	.quality-btn small {
-		font-size: 0.58rem;
-		font-weight: 700;
+		display: grid;
+		place-items: center;
 	}
 	.quality-menu {
 		position: absolute;
