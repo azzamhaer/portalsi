@@ -265,7 +265,7 @@
 					<input
 						id="home-search"
 						bind:value={homeQuery}
-						placeholder="Cari teman atau topik"
+						placeholder="Cari"
 						onfocus={() => (searchFocused = true)}
 						onkeydown={(event) => {
 							if (event.key === 'Enter') {

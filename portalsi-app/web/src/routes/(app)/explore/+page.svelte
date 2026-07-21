@@ -230,9 +230,9 @@
 		}}
 	>
 		<label
-			><Search size={19} /><span class="sr-only">Cari pengguna atau topik</span><input
+			><Search size={19} /><span class="sr-only">Cari</span><input
 				bind:value={searchQuery}
-				placeholder="Cari pengguna atau topik"
+				placeholder="Cari"
 				onfocus={() => (searchFocused = true)}
 			/>{#if searching}<LoaderCircle class="spin" size={17} />{:else if searchQuery || searchFocused}<button
 					type="button"
