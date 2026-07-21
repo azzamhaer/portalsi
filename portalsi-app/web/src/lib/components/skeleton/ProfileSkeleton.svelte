@@ -71,7 +71,7 @@
 	.grid {
 		display: grid;
 		grid-template-columns: repeat(3, 1fr);
-		gap: 4px;
+		gap: 1px;
 		overflow: hidden;
 		border-radius: var(--radius-lg, 18px);
 	}

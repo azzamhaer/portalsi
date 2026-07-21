@@ -506,7 +506,7 @@
 	.grid {
 		display: grid;
 		grid-template-columns: repeat(3, 1fr);
-		gap: 4px;
+		gap: 1px;
 		margin-top: 4px;
 		overflow: hidden;
 		border-radius: var(--radius-lg);

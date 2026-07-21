@@ -40,7 +40,7 @@
 	.saved {
 		display: grid;
 		grid-template-columns: repeat(3, minmax(0, 1fr));
-		gap: 5px;
+		gap: 1px;
 		margin: 0 auto;
 	}
 	.saved > a {

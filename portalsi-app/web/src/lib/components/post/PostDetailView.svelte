@@ -201,6 +201,61 @@
 		slide = Math.max(0, Math.min(gallery.length - 1, i));
 	}
 
+	// ---- Frame media dengan rasio tetap ----
+	// Rasio diambil dari gambar PERTAMA lalu dipakai untuk semua slide, dan tiap gambar
+	// mengisi penuh frame (object-fit: cover). Tanpa ini, gambar dengan rasio berbeda
+	// menyisakan garis hitam di kiri-kanan dan tingginya meloncat saat digeser.
+	// Dibatasi 4:5 (portrait) sampai 1.91:1 (landscape) supaya tidak ada post yang
+	// terlalu tinggi atau terlalu pipih.
+	const MIN_FRAME_ASPECT = 4 / 5;
+	const MAX_FRAME_ASPECT = 1.91;
+	let frameAspect = $state<number | null>(null);
+	function captureFrameAspect(event: Event) {
+		if (frameAspect !== null) return;
+		const img = event.currentTarget as HTMLImageElement;
+		if (!img.naturalWidth || !img.naturalHeight) return;
+		const ratio = img.naturalWidth / img.naturalHeight;
+		frameAspect = Math.min(MAX_FRAME_ASPECT, Math.max(MIN_FRAME_ASPECT, ratio));
+	}
+
+	// ---- Geser kiri-kanan (galeri) ----
+	let galleryEl = $state<HTMLDivElement | null>(null);
+	let dragging = $state(false);
+	let dragDx = $state(0);
+	let dragStartX = 0;
+	let dragStartY = 0;
+	// Dipakai untuk membedakan "geser" dari "ketuk" (ketuk membuka lightbox).
+	let dragMoved = false;
+
+	function onGalleryPointerDown(event: PointerEvent) {
+		if (!isGallery) return;
+		dragging = true;
+		dragMoved = false;
+		dragStartX = event.clientX;
+		dragStartY = event.clientY;
+		dragDx = 0;
+	}
+	function onGalleryPointerMove(event: PointerEvent) {
+		if (!dragging) return;
+		const dx = event.clientX - dragStartX;
+		const dy = event.clientY - dragStartY;
+		// Gerakan yang lebih dominan vertikal dibiarkan jadi scroll halaman.
+		if (!dragMoved && Math.abs(dy) > Math.abs(dx)) {
+			dragging = false;
+			dragDx = 0;
+			return;
+		}
+		if (Math.abs(dx) > 6) dragMoved = true;
+		dragDx = dx;
+	}
+	function onGalleryPointerUp() {
+		if (!dragging) return;
+		dragging = false;
+		const width = galleryEl?.clientWidth ?? 1;
+		if (Math.abs(dragDx) > width * 0.18) goSlide(slide + (dragDx < 0 ? 1 : -1));
+		dragDx = 0;
+	}
+
 	let liked = $state(untrack(() => data.post.isLiked));
 	let bookmarked = $state(untrack(() => data.post.isBookmarked));
 	let likesCount = $state(untrack(() => data.post.likesCount));
@@ -601,7 +656,11 @@
 			{#if form?.message && !form.success}<p class="notice" role="status">
 					{form.message}
 				</p>{/if}
-			<div class="detail-media">
+			<div
+				class="detail-media"
+				class:framed={frameAspect !== null && !data.post.isVideo}
+				style:--frame-aspect={frameAspect ?? undefined}
+			>
 				{#if data.post.isVideo}
 					<SmartVideo
 						src={data.post.mediaUrl}
@@ -618,15 +677,33 @@
 						onDoubleTap={doubleTapLike}
 					/>
 				{:else if isGallery}
-					<div class="dm-gallery">
-						<div class="dm-track" style:transform={`translateX(-${slide * 100}%)`}>
+					<div
+						class="dm-gallery"
+						bind:this={galleryEl}
+						onpointerdown={onGalleryPointerDown}
+						onpointermove={onGalleryPointerMove}
+						onpointerup={onGalleryPointerUp}
+						onpointercancel={onGalleryPointerUp}
+						onpointerleave={onGalleryPointerUp}
+					>
+						<div
+							class="dm-track"
+							class:dragging
+							style:transform={`translateX(calc(-${slide * 100}% + ${dragDx}px))`}
+						>
 							{#each gallery as src, i (i)}
 								<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
 								<img
 									src={src}
 									alt={`${data.post.mediaAlt} (${i + 1})`}
+									draggable="false"
+									onload={i === 0 ? captureFrameAspect : undefined}
 									ondblclick={doubleTapLike}
-									onclick={() => openMobileLightbox(i)}
+									onclick={() => {
+										// Setelah menggeser, jangan ikut membuka lightbox.
+										if (dragMoved) return;
+										openMobileLightbox(i);
+									}}
 								/>
 							{/each}
 						</div>
@@ -640,6 +717,7 @@
 						class="dm-img"
 						src={data.post.mediaUrl}
 						alt={data.post.mediaAlt}
+						onload={captureFrameAspect}
 						ondblclick={doubleTapLike}
 						onclick={() => openMobileLightbox(0)}
 					/>
@@ -1340,6 +1418,21 @@
 		width: 100%;
 		height: 100%;
 	}
+	/* Frame berasio tetap: gambar mengisi penuh, tidak ada garis hitam kiri-kanan, dan
+	   tinggi tidak meloncat saat galeri digeser. Rasionya dari gambar pertama. */
+	.detail-media.framed {
+		width: 100%;
+		height: auto;
+		aspect-ratio: var(--frame-aspect);
+	}
+	.detail-media.framed .dm-img,
+	.detail-media.framed .dm-track img {
+		width: 100%;
+		height: 100%;
+		max-width: none;
+		max-height: none;
+		object-fit: cover;
+	}
 	.dm-img {
 		display: block;
 		max-width: 100%;
@@ -1363,6 +1456,12 @@
 		width: 100%;
 		height: 100%;
 		transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+		/* Geser horizontal ditangani sendiri; vertikal tetap milik scroll halaman. */
+		touch-action: pan-y;
+	}
+	/* Saat jari masih menempel, ikuti gerakan tanpa transisi biar terasa langsung. */
+	.dm-track.dragging {
+		transition: none;
 	}
 	.dm-track img {
 		flex: 0 0 100%;
@@ -1370,6 +1469,8 @@
 		height: 100%;
 		max-height: 100%;
 		object-fit: contain;
+		user-select: none;
+		-webkit-user-drag: none;
 	}
 	.dm-nav {
 		position: absolute;
@@ -2067,7 +2168,9 @@
 		/* Media: penuh selebar layar, tinggi dibatasi agar info tetap terlihat. */
 		.post-column {
 			height: auto;
-			max-height: 56vh;
+			/* Cukup tinggi untuk menampung frame portrait 4:5 tanpa terpotong.
+			   Video tetap dibatasi 56vh lewat aturan di bawah. */
+			max-height: 78vh;
 			border-radius: 16px 16px 0 0;
 		}
 		.detail-media {

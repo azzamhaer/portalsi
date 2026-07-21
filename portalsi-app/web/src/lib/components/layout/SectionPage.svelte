@@ -3,23 +3,26 @@
 	let {
 		eyebrow,
 		title,
+		titleHidden = false,
 		description,
 		children,
 		actions
 	}: {
 		eyebrow?: string;
 		title: string;
+		/** Sembunyikan judul secara visual tapi tetap ada untuk pembaca layar & SEO. */
+		titleHidden?: boolean;
 		description?: string;
 		children: Snippet;
 		actions?: Snippet;
 	} = $props();
 </script>
 
-<div class="section-page">
+<div class="section-page" class:title-hidden={titleHidden}>
 	<header>
 		<div>
 			{#if eyebrow}<p class="eyebrow">{eyebrow}</p>{/if}
-			<h1 class="page-title">{title}</h1>
+			<h1 class="page-title" class:sr-only={titleHidden}>{title}</h1>
 			{#if description}<p class="description">{description}</p>{/if}
 		</div>
 		{#if actions}<div class="actions">{@render actions()}</div>{/if}
@@ -40,6 +43,11 @@
 		justify-content: space-between;
 		gap: 24px;
 		padding: 12px 0 22px;
+	}
+
+	/* Judul disembunyikan → header tidak perlu menyisakan ruang setinggi judul. */
+	.section-page.title-hidden header {
+		padding-block: 10px 10px;
 	}
 
 	.description {

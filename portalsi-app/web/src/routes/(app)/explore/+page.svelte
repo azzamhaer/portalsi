@@ -187,7 +187,7 @@
 <svelte:head><title>Jelajah — Portal SI</title><meta name="robots" content="noindex" /></svelte:head
 >
 
-<SectionPage title="Jelajah">
+<SectionPage title="Jelajah" titleHidden>
 	<form
 		class="search-row"
 		onsubmit={(event) => {
@@ -605,7 +605,7 @@
 		display: grid;
 		grid-template-columns: repeat(3, minmax(0, 1fr));
 		grid-auto-flow: row dense;
-		gap: 4px;
+		gap: 1px;
 		overflow: hidden;
 		border-radius: var(--radius-lg);
 	}

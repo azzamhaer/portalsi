@@ -342,7 +342,7 @@
 	.post-grid {
 		display: grid;
 		grid-template-columns: repeat(3, minmax(0, 1fr));
-		gap: 3px;
+		gap: 1px;
 	}
 	.post-grid a {
 		position: relative;
