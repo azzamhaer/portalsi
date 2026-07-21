@@ -74,6 +74,7 @@ class PostController extends Controller
             $mainPosts = Post::with(['user', 'tags', 'mentions'])
                 ->withCount(['likes', 'comments'])
                 ->where('is_archived', false)
+                ->where('is_draft', false)
                 ->whereHas('user', fn ($q) => $q->where('is_private', 0)->whereNotNull('email_verified_at'))
                 ->orderByDesc('created_at')
                 ->take(100)
@@ -114,6 +115,7 @@ class PostController extends Controller
             $timelinePosts = Post::with(['user', 'tags', 'mentions'])
                 ->withCount(['likes', 'comments'])
                 ->where('is_archived', false)
+                ->where('is_draft', false)
                 ->whereIn('user_id', $timelineUserIds)
                 ->orderByDesc('created_at')
                 ->take($countTimeline)
@@ -129,6 +131,7 @@ class PostController extends Controller
             $relasiPosts = Post::with(['user', 'tags', 'mentions'])
                 ->withCount(['likes', 'comments'])
                 ->where('is_archived', false)
+                ->where('is_draft', false)
                 ->whereIn('user_id', $secondDegreeIds)
                 ->whereHas('user', fn ($q) => $q->where('is_private', 0))
                 ->orderByDesc('created_at')
@@ -139,6 +142,7 @@ class PostController extends Controller
             $randomPosts = Post::with(['user', 'tags', 'mentions'])
                 ->withCount(['likes', 'comments'])
                 ->where('is_archived', false)
+                ->where('is_draft', false)
                 ->whereNotIn('user_id', $followingIds)
                 ->where('user_id', '!=', $authUser->user_id)
                 ->whereHas('user', fn ($q) => $q->where('is_private', 0))
@@ -154,6 +158,7 @@ class PostController extends Controller
             $likedPosts = Post::with(['user', 'tags', 'mentions'])
                 ->withCount(['likes', 'comments'])
                 ->where('is_archived', false)
+                ->where('is_draft', false)
                 ->whereIn('post_id', $likedByFollowingIds)
                 ->whereHas('user', fn ($q) => $q->where('is_private', 0))
                 ->orderByDesc('created_at')
@@ -198,6 +203,7 @@ class PostController extends Controller
             $mainPosts = Post::with(['user', 'tags', 'mentions'])
                 ->withCount(['likes', 'comments'])
                 ->where('is_archived', false)
+                ->where('is_draft', false)
                 ->whereHas('user', fn ($q) => $q->where('is_private', 0))
                 ->orderByDesc('created_at')
                 ->take(100)
@@ -380,6 +386,7 @@ class PostController extends Controller
         $query = Post::with(['user', 'tags'])
             ->withCount(['likes', 'comments'])
             ->where('is_archived', false)
+            ->where('is_draft', false)
             ->whereHas('user', fn ($q) => $q->whereNotNull('email_verified_at'));
 
         if ($request->filled('tag')) {
@@ -474,6 +481,9 @@ class PostController extends Controller
             ? $post->bookmarks()->where('user_id', $authUser->user_id)->exists()
             : false;
 
+        // Dipakai modal edit untuk menampilkan status sematan.
+        $post->is_pinned = $post->pinned_at !== null;
+
         if ($authUser) {
             if ($authUser->user_id === $owner->user_id) {
                 $post->user->is_following = true;
@@ -522,6 +532,7 @@ class PostController extends Controller
             'thumbnail' => 'nullable|file|mimes:jpg,jpeg,png|max:51200', // up to 50MB thumb jika perlu (ubah sesuai kebijakan)
             'location' => 'nullable|string',
             'is_archived' => 'nullable|boolean',
+            'is_draft' => 'nullable|boolean',
             'is_video' => 'nullable|boolean',
             'video_muted' => 'nullable|boolean',
             'collaborators' => 'nullable|array|max:5',
@@ -671,6 +682,8 @@ class PostController extends Controller
             'media_status' => 'pending',
             'location' => $request->location,
             'is_archived' => $request->is_archived ?? false,
+            // Draft: media tetap diunggah & diproses, tapi hanya pemiliknya yang bisa melihat.
+            'is_draft' => $request->boolean('is_draft'),
             'is_video' => $isVideo,
             // Video dibisukan bila diminta user ATAU saat post memakai musik.
             'video_muted' => $isVideo && ($request->boolean('video_muted') || $request->filled('music_track_name')),
@@ -885,6 +898,55 @@ class PostController extends Controller
         return response()->json(['message' => 'Post deleted']);
     }
 
+    /** Batas jumlah post yang boleh disematkan di profil. */
+    public const MAX_PINNED = 3;
+
+    /**
+     * Sematkan / lepas sematan sebuah post.
+     *
+     * Body: `pinned` (bool). Dikirim eksplisit — bukan toggle — supaya dua permintaan
+     * beruntun tidak saling membatalkan dan UI tidak pernah desinkron dengan database.
+     */
+    public function togglePin(Request $request, $id)
+    {
+        $post = Post::findOrFail($id);
+
+        if ($post->user_id !== Auth::id()) {
+            return response()->json(['message' => 'Hanya pemilik post yang bisa menyematkan.'], 403);
+        }
+
+        $desired = $request->input('pinned');
+        $shouldPin = $desired === null
+            ? $post->pinned_at === null
+            : filter_var($desired, FILTER_VALIDATE_BOOLEAN);
+
+        if ($shouldPin) {
+            $currentlyPinned = Post::where('user_id', $post->user_id)
+                ->whereNotNull('pinned_at')
+                ->where('post_id', '!=', $post->post_id)
+                ->count();
+
+            // Divalidasi di server juga, bukan hanya di UI — batas ini harus tetap berlaku
+            // walaupun permintaannya datang dari luar aplikasi.
+            if ($currentlyPinned >= self::MAX_PINNED) {
+                return response()->json([
+                    'message' => 'Maksimal '.self::MAX_PINNED.' postingan yang bisa disematkan.',
+                    'code' => 'PIN_LIMIT',
+                    'max_pinned' => self::MAX_PINNED,
+                ], 422);
+            }
+        }
+
+        $post->pinned_at = $shouldPin ? now() : null;
+        $post->save();
+
+        return response()->json([
+            'message' => $shouldPin ? 'Postingan disematkan.' : 'Sematan dilepas.',
+            'pinned' => $shouldPin,
+            'pinned_count' => Post::where('user_id', $post->user_id)->whereNotNull('pinned_at')->count(),
+        ]);
+    }
+
     public function circleAvatar($id)
     {
         $authUser = Auth::user();
@@ -916,6 +978,7 @@ class PostController extends Controller
             ->withCount(['likes', 'comments'])
             ->where('is_video', true)
             ->where('is_archived', false)
+            ->where('is_draft', false)
             ->findOrFail($id);
 
         $mainClip->is_liked = $authUser
@@ -944,6 +1007,7 @@ class PostController extends Controller
             ->withCount(['likes', 'comments'])
             ->where('is_video', true)
             ->where('is_archived', false)
+            ->where('is_draft', false)
             ->whereNotIn('post_id', $excludeIds)
             ->inRandomOrder()
             ->take(1)
@@ -1019,6 +1083,7 @@ class PostController extends Controller
             ->withCount(['likes', 'comments'])
             ->where('is_video', true)
             ->where('is_archived', false)
+            ->where('is_draft', false)
             ->whereHas('user', function ($u) use ($allowedIds) {
                 $u->where(function ($w) use ($allowedIds) {
                     $w->where('is_private', false);

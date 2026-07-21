@@ -46,7 +46,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 			mediaUrl: normalizeMediaUrl(post.media_url, mediaBaseUrl) || '/assets/logo.png',
 			thumbnailUrl: normalizeMediaUrl(post.thumbnail_url, mediaBaseUrl),
 			isVideo: post.is_video,
-			isMultiple: post.is_multiple
+			isMultiple: post.is_multiple,
+			isPinned: post.is_pinned ?? false
 		})),
 		hasMore: Boolean(
 			profile.pagination && profile.pagination.current_page < profile.pagination.last_page

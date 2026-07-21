@@ -1,6 +1,17 @@
 <script lang="ts">
 	import { env } from '$env/dynamic/public';
-	import { Bookmark, Copy, Grid3X3, Lock, Maximize2, Play, Settings, Share2, X } from '@lucide/svelte';
+	import {
+		Bookmark,
+		Copy,
+		Grid3X3,
+		Lock,
+		Maximize2,
+		Pin,
+		Play,
+		Settings,
+		Share2,
+		X
+	} from '@lucide/svelte';
 	import { untrack } from 'svelte';
 	import { clientRequest } from '$lib/api/client';
 	import StoryAvatarLink from '$lib/components/story/StoryAvatarLink.svelte';
@@ -150,6 +161,9 @@
 						/>{/if}
 					{#if post.isVideo}<span aria-label="Video"><Play size={14} fill="currentColor" /></span
 						>{:else if post.isMultiple}<span aria-label="Beberapa foto"><Copy size={14} /></span
+						>{/if}
+					{#if post.isPinned}<span class="pin-badge" aria-label="Disematkan"
+							><Pin size={13} fill="currentColor" /></span
 						>{/if}
 				</a>
 			{/each}
@@ -384,6 +398,13 @@
 		width: 100%;
 		height: 100%;
 		object-fit: cover;
+	}
+	/* Penanda sematan: kiri atas supaya tidak bertabrakan dengan ikon video/multi-foto
+	   yang menempati kanan atas. */
+	.profile-grid a .pin-badge {
+		right: auto;
+		left: 7px;
+		background: var(--color-primary);
 	}
 	.profile-grid a span {
 		position: absolute;

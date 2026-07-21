@@ -12,6 +12,8 @@ export const profilePostSchema = z
 		thumbnail_url: z.string().nullish(),
 		is_video: booleanish.catch(false),
 		is_multiple: booleanish.catch(false),
+		// Longgar: post lama dari server yang belum mengirim field ini tidak boleh gagal.
+		is_pinned: booleanish.optional().catch(false),
 		created_at: z.string()
 	})
 	.passthrough();

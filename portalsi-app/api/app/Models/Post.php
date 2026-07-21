@@ -22,6 +22,8 @@ class Post extends Model
         'media_status',
         'location',
         'is_archived',
+        'is_draft',
+        'pinned_at',
         'is_video',
         'video_muted',
         'music_track_name',
@@ -34,6 +36,8 @@ class Post extends Model
 
     protected $casts = [
         'is_archived' => 'boolean',
+        'is_draft' => 'boolean',
+        'pinned_at' => 'datetime',
         'is_video' => 'boolean',
         'video_muted' => 'boolean',
         'media_urls' => 'array',

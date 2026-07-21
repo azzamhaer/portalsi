@@ -10,13 +10,14 @@
 		MessageCircle,
 		MoreHorizontal,
 		Music2,
+		Pin,
 		Send,
 		Trash2,
 		Users,
 		X
 	} from '@lucide/svelte';
 	import { untrack } from 'svelte';
-	import { clientRequest } from '$lib/api/client';
+	import { clientRequest, ClientApiError } from '$lib/api/client';
 	import { setPostLike } from '$lib/api/likes';
 	import Avatar from '$lib/components/ui/Avatar.svelte';
 	import StoryAvatarLink from '$lib/components/story/StoryAvatarLink.svelte';
@@ -202,20 +203,37 @@
 	}
 
 	// ---- Frame media dengan rasio tetap ----
-	// Rasio diambil dari gambar PERTAMA lalu dipakai untuk semua slide, dan tiap gambar
-	// mengisi penuh frame (object-fit: cover). Tanpa ini, gambar dengan rasio berbeda
-	// menyisakan garis hitam di kiri-kanan dan tingginya meloncat saat digeser.
-	// Dibatasi 4:5 (portrait) sampai 1.91:1 (landscape) supaya tidak ada post yang
-	// terlalu tinggi atau terlalu pipih.
+	// Rasio diambil dari gambar PERTAMA lalu dipakai untuk semua slide, sehingga kotak
+	// medianya persis mengikuti bentuk asli gambar (potret tetap potret) dan tingginya
+	// tidak meloncat saat galeri digeser. Gambar TIDAK dipotong (object-fit: contain).
+	// Dibatasi 4:5 sampai 1.91:1 supaya tidak ada post yang ekstrem tinggi/pipih.
 	const MIN_FRAME_ASPECT = 4 / 5;
 	const MAX_FRAME_ASPECT = 1.91;
 	let frameAspect = $state<number | null>(null);
-	function captureFrameAspect(event: Event) {
+
+	function readAspect(img: HTMLImageElement) {
 		if (frameAspect !== null) return;
-		const img = event.currentTarget as HTMLImageElement;
 		if (!img.naturalWidth || !img.naturalHeight) return;
 		const ratio = img.naturalWidth / img.naturalHeight;
 		frameAspect = Math.min(MAX_FRAME_ASPECT, Math.max(MIN_FRAME_ASPECT, ratio));
+	}
+
+	/**
+	 * Baca rasio gambar, baik yang baru diunduh maupun yang SUDAH selesai dimuat.
+	 *
+	 * Sebelumnya ini hanya mengandalkan event `load`. Masalahnya, gambar yang sudah ada di
+	 * cache browser (atau sudah dimuat saat HTML dari server dirender) selesai sebelum
+	 * event listener sempat dipasang, jadi `load` tidak pernah menyala — akibatnya rasio
+	 * tidak pernah terbaca dan frame-nya jatuh ke ukuran default. Action ini memeriksa
+	 * `complete` lebih dulu, baru menunggu `load` bila memang belum selesai.
+	 */
+	function frameProbe(node: HTMLImageElement, index = 0) {
+		// Hanya gambar pertama yang menentukan rasio frame; sisanya mengikuti.
+		if (index !== 0) return;
+		if (node.complete) readAspect(node);
+		const onLoad = () => readAspect(node);
+		node.addEventListener('load', onLoad);
+		return { destroy: () => node.removeEventListener('load', onLoad) };
 	}
 
 	// ---- Geser kiri-kanan (galeri) ----
@@ -264,6 +282,42 @@
 	let likeBurst = $state(false);
 	let shareOpen = $state(false);
 	let ownerMenuOpen = $state(false);
+
+	// ---- Sematkan postingan ----
+	// Batas 3 juga divalidasi di server; angka di sini hanya untuk teks & popup.
+	const MAX_PINNED = 3;
+	let pinned = $state(untrack(() => data.post.isPinned ?? false));
+	let pinBusy = $state(false);
+
+	async function togglePin() {
+		if (pinBusy) return;
+		pinBusy = true;
+		const target = !pinned;
+		try {
+			const body = new FormData();
+			body.set('pinned', target ? 'true' : 'false');
+			const result = await clientRequest<{ pinned?: boolean }>(`posts/${data.post.id}/pin`, {
+				method: 'POST',
+				body
+			});
+			pinned = typeof result?.pinned === 'boolean' ? result.pinned : target;
+		} catch (error) {
+			// Server menolak karena sudah 3 → jelaskan lewat dialog, bukan pesan mentah.
+			const status = error instanceof ClientApiError ? error.status : 0;
+			if (status === 422) {
+				await confirmAction({
+					title: 'Sematan sudah penuh',
+					description: `Anda hanya bisa menyematkan ${MAX_PINNED} postingan. Lepas salah satu sematan lebih dulu, lalu coba lagi.`,
+					confirmLabel: 'Mengerti',
+					cancelLabel: ''
+				});
+			} else {
+				formMessage = 'Sematan belum dapat disimpan. Coba lagi.';
+			}
+		} finally {
+			pinBusy = false;
+		}
+	}
 	let collabPopupOpen = $state(false);
 	let mobileCommentsOpen = $state(false);
 	function openComments() {
@@ -594,6 +648,23 @@
 						</div>
 					</form>
 
+					<div class="pin-manage">
+						<strong><Pin size={15} /> Sematkan di profil</strong>
+						<p>
+							Postingan yang disematkan tampil paling atas di profil Anda. Maksimal {MAX_PINNED}
+							postingan.
+						</p>
+						<button
+							type="button"
+							class="pin-toggle"
+							class:on={pinned}
+							disabled={pinBusy}
+							onclick={togglePin}
+						>
+							{#if pinBusy}Menyimpan…{:else if pinned}Lepas sematan{:else}Sematkan postingan{/if}
+						</button>
+					</div>
+
 					<div class="collab-manage">
 						<strong><Users size={15} /> Kolaborator</strong>
 						{#if collabList.length > 0}
@@ -659,7 +730,7 @@
 			<div
 				class="detail-media"
 				class:framed={frameAspect !== null && !data.post.isVideo}
-				style:--frame-aspect={frameAspect ?? undefined}
+				style:--frame-aspect={frameAspect !== null ? String(frameAspect) : undefined}
 			>
 				{#if data.post.isVideo}
 					<SmartVideo
@@ -697,7 +768,7 @@
 									src={src}
 									alt={`${data.post.mediaAlt} (${i + 1})`}
 									draggable="false"
-									onload={i === 0 ? captureFrameAspect : undefined}
+									use:frameProbe={i}
 									ondblclick={doubleTapLike}
 									onclick={() => {
 										// Setelah menggeser, jangan ikut membuka lightbox.
@@ -717,7 +788,7 @@
 						class="dm-img"
 						src={data.post.mediaUrl}
 						alt={data.post.mediaAlt}
-						onload={captureFrameAspect}
+						use:frameProbe
 						ondblclick={doubleTapLike}
 						onclick={() => openMobileLightbox(0)}
 					/>
@@ -1265,6 +1336,47 @@
 	}
 	.cib-actions button:disabled {
 		opacity: 0.6;
+	}
+	.pin-manage {
+		display: grid;
+		gap: 8px;
+		margin-top: 14px;
+		padding-top: 12px;
+		border-top: 1px solid var(--color-border);
+	}
+	.pin-manage > strong {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		font-size: 0.8rem;
+	}
+	.pin-manage > p {
+		margin: 0;
+		color: var(--color-muted);
+		font-size: 0.74rem;
+		line-height: 1.5;
+	}
+	.pin-toggle {
+		min-height: 42px;
+		background: transparent;
+		border: 1px solid var(--color-border);
+		border-radius: 11px;
+		color: var(--color-text);
+		font-size: 0.82rem;
+		font-weight: 700;
+		cursor: pointer;
+	}
+	.pin-toggle:hover:not(:disabled) {
+		background: var(--color-primary-soft);
+	}
+	.pin-toggle.on {
+		background: var(--color-primary);
+		border-color: var(--color-primary);
+		color: white;
+	}
+	.pin-toggle:disabled {
+		opacity: 0.6;
+		cursor: default;
 	}
 	.collab-manage {
 		margin-top: 14px;
@@ -1856,6 +1968,11 @@
 		background: var(--color-surface-soft, #f4f5f7);
 	}
 	.edit-modal-card form,
+	.edit-modal-card .pin-manage {
+		padding: 16px 18px 0;
+		border-top: 0;
+		margin-top: 0;
+	}
 	.edit-modal-card .collab-manage {
 		padding: 16px 18px;
 	}

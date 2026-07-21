@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { ArrowLeft, Save } from '@lucide/svelte';
+	import { ArrowLeft, Check, Save } from '@lucide/svelte';
 	import { untrack } from 'svelte';
 	import ImageCropper from '$lib/components/media/ImageCropper.svelte';
 	import { cropImageToRegion, type CropRegion } from '$lib/utils/image-crop';
@@ -14,6 +14,27 @@
 	let profileRegion = $state<CropRegion | null>(null);
 	let bannerRegion = $state<CropRegion | null>(null);
 	let bio = $state(untrack(() => data.user?.bio ?? ''));
+	let username = $state(untrack(() => data.user?.username ?? ''));
+	let fullName = $state(untrack(() => data.user?.fullName ?? ''));
+
+	// Nilai awal sebagai pembanding "sudah berubah atau belum". Disegarkan setelah
+	// penyimpanan berhasil agar tombol kembali nonaktif sampai ada perubahan berikutnya.
+	let baseline = $state({
+		username: untrack(() => data.user?.username ?? ''),
+		fullName: untrack(() => data.user?.fullName ?? ''),
+		bio: untrack(() => data.user?.bio ?? '')
+	});
+
+	let submitting = $state(false);
+	let savedModal = $state(false);
+
+	const dirty = $derived(
+		username !== baseline.username ||
+			fullName !== baseline.fullName ||
+			bio !== baseline.bio ||
+			profileFile !== null ||
+			bannerFile !== null
+	);
 	function previewFile(event: Event, target: 'profile' | 'banner') {
 		const file = (event.currentTarget as HTMLInputElement).files?.[0];
 		if (!file) return;
@@ -45,11 +66,22 @@
 		method="POST"
 		enctype="multipart/form-data"
 		use:enhance={async ({ formData }) => {
+			submitting = true;
 			if (profileFile && profileRegion)
 				formData.set('profile_picture', await cropImageToRegion(profileFile, profileRegion, 1024));
 			if (bannerFile && bannerRegion && bannerFile.type !== 'image/gif')
 				formData.set('banner', await cropImageToRegion(bannerFile, bannerRegion, 2000));
-			return async ({ update }) => update({ reset: false });
+			return async ({ update, result }) => {
+				await update({ reset: false });
+				submitting = false;
+				if (result.type === 'success') {
+					// Titik nol baru: tombol nonaktif lagi sampai ada perubahan berikutnya.
+					baseline = { username, fullName, bio };
+					profileFile = null;
+					bannerFile = null;
+					savedModal = true;
+				}
+			};
 		}}
 	>
 		<div class="profile-preview">
@@ -59,10 +91,11 @@
 			></div>
 			<div class="avatar">
 				{#if profilePreview}<img src={profilePreview} alt="Pratinjau foto profil" />{:else}<span
-						>{data.user?.fullName?.slice(0, 1) ?? '?'}</span
+						>{fullName.slice(0, 1) || '?'}</span
 					>{/if}
 			</div>
-			<p><strong>{data.user?.fullName}</strong><small>@{data.user?.username}</small></p>
+			<!-- Pratinjau ikut berubah saat mengetik, jadi hasilnya terlihat sebelum disimpan. -->
+			<p><strong>{fullName}</strong><small>@{username}</small></p>
 		</div>
 		<label
 			><span>Username</span><input
@@ -70,7 +103,7 @@
 				required
 				minlength="3"
 				maxlength="50"
-				value={data.user?.username}
+				bind:value={username}
 			/></label
 		>
 		{#if profileFile}<ImageCropper
@@ -85,7 +118,7 @@
 				name="full_name"
 				required
 				maxlength="255"
-				value={data.user?.fullName}
+				bind:value={fullName}
 			/></label
 		>
 		{#if bannerFile && bannerFile.type !== 'image/gif'}<ImageCropper
@@ -119,10 +152,29 @@
 				onchange={(event) => previewFile(event, 'banner')}
 			/></label
 		>
-		{#if form?.message}<p class="message" role="alert">{form.message}</p>{/if}
-		<button><Save size={17} /> Simpan perubahan</button>
+		{#if form?.message && !savedModal}<p class="message" role="alert">{form.message}</p>{/if}
+		<button class="save" type="submit" disabled={submitting || !dirty}>
+			{#if submitting}<span class="spinner" aria-hidden="true"></span> Menyimpan…{:else}<Save
+					size={17}
+				/> Simpan perubahan{/if}
+		</button>
+		{#if !dirty && !submitting}
+			<small class="save-hint">Belum ada perubahan untuk disimpan.</small>
+		{/if}
 	</form>
 </main>
+
+{#if savedModal}
+	<div class="modal-scrim" role="presentation" onclick={() => (savedModal = false)}>
+		<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
+		<div class="modal" role="dialog" aria-modal="true" onclick={(e) => e.stopPropagation()}>
+			<span class="modal-ico"><Check size={26} /></span>
+			<strong>Profil diperbarui</strong>
+			<p>Perubahan Anda sudah tersimpan dan langsung terlihat di profil.</p>
+			<button type="button" onclick={() => (savedModal = false)}>Selesai</button>
+		</div>
+	</div>
+{/if}
 
 <style>
 	.form-page {
@@ -224,22 +276,111 @@
 		border-radius: 11px;
 		resize: vertical;
 	}
-	form > button {
-		display: flex;
-		min-height: 44px;
+	/* Disamakan dengan tombol simpan di halaman Privasi akun. */
+	.save {
+		display: inline-flex;
+		min-height: 46px;
 		align-items: center;
 		justify-content: center;
-		gap: 7px;
+		gap: 8px;
 		background: var(--color-primary);
 		border: 0;
-		border-radius: 11px;
+		border-radius: 12px;
 		color: white;
 		font-weight: 720;
+		cursor: pointer;
+		transition: opacity 0.15s ease;
+	}
+	.save:disabled {
+		opacity: 0.55;
+		cursor: not-allowed;
+	}
+	.save-hint {
+		margin-top: -4px;
+		color: var(--color-muted);
+		font-size: 0.72rem;
+		text-align: center;
+	}
+	.spinner {
+		width: 15px;
+		height: 15px;
+		border: 2px solid rgb(255 255 255 / 45%);
+		border-top-color: #fff;
+		border-radius: 50%;
+		animation: psi-spin 0.7s linear infinite;
+	}
+	@keyframes psi-spin {
+		to {
+			transform: rotate(360deg);
+		}
 	}
 	.message {
 		margin: 0;
 		color: var(--color-danger);
 		font-size: 0.76rem;
+	}
+	/* ---- Popup berhasil (mengikuti gaya halaman Privasi akun) ---- */
+	.modal-scrim {
+		position: fixed;
+		inset: 0;
+		z-index: 60;
+		display: grid;
+		place-items: center;
+		padding: 20px;
+		background: rgb(17 12 6 / 45%);
+		animation: psi-fade 0.16s ease;
+	}
+	.modal {
+		display: grid;
+		width: min(100%, 340px);
+		justify-items: center;
+		gap: 8px;
+		padding: 26px 22px 20px;
+		background: var(--color-surface, #fff);
+		border-radius: 18px;
+		text-align: center;
+		animation: psi-pop 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+	}
+	.modal-ico {
+		display: grid;
+		place-items: center;
+		width: 52px;
+		height: 52px;
+		margin-bottom: 4px;
+		border-radius: 50%;
+		background: var(--color-secondary-soft, #e7f6ee);
+		color: var(--color-secondary, #1a9d5a);
+	}
+	.modal strong {
+		font-size: 1.05rem;
+	}
+	.modal p {
+		margin: 0;
+		color: var(--color-muted);
+		font-size: 0.84rem;
+		line-height: 1.45;
+	}
+	.modal button {
+		width: 100%;
+		min-height: 44px;
+		margin-top: 10px;
+		background: var(--color-primary);
+		border: 0;
+		border-radius: 12px;
+		color: #fff;
+		font-weight: 700;
+		cursor: pointer;
+	}
+	@keyframes psi-fade {
+		from {
+			opacity: 0;
+		}
+	}
+	@keyframes psi-pop {
+		from {
+			opacity: 0;
+			transform: scale(0.94);
+		}
 	}
 	@media (max-width: 767px) {
 		.form-page {

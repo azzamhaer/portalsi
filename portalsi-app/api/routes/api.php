@@ -670,6 +670,7 @@ Route::middleware(['auth:sanctum', 'notBanned'])->group(function () {
         Route::post('/uploads/presign', [\App\Http\Controllers\UploadController::class, 'presign']);
         Route::post('/posts', [PostController::class, 'store']);
         Route::post('/posts/{id}/update', [PostController::class, 'update']);
+        Route::post('/posts/{id}/pin', [PostController::class, 'togglePin'])->whereNumber('id');
         Route::delete('/posts/{id}', [PostController::class, 'destroy']);
         Route::post('/posts/{post_id}/like', [LikeController::class, 'toggle']);
         Route::post('/posts/{post_id}/comments', [CommentController::class, 'store']);

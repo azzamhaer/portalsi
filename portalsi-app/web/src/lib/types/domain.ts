@@ -45,6 +45,7 @@ export interface PostPreview {
 	commentsCount: number;
 	isLiked: boolean;
 	isBookmarked: boolean;
+	isPinned?: boolean;
 	music?: {
 		title: string;
 		artist: string;

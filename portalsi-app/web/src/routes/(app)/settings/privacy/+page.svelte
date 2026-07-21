@@ -7,6 +7,9 @@
 	let isPrivate = $state(untrack(() => data.isPrivate));
 	let submitting = $state(false);
 	let modal = $state<{ private: boolean } | null>(null);
+	// Titik nol, disegarkan tiap kali penyimpanan berhasil.
+	let baseline = $state(untrack(() => data.isPrivate));
+	const dirty = $derived(isPrivate !== baseline);
 </script>
 
 <svelte:head><title>Privasi akun — Portal SI</title></svelte:head>
@@ -22,7 +25,10 @@
 			return async ({ update, result }) => {
 				await update({ reset: false, invalidateAll: false });
 				submitting = false;
-				if (result.type === 'success') modal = { private: isPrivate };
+				if (result.type === 'success') {
+					baseline = isPrivate;
+					modal = { private: isPrivate };
+				}
 			};
 		}}
 	>
@@ -46,9 +52,12 @@
 
 		{#if form?.message && !modal}<p class:success={form.success}>{form.message}</p>{/if}
 
-		<button class="save" type="submit" disabled={submitting}>
+		<button class="save" type="submit" disabled={submitting || !dirty}>
 			{#if submitting}<span class="spinner" aria-hidden="true"></span> Menyimpan…{:else}Simpan privasi{/if}
 		</button>
+		{#if !dirty && !submitting}
+			<small class="save-hint">Belum ada perubahan untuk disimpan.</small>
+		{/if}
 	</form>
 </main>
 
@@ -182,8 +191,14 @@
 		transition: opacity 0.15s ease;
 	}
 	.save:disabled {
-		opacity: 0.7;
-		cursor: progress;
+		opacity: 0.55;
+		cursor: not-allowed;
+	}
+	.save-hint {
+		margin-top: -4px;
+		color: var(--color-muted);
+		font-size: 0.72rem;
+		text-align: center;
 	}
 	.spinner {
 		width: 15px;

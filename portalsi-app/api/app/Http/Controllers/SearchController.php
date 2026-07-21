@@ -81,6 +81,7 @@ class SearchController extends Controller
 
         return Post::with('user')
             ->where('is_archived', false)
+            ->where('is_draft', false)
             ->whereHas('user', function ($u) use ($allowedIds) {
                 $u->where(function ($w) use ($allowedIds) {
                     $w->where('is_private', false);

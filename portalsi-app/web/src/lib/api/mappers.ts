@@ -91,6 +91,7 @@ export function mapPost(post: BackendPost, mediaBaseUrl: string): PostPreview {
 		commentsCount: post.comments_count,
 		isLiked: post.is_liked,
 		isBookmarked: post.is_bookmarked,
+		isPinned: post.is_pinned ?? false,
 		music: post.music_track_name
 			? {
 					title: post.music_track_name,

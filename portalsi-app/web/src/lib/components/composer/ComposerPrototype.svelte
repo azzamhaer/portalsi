@@ -267,6 +267,54 @@
 	// Bebaskan object URL galeri saat komponen dilepas.
 	onDestroy(() => galleryItems.forEach((item) => URL.revokeObjectURL(item.url)));
 
+	/**
+	 * Pilih rasio yang PALING DEKAT dengan bentuk asli foto.
+	 *
+	 * Default 'square' untuk semua foto ternyata salah: foto potret ikut terpotong jadi
+	 * kotak saat diunggah, dan itu permanen karena pemotongan terjadi sebelum upload.
+	 * Dengan ini foto potret otomatis memakai Potret, foto lebar memakai Lanskap, dan
+	 * yang memang mendekati kotak memakai Kotak — pengguna tetap bisa menggantinya.
+	 * Perbandingan dilakukan di ruang logaritmik supaya "dua kali lebih tinggi" dan
+	 * "dua kali lebih lebar" dianggap sama jauhnya.
+	 */
+	function pickDefaultCrop(ratio: number): GalleryCrop {
+		const options: Array<[GalleryCrop, number]> = [
+			['portrait', 4 / 5],
+			['square', 1],
+			['landscape', LANDSCAPE_ASPECT]
+		];
+		let best: GalleryCrop = 'square';
+		let bestDistance = Number.POSITIVE_INFINITY;
+		for (const [mode, value] of options) {
+			const distance = Math.abs(Math.log(ratio / value));
+			if (distance < bestDistance) {
+				bestDistance = distance;
+				best = mode;
+			}
+		}
+		return best;
+	}
+
+	/** Baca rasio asli sebuah gambar dari object URL-nya. */
+	function measureAspect(url: string): Promise<number> {
+		return new Promise((resolve) => {
+			const probe = new Image();
+			probe.onload = () =>
+				resolve(probe.naturalWidth && probe.naturalHeight ? probe.naturalWidth / probe.naturalHeight : 1);
+			probe.onerror = () => resolve(1);
+			probe.src = url;
+		});
+	}
+
+	/** Setelah item masuk daftar, sesuaikan rasio defaultnya dengan bentuk asli fotonya. */
+	async function applyNaturalCrop(id: string, url: string) {
+		const ratio = await measureAspect(url);
+		const target = galleryItems.find((item) => item.id === id);
+		if (!target) return;
+		target.aspect = ratio;
+		target.crop = pickDefaultCrop(ratio);
+	}
+
 	function makeGalleryItem(source: File): GalleryItem {
 		return {
 			id:
@@ -481,6 +529,8 @@
 		clearGallery();
 		resetThumbnailSelection();
 		cropMode = kind === 'story' ? 'story' : 'square';
+		// File baru → deteksi otomatis boleh menentukan rasio lagi.
+		cropModeTouched = false;
 		sourceAspect = 1;
 		cropRegion = null;
 		filter = 'normal';
@@ -538,6 +588,8 @@
 			file = null;
 			galleryItems = combined;
 			editingId = null;
+			// Rasio default tiap foto menyesuaikan bentuk aslinya (potret tetap potret).
+			for (const item of galleryItems) void applyNaturalCrop(item.id, item.url);
 		}
 	}
 
@@ -661,8 +713,11 @@
 		selectFiles(event.dataTransfer?.files);
 	}
 
+	// Begitu user memilih rasio sendiri, jangan ditimpa lagi oleh deteksi otomatis.
+	let cropModeTouched = $state(false);
 	function setCropMode(mode: typeof cropMode) {
 		cropMode = mode;
+		cropModeTouched = true;
 		cropRegion = null;
 	}
 
@@ -1332,7 +1387,11 @@
 								aspect={cropAspect}
 								label="Atur potongan gambar"
 								filterCss={activeFilter}
-								onready={(aspect) => (sourceAspect = aspect)}
+								onready={(aspect) => {
+									sourceAspect = aspect;
+									// Rasio awal mengikuti bentuk asli foto, selama user belum memilih sendiri.
+									if (!cropModeTouched && kind !== 'story') cropMode = pickDefaultCrop(aspect);
+								}}
 								onregion={(region) => (cropRegion = region)}
 							/>
 						{/key}

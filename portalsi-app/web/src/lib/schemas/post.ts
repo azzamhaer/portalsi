@@ -53,6 +53,8 @@ export const postSchema = z
 		comments_count: z.coerce.number().int().nonnegative().catch(0),
 		is_liked: booleanish.catch(false),
 		is_bookmarked: booleanish.catch(false),
+		// Sematan profil; opsional supaya endpoint lama tetap lolos kontrak.
+		is_pinned: booleanish.optional().catch(false),
 		music_track_name: z.string().nullish(),
 		music_artist_name: z.string().nullish(),
 		music_preview_url: z.string().nullish(),
