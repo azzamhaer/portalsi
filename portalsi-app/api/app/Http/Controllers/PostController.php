@@ -455,6 +455,12 @@ class PostController extends Controller
 
         $owner = $post->user;
 
+        // Draft hanya untuk pemiliknya. Dijaga di sini juga, bukan hanya lewat penyaringan
+        // di daftar — kalau tidak, siapa pun yang menebak/menyimpan ID post bisa membukanya.
+        if ($post->is_draft && (! $authUser || $authUser->user_id !== $post->user_id)) {
+            return response()->json(['message' => 'Postingan tidak ditemukan.'], 404);
+        }
+
         // Cek akses view
         $canView = ! $owner->is_private ||
             ($authUser && (
@@ -896,6 +902,77 @@ class PostController extends Controller
         $post->delete();
 
         return response()->json(['message' => 'Post deleted']);
+    }
+
+    /**
+     * Daftar draft milik user yang sedang login.
+     *
+     * Selalu memakai Auth::id(), tidak menerima parameter user — draft bersifat pribadi
+     * dan tidak boleh bisa dilihat siapa pun selain pemiliknya, termasuk lewat URL.
+     */
+    public function drafts(Request $request)
+    {
+        $authUser = Auth::user();
+        $page = max(1, (int) $request->input('page', 1));
+        $perPage = max(1, min(30, (int) $request->input('per_page', 12)));
+
+        $paginated = Post::where('user_id', $authUser->user_id)
+            ->where('is_draft', true)
+            ->orderByDesc('created_at')
+            ->select('post_id', 'caption', 'media_url', 'media_urls', 'is_video', 'created_at', 'thumbnail_url')
+            ->paginate($perPage, ['*'], 'page', $page);
+
+        $data = $paginated->getCollection()->map(function ($post) {
+            return [
+                'post_id' => $post->post_id,
+                'caption' => $post->caption,
+                'media_url' => $post->media_url,
+                'thumbnail_url' => $post->thumbnail_url,
+                'is_video' => (bool) $post->is_video,
+                'is_multiple' => is_array($post->media_urls) && count($post->media_urls) > 1,
+                'created_at' => $post->created_at,
+            ];
+        })->values();
+
+        return response()->json([
+            'data' => $data,
+            'current_page' => $paginated->currentPage(),
+            'last_page' => $paginated->lastPage(),
+            'per_page' => $paginated->perPage(),
+            'total' => $paginated->total(),
+        ]);
+    }
+
+    /**
+     * Terbitkan draft menjadi post biasa.
+     *
+     * Dipisahkan dari update() supaya niatnya eksplisit: sekali terbit, post langsung
+     * masuk feed orang lain dan tidak bisa "dibatalkan" tanpa mengarsipkannya.
+     */
+    public function publish($id)
+    {
+        $post = Post::findOrFail($id);
+
+        if ($post->user_id !== Auth::id()) {
+            return response()->json(['message' => 'Hanya pemilik draft yang bisa menerbitkan.'], 403);
+        }
+
+        if (! $post->is_draft) {
+            return response()->json([
+                'message' => 'Postingan ini sudah terbit.',
+                'post_id' => $post->post_id,
+            ], 422);
+        }
+
+        $post->is_draft = false;
+        // Waktu terbit dianggap sekarang supaya urutannya wajar di feed pengikut.
+        $post->created_at = now();
+        $post->save();
+
+        return response()->json([
+            'message' => 'Draft berhasil diterbitkan.',
+            'post_id' => $post->post_id,
+        ]);
     }
 
     /** Batas jumlah post yang boleh disematkan di profil. */

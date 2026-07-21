@@ -475,7 +475,8 @@ Route::get('/profile/{username}', [ProfileController::class, 'show']);
 // Akun privat hanya mengembalikan nama pembuat, tanpa gambar/caption.
 Route::get('/posts/{id}/og', function ($id) {
     $post = \App\Models\Post::with('user')->find($id);
-    if (! $post) {
+    // Draft tidak boleh bocor lewat pratinjau tautan (endpoint ini publik, tanpa login).
+    if (! $post || $post->is_draft) {
         return response()->json(['found' => false], 404);
     }
     $private = (bool) ($post->user->is_private ?? false);
@@ -580,7 +581,8 @@ Route::middleware(['auth:sanctum', 'notBanned'])->group(function () {
 
     // Feed
     Route::get('/posts', [PostController::class, 'index']);
-    Route::get('/posts/{id}', [PostController::class, 'show']);
+    // whereNumber wajib: tanpa ini, `/posts/drafts` ikut tertangkap sebagai id = "drafts".
+    Route::get('/posts/{id}', [PostController::class, 'show'])->whereNumber('id');
     Route::get('/posts/{post_id}/likes', [LikeController::class, 'index']);
     Route::get('/posts/{post_id}/comments', [CommentController::class, 'getCommentsByPost']);
 
@@ -671,6 +673,9 @@ Route::middleware(['auth:sanctum', 'notBanned'])->group(function () {
         Route::post('/posts', [PostController::class, 'store']);
         Route::post('/posts/{id}/update', [PostController::class, 'update']);
         Route::post('/posts/{id}/pin', [PostController::class, 'togglePin'])->whereNumber('id');
+        // Draft: daftar & terbitkan. Keduanya selalu terbatas pada milik user yang login.
+        Route::get('/posts/drafts', [PostController::class, 'drafts']);
+        Route::post('/posts/{id}/publish', [PostController::class, 'publish'])->whereNumber('id');
         Route::delete('/posts/{id}', [PostController::class, 'destroy']);
         Route::post('/posts/{post_id}/like', [LikeController::class, 'toggle']);
         Route::post('/posts/{post_id}/comments', [CommentController::class, 'store']);

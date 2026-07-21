@@ -757,19 +757,34 @@
 		body.set('music_clip_duration_ms', String(musicDurationSeconds * 1000));
 	}
 
-	async function publish() {
+	/**
+	 * Unggah konten.
+	 *
+	 * `asDraft` memakai jalur yang sama persis dengan penerbitan biasa — media tetap
+	 * diunggah dan diproses — bedanya post ditandai draft sehingga hanya pemiliknya yang
+	 * bisa melihat. Dengan begitu menerbitkannya nanti cukup mengubah satu kolom, tanpa
+	 * mengunggah ulang apa pun.
+	 */
+	async function publish(asDraft = false) {
 		if ((!file && galleryItems.length === 0) || submitting) return;
-		const confirmed = await confirmAction({
-			title:
-				kind === 'story'
-					? 'Bagikan cerita sekarang?'
-					: kind === 'clips'
-						? 'Bagikan clips sekarang?'
-						: 'Bagikan postingan sekarang?',
-			description:
-				'Periksa kembali media, caption, dan musik. Konten akan langsung terlihat oleh audiens Anda.',
-			confirmLabel: 'Ya, bagikan'
-		});
+		const confirmed = asDraft
+			? await confirmAction({
+					title: 'Simpan sebagai draft?',
+					description:
+						'Draft hanya bisa dilihat oleh Anda sendiri. Bisa diedit dan diterbitkan kapan saja dari tab Draft di profil.',
+					confirmLabel: 'Simpan draft'
+				})
+			: await confirmAction({
+					title:
+						kind === 'story'
+							? 'Bagikan cerita sekarang?'
+							: kind === 'clips'
+								? 'Bagikan clips sekarang?'
+								: 'Bagikan postingan sekarang?',
+					description:
+						'Periksa kembali media, caption, dan musik. Konten akan langsung terlihat oleh audiens Anda.',
+					confirmLabel: 'Ya, bagikan'
+				});
 		if (!confirmed) return;
 		submitting = true;
 		uploadProgress = 0;
@@ -810,11 +825,12 @@
 				if (location.trim()) body.set('location', location.trim());
 				body.set('is_video', '0');
 				body.set('is_archived', '0');
+				body.set('is_draft', asDraft ? '1' : '0');
 				const response = await upload('posts', body, (payload) =>
 					createdPostResponseSchema.parse(payload)
 				);
 				await deleteDraft();
-				await goto(`/posts/${response.post.post_id}`);
+				await goto(asDraft ? '/profile/drafts' : `/posts/${response.post.post_id}`);
 				return;
 			}
 			if (!file) return;
@@ -859,11 +875,12 @@
 				body.set('is_video', String(selectedFileKind === 'video' ? 1 : 0));
 				body.set('video_muted', videoWillMute ? '1' : '0');
 				body.set('is_archived', '0');
+				body.set('is_draft', asDraft ? '1' : '0');
 				const response = await upload('posts', body, (payload) =>
 					createdPostResponseSchema.parse(payload)
 				);
 				await deleteDraft();
-				await goto(`/posts/${response.post.post_id}`);
+				await goto(asDraft ? '/profile/drafts' : `/posts/${response.post.post_id}`);
 			}
 		} catch (error) {
 			message = error instanceof Error ? error.message : 'Konten belum dapat dibagikan.';
@@ -1295,8 +1312,16 @@
 			<p class="eyebrow">{copy.eyebrow}</p>
 			<h1>{copy.title}</h1>
 		</div>
+		{#if kind === 'post'}
+			<button
+				class="save-draft"
+				onclick={() => publish(true)}
+				disabled={(!file && galleryItems.length === 0) || submitting || videoNotReady}
+				>Simpan draft</button
+			>
+		{/if}
 		<button
-			onclick={publish}
+			onclick={() => publish(false)}
 			disabled={(!file && galleryItems.length === 0) ||
 				submitting ||
 				videoNotReady}
@@ -1865,10 +1890,20 @@
 	}
 	.composer-page > header {
 		display: grid;
-		grid-template-columns: 44px 1fr auto;
+		/* Kolom keempat untuk tombol "Simpan draft"; kosong (lebar 0) pada story/clips. */
+		grid-template-columns: 44px 1fr auto auto;
 		align-items: center;
 		gap: 12px;
 		padding: 0 0 22px;
+	}
+	/* Aksi sekunder: jangan bersaing perhatian dengan tombol Bagikan. */
+	.composer-page > header > button.save-draft {
+		background: transparent;
+		border: 1px solid var(--color-border);
+		color: var(--color-text);
+	}
+	.composer-page > header > button.save-draft:hover:not(:disabled) {
+		background: var(--color-primary-soft);
 	}
 	.composer-page > header > a {
 		display: grid;
@@ -2786,6 +2821,14 @@
 		}
 		.composer-page > header h1 {
 			font-size: 1rem;
+		}
+		/* Layar sempit: dua tombol harus tetap muat berdampingan dengan judul. */
+		.composer-page > header {
+			gap: 8px;
+		}
+		.composer-page > header > button {
+			padding: 0 12px;
+			font-size: 0.8rem;
 		}
 		.composer-grid {
 			gap: 10px;

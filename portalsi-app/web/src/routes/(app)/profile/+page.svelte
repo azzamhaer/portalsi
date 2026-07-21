@@ -3,6 +3,7 @@
 	import {
 		Bookmark,
 		Copy,
+		FileEdit,
 		Grid3X3,
 		Lock,
 		Maximize2,
@@ -137,6 +138,8 @@
 	<nav class="profile-tabs" aria-label="Konten profil">
 		<a class="active" href="/profile"><Grid3X3 size={17} /> Postingan</a>
 		<a href={`/portfolio?user_id=${data.profile.id}`}>Portfolio</a>
+		<!-- Draft hanya ada di profil sendiri; halamannya pun menolak akses orang lain. -->
+		<a href="/profile/drafts"><FileEdit size={17} /> Draft</a>
 		<a href="/settings/saved"><Bookmark size={17} /> Tersimpan</a>
 	</nav>
 

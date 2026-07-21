@@ -18,6 +18,27 @@ export const profilePostSchema = z
 	})
 	.passthrough();
 
+export const draftPostSchema = z
+	.object({
+		post_id: z.coerce.number().int().positive(),
+		caption: z.string().nullish(),
+		media_url: z.string().min(1),
+		thumbnail_url: z.string().nullish(),
+		is_video: booleanish.catch(false),
+		is_multiple: booleanish.catch(false),
+		created_at: z.string().nullish()
+	})
+	.passthrough();
+
+export const draftsResponseSchema = z
+	.object({
+		data: z.array(draftPostSchema),
+		current_page: z.coerce.number().int().positive().catch(1),
+		last_page: z.coerce.number().int().positive().catch(1),
+		total: z.coerce.number().int().nonnegative().catch(0)
+	})
+	.passthrough();
+
 export const profilePaginationSchema = z.object({
 	current_page: z.coerce.number().int().positive(),
 	last_page: z.coerce.number().int().positive(),
