@@ -3,7 +3,16 @@
 	import { clientRequest } from '$lib/api/client';
 	import type { PortalUser } from '$lib/types/domain';
 
-	let { user, size = 'md' }: { user: PortalUser; size?: 'sm' | 'md' } = $props();
+	let {
+		user,
+		size = 'md',
+		followsYou = false
+	}: {
+		user: PortalUser;
+		size?: 'sm' | 'md';
+		/** Orang ini sudah mengikuti kita → ajakan berubah jadi "Ikuti balik". */
+		followsYou?: boolean;
+	} = $props();
 
 	let following = $state(user.isFollowing ?? false);
 	let requested = $state(user.isRequested ?? false);
@@ -47,7 +56,7 @@
 	>
 		{#if following}<UserCheck size={15} /> Diikuti
 		{:else if requested}<Clock size={15} /> Diminta
-		{:else}<UserPlus size={15} /> Ikuti{/if}
+		{:else}<UserPlus size={15} /> {followsYou ? 'Ikuti balik' : 'Ikuti'}{/if}
 	</button>
 {/if}
 

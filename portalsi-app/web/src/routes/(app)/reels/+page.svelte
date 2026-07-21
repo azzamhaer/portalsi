@@ -637,7 +637,7 @@
 		align-items: center;
 		gap: 8px;
 		color: #fff;
-		font-weight: 700;
+		font-weight: 600;
 		width: fit-content;
 	}
 	.reel-author strong {

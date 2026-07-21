@@ -45,6 +45,28 @@
 	let searchHistory = $state<SearchHistoryView[]>([]);
 	// Post video yang sedang di-hover (desktop) → diputar tanpa suara sebagai pratinjau.
 	let previewId = $state<number | null>(null);
+
+	/**
+	 * Paksa pratinjau benar-benar berjalan.
+	 *
+	 * Atribut `autoplay` saja tidak cukup: browser mengevaluasi kelayakan autoplay saat
+	 * elemen disisipkan, sementara properti `muted` bisa baru disetel sesudahnya — hasilnya
+	 * pemutaran ditolak diam-diam. Menyetel `muted` + `defaultMuted` lebih dulu, lalu
+	 * memanggil play() sendiri, adalah pola yang sama seperti di SmartVideo.
+	 */
+	function hoverPlay(node: HTMLVideoElement) {
+		node.muted = true;
+		node.defaultMuted = true;
+		const tryPlay = () => void node.play().catch(() => undefined);
+		tryPlay();
+		node.addEventListener('loadeddata', tryPlay);
+		return {
+			destroy() {
+				node.removeEventListener('loadeddata', tryPlay);
+				node.pause();
+			}
+		};
+	}
 	const visiblePeople = $derived(searchQuery.trim().length >= 2 ? livePeople : data.people);
 
 	function mapHistory(item: SearchHistoryItem): SearchHistoryView {
@@ -339,8 +361,8 @@
 					<video
 						class="hover-preview"
 						src={post.mediaUrl}
+						use:hoverPlay
 						muted
-						autoplay
 						loop
 						playsinline
 						preload="auto"
@@ -629,15 +651,23 @@
 		border-color: var(--color-text);
 		color: white;
 	}
-	/* Pratinjau hover menutupi thumbnail sepenuhnya. Sengaja TANPA z-index: elemen
-	   berposisi tanpa z-index digambar sesuai urutan DOM, dan pratinjau ini ada lebih
-	   dulu daripada penanda video & nama pengguna — jadi keduanya tetap di atasnya. */
+	/* Pratinjau hover menutupi thumbnail sepenuhnya.
+	   z-index WAJIB di sini: saat hover, `<img>` mendapat `transform: scale()`, dan elemen
+	   ber-transform ikut dilukis di lapisan yang sama dengan elemen berposisi. Karena img
+	   berada setelah video ini di DOM, tanpa z-index ia menutupi pratinjaunya — videonya
+	   berjalan tapi tidak terlihat sama sekali. */
 	.hover-preview {
 		position: absolute;
 		inset: 0;
+		z-index: 1;
 		width: 100%;
 		height: 100%;
 		object-fit: cover;
+	}
+	/* Penanda video & nama pengguna harus tetap di atas pratinjau. */
+	.explore-grid > a > span,
+	.explore-grid > a > div {
+		z-index: 2;
 	}
 	.explore-grid {
 		display: grid;

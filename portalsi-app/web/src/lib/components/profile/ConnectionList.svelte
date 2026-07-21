@@ -4,8 +4,19 @@
 	import UserBadges from '$lib/components/ui/UserBadges.svelte';
 	import FollowButton from '$lib/components/ui/FollowButton.svelte';
 	import type { PortalUser } from '$lib/types/domain';
-	let { title, backHref, users }: { title: string; backHref: string; users: PortalUser[] } =
-		$props();
+	let {
+		title,
+		backHref,
+		users,
+		followsViewer = false
+	}: {
+		title: string;
+		backHref: string;
+		users: PortalUser[];
+		/** True hanya untuk daftar PENGIKUT milik sendiri — merekalah yang mengikuti kita.
+		 *  Di daftar pengikut orang lain, mereka mengikuti orang itu, bukan kita. */
+		followsViewer?: boolean;
+	} = $props();
 
 	let sortMode = $state<'unfollowed' | 'alphabet'>('unfollowed');
 
@@ -53,7 +64,7 @@
 						><small>@{user.username}</small></span
 					></a
 				>
-				<FollowButton {user} size="sm" />
+				<FollowButton {user} size="sm" followsYou={followsViewer} />
 			</div>{/each}{#if users.length === 0}<p>Belum ada pengguna di daftar ini.</p>{/if}
 	</div>
 </main>

@@ -31,6 +31,9 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 	const media = env.PUBLIC_MEDIA_BASE_URL?.trim() || 'https://api.portalsi.com/storage';
 	return {
 		title: followers ? 'Pengikut' : 'Mengikuti',
+		// Hanya di daftar pengikut MILIK SENDIRI orang-orang ini benar-benar mengikuti kita,
+		// sehingga ajakan "Ikuti balik" tepat. Di daftar "Mengikuti" tidak berlaku.
+		followsViewer: followers,
 		users: raw.map((user) => mapCompactUser(user, media))
 	};
 };

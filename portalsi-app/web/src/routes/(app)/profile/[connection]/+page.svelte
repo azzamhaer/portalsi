@@ -4,4 +4,9 @@
 	let { data }: PageProps = $props();
 </script>
 
-<ConnectionList title={data.title} backHref="/profile" users={data.users} />
+<ConnectionList
+	title={data.title}
+	backHref="/profile"
+	users={data.users}
+	followsViewer={data.followsViewer}
+/>
