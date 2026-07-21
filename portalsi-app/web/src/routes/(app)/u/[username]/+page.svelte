@@ -708,12 +708,21 @@
 		.actions {
 			right: 12px;
 		}
-		.actions button,
-		.actions a {
+		/* Tombol ikon-saja (pesan, bagikan) tetap ringkas. */
+		.actions .icon-action {
 			width: 40px;
 			padding: 0;
 			justify-content: center;
 			font-size: 0;
+		}
+		/* Tombol follow HARUS berlabel: "Ikuti" dan "Ikuti balik" adalah dua keadaan
+		   berbeda yang tidak bisa dibedakan kalau hanya ikon. */
+		.actions .follow-main {
+			height: 40px;
+			min-width: 0;
+			padding: 0 14px;
+			font-size: 0.8rem;
+			white-space: nowrap;
 		}
 		.stats {
 			justify-content: space-between;

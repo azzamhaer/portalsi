@@ -11,6 +11,7 @@
 		X
 	} from '@lucide/svelte';
 	import { clientRequest } from '$lib/api/client';
+	import { clickOutside } from '$lib/actions/click-outside';
 	import { mapCompactUser, mapPost } from '$lib/api/mappers';
 	import SectionPage from '$lib/components/layout/SectionPage.svelte';
 	import StoryAvatarLink from '$lib/components/story/StoryAvatarLink.svelte';
@@ -68,6 +69,14 @@
 		};
 	}
 	const visiblePeople = $derived(searchQuery.trim().length >= 2 ? livePeople : data.people);
+
+	/** Tutup panel pencarian: kosongkan kata kunci, lepas fokus, sembunyikan hasil. */
+	function closeSearchPanel() {
+		searchFocused = false;
+		searchQuery = '';
+		livePeople = [];
+		searchMessage = '';
+	}
 
 	function mapHistory(item: SearchHistoryItem): SearchHistoryView {
 		return {
@@ -212,6 +221,7 @@
 >
 
 <SectionPage title="Jelajah" titleHidden>
+	<div class="search-shell" use:clickOutside={closeSearchPanel}>
 	<form
 		class="search-row"
 		onsubmit={(event) => {
@@ -224,11 +234,11 @@
 				bind:value={searchQuery}
 				placeholder="Cari pengguna atau topik"
 				onfocus={() => (searchFocused = true)}
-			/>{#if searching}<LoaderCircle class="spin" size={17} />{:else if searchQuery}<button
+			/>{#if searching}<LoaderCircle class="spin" size={17} />{:else if searchQuery || searchFocused}<button
 					type="button"
 					class="clear"
-					onclick={() => (searchQuery = '')}
-					aria-label="Hapus pencarian"><X size={16} /></button
+					onclick={closeSearchPanel}
+					aria-label="Tutup pencarian"><X size={16} /></button
 				>{/if}</label
 		>
 		<button
@@ -302,6 +312,7 @@
 				<span>akun · caption · hashtag</span>
 			</a>
 		</section>{/if}
+	</div>
 	{#if showFilters}<nav class="filters surface" id="filters" aria-label="Filter jelajah">
 			<span class="filters-label"><SlidersHorizontal size={14} /> Urutkan</span>
 			<a class:active={data.sort === 'random'} href={filterHref('random')}>Untuk Anda</a>
@@ -479,6 +490,9 @@
 		gap: 2px;
 		margin: -4px 0 13px;
 		padding: 10px;
+	}
+	.search-shell {
+		position: relative;
 	}
 	.search-history {
 		display: grid;

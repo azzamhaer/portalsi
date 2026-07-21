@@ -11,6 +11,7 @@
 	import { beforeNavigate } from '$app/navigation';
 	import { LoaderCircle, Search, SlidersHorizontal, X } from '@lucide/svelte';
 	import { clientRequest } from '$lib/api/client';
+	import { clickOutside } from '$lib/actions/click-outside';
 	import { mapCompactUser, mapPost } from '$lib/api/mappers';
 	import AnnouncementCard from '$lib/components/feed/AnnouncementCard.svelte';
 	import PostCard from '$lib/components/feed/PostCard.svelte';
@@ -115,6 +116,18 @@
 		const timer = window.setTimeout(saveFeedCache, 250);
 		return () => window.clearTimeout(timer);
 	});
+
+	/** Tutup panel pencarian: kosongkan kata kunci, lepas fokus, sembunyikan opsi. */
+	function closeSearchPanel() {
+		searchFocused = false;
+		showSearchOptions = false;
+		homeQuery = '';
+		searchResults = [];
+		if (typeof document !== 'undefined') {
+			const input = document.getElementById('home-search');
+			if (input instanceof HTMLInputElement) input.blur();
+		}
+	}
 
 	function mapHistory(item: SearchHistoryItem): SearchHistoryView {
 		return {
@@ -245,7 +258,7 @@
 				<p class="eyebrow">{data.dateLabel}</p>
 				<h1>Assalamu’alaikum, <span class="greet-name">{greetingName}</span></h1>
 			</div>
-			<div class="search-wrap">
+			<div class="search-wrap" use:clickOutside={closeSearchPanel}>
 				<div class="search-box">
 					<Search size={18} />
 					<label class="sr-only" for="home-search">Cari di Portal SI</label>
@@ -262,6 +275,14 @@
 						}}
 					/>
 					{#if searching}<LoaderCircle class="search-spin" size={16} />{/if}
+					{#if searchFocused || homeQuery}
+						<button
+							type="button"
+							class="search-close"
+							aria-label="Tutup pencarian"
+							onclick={closeSearchPanel}><X size={16} /></button
+						>
+					{/if}
 					<button
 						class:active={showSearchOptions}
 						aria-pressed={showSearchOptions}
@@ -447,6 +468,23 @@
 	}
 	.search-wrap {
 		position: relative;
+	}
+	.search-close {
+		display: grid;
+		width: 28px;
+		height: 28px;
+		flex: none;
+		place-items: center;
+		padding: 0;
+		border: 0;
+		border-radius: 50%;
+		background: transparent;
+		color: var(--color-muted);
+		cursor: pointer;
+	}
+	.search-close:hover {
+		background: var(--color-primary-soft);
+		color: var(--color-primary-strong);
 	}
 	:global(.search-spin) {
 		color: var(--color-primary);
