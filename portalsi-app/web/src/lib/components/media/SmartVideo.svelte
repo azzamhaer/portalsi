@@ -65,7 +65,8 @@
 		musicSrc,
 		musicStart = 0,
 		musicClip = 15,
-		menuExtra
+		menuExtra,
+		onMutedChange
 	}: {
 		src: string;
 		poster?: string;
@@ -919,7 +920,7 @@
 		background: #f28a22;
 	}
 	.smart-video.controls-visible .video-progress,
-	.smart-video:focus-within .video-progress {
+	.smart-video:has(:focus-visible) .video-progress {
 		opacity: 0;
 	}
 	@media (hover: hover) and (pointer: fine) {
@@ -944,11 +945,14 @@
 		transition: 180ms ease;
 		backdrop-filter: blur(10px);
 	}
-	/* Kontrol tampil bila: JS menandai terlihat (jeda / baru disentuh), sedang difokus,
-	   atau kursor presisi sedang hover. Hover dibatasi ke perangkat ber-mouse supaya
-	   di layar sentuh tidak "nyangkut" terlihat karena hover yang diemulasi. */
+	/* Kontrol tampil bila: JS menandai terlihat (jeda / baru disentuh), sedang dinavigasi
+	   keyboard, atau kursor presisi sedang hover.
+	   CATATAN: dulu memakai `:focus-within`, dan itu bikin kontrol tidak pernah hilang di
+	   HP — menyentuh tombol play memberi fokus pada tombol itu, fokusnya bertahan, dan
+	   aturan CSS ini terus menang melawan timer auto-hide. `:focus-visible` hanya aktif
+	   untuk fokus keyboard, jadi sentuhan tidak lagi mengunci kontrol. */
 	.smart-video.controls-visible .video-controls,
-	.smart-video:focus-within .video-controls {
+	.smart-video:has(:focus-visible) .video-controls {
 		opacity: 1;
 		transform: none;
 	}
