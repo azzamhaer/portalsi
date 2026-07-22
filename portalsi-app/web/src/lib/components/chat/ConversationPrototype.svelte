@@ -58,6 +58,7 @@
 		storyExpired?: boolean;
 		isStoryOwner?: boolean;
 		storyOwnerId?: number | null;
+		storyId?: number | null;
 	};
 	let {
 		mode,
@@ -296,7 +297,8 @@
 					storyMedia: replyingToStory?.media ?? null,
 					storyExpired: false,
 					isStoryOwner: false,
-					storyOwnerId: targetId
+					storyOwnerId: targetId,
+					storyId: replyingToStory?.id ?? null
 				};
 				activeStoryReply = null; // sudah terkirim sebagai balasan cerita
 			} else {
@@ -429,7 +431,10 @@
 								{#if message.storyExpired && !message.isStoryOwner}
 									<div class="srq-head expired"><Clock size={12} /> Cerita telah berakhir</div>
 								{:else if !message.storyExpired && message.storyMedia && message.storyOwnerId}
-									<a href={`/stories/${message.storyOwnerId}`} class="srq-head clickable">
+									<a
+										href={`/stories/${message.storyOwnerId}${message.storyId ? `?story=${message.storyId}` : ''}`}
+										class="srq-head clickable"
+									>
 										{#if mediaKind(message.storyMedia) === 'video'}<video
 												src={message.storyMedia}
 												muted

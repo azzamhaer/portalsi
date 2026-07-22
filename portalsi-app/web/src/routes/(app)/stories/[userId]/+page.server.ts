@@ -3,7 +3,7 @@ import { ApiError } from '$lib/api/errors';
 import { storyViewerResponseSchema } from '$lib/schemas/story';
 import { backendRequest } from '$lib/server/api';
 import { normalizeMediaUrl } from '$lib/utils/media';
-import { relativeTimeId } from '$lib/utils/time';
+import { storyAgeId } from '$lib/utils/time';
 import { error, redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
@@ -56,7 +56,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 			type: story.type,
 			mediaUrl: normalizeMediaUrl(story.media_url, mediaBaseUrl),
 			caption: story.caption ?? '',
-			createdLabel: relativeTimeId(story.created_at),
+			createdLabel: storyAgeId(story.created_at),
 			musicTitle: story.music_track_name ?? null,
 			musicArtist: story.music_artist_name ?? null,
 			musicPreviewUrl: normalizeMediaUrl(story.music_preview_url, mediaBaseUrl),
@@ -70,6 +70,8 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 		nextUserId,
 		prevPreview: null,
 		nextPreview: null,
-		storyOrder: validOrder.join(',')
+		storyOrder: validOrder.join(','),
+		// `?story=<id>` → buka langsung cerita tsb (dipakai saat membuka balasan cerita di chat).
+		initialStoryId: Number.parseInt(url.searchParams.get('story') ?? '', 10) || null
 	};
 };

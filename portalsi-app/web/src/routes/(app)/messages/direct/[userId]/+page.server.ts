@@ -75,7 +75,9 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 			storyMedia: normalizeMediaUrl(message.responded_media_url, mediaBaseUrl),
 			storyExpired: message.story_expired,
 			isStoryOwner: message.is_story_owner,
-			storyOwnerId: message.story_owner_id ?? null
+			storyOwnerId: message.story_owner_id ?? null,
+			// Dipakai agar klik pratinjau membuka cerita yang PERSIS dibalas, bukan cerita pertama.
+			storyId: message.story_id ?? null
 		}))
 	};
 };

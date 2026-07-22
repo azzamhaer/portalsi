@@ -39,7 +39,13 @@
 
 	let { data }: PageProps = $props();
 	let stories = $state(untrack(() => structuredClone(data.stories)));
-	let index = $state(0);
+	/** Posisi awal: cerita yang diminta lewat `?story=<id>`, kalau tidak ada mulai dari awal. */
+	function initialIndexFor(list: typeof data.stories, storyId: number | null) {
+		if (!storyId) return 0;
+		const found = list.findIndex((item) => item.id === storyId);
+		return found >= 0 ? found : 0;
+	}
+	let index = $state(untrack(() => initialIndexFor(data.stories, data.initialStoryId)));
 	let paused = $state(false);
 	let holding = $state(false);
 	// Video cerita HARUS mulai muted supaya autoplay diizinkan browser; suaranya
@@ -103,7 +109,7 @@
 		void data.user.id;
 		untrack(() => {
 			stories = structuredClone(nextStories);
-			index = 0;
+			index = initialIndexFor(nextStories, data.initialStoryId);
 			viewersOpen = false;
 			paused = false;
 		});
@@ -429,7 +435,9 @@
 			>
 				<Avatar name={data.user.username} src={data.user.avatarUrl ?? undefined} size="sm" />
 				<span class="story-id">
-					<strong>@{data.user.username}</strong><small>{story?.createdLabel ?? ''}</small>
+					<span class="sid-top"
+						><strong>@{data.user.username}</strong><small>{story?.createdLabel ?? ''}</small></span
+					>
 					{#if story?.musicTitle}
 						{@const label = `${story.musicTitle}${story.musicArtist ? ` · ${story.musicArtist}` : ''}`}
 						<span class="story-music" class:marquee={label.length > 26} title={label}>
@@ -751,21 +759,34 @@
 		margin-right: auto;
 		color: inherit;
 	}
-	.story-user span {
+	/* HANYA anak langsung yang jadi grid. Dulu selector ini mengenai SEMUA span di dalam
+	   (termasuk baris username & blok musik), sehingga tiap elemen terdorong ke barisnya
+	   sendiri dan header story jadi menumpuk 4 baris. */
+	.story-user > span {
 		display: grid;
+	}
+	/* Username & waktu SEJAJAR dalam satu baris. */
+	.sid-top {
+		display: flex;
+		align-items: baseline;
+		gap: 6px;
+		min-width: 0;
 	}
 	/* Hierarki: username tebal & terang, waktu tipis, judul lagu paling kecil & redup. */
 	.story-id {
 		min-width: 0;
 		line-height: 1.15;
 	}
-	.story-id > strong {
+	.sid-top > strong {
+		overflow: hidden;
 		font-size: 0.78rem;
 		font-weight: 700;
 		color: #fff;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
-	.story-id > small {
-		margin-left: 6px;
+	.sid-top > small {
+		flex: none;
 		color: rgb(255 255 255 / 62%);
 		font-size: 0.62rem;
 	}
