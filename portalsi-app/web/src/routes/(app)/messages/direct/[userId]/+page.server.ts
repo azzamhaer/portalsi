@@ -55,8 +55,24 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 		storyReply,
 		avatarUrl:
 			existing?.type === 'user'
-				? normalizeMediaUrl(existing.conversation.profile_picture_thumb_url ?? existing.conversation.profile_picture_url, mediaBaseUrl)
-				: normalizeMediaUrl(peer?.profile_picture_url || queryAvatar, mediaBaseUrl),
+				? normalizeMediaUrl(
+						existing.conversation.profile_picture_thumb_url ??
+							existing.conversation.profile_picture_url,
+						mediaBaseUrl
+					)
+				: normalizeMediaUrl(
+						peer?.profile_picture_thumb_url ?? peer?.profile_picture_url ?? queryAvatar,
+						mediaBaseUrl
+					),
+		// Lingkar story lawan bicara (privasi akun sudah dijaga di sisi API).
+		peerHasStory:
+			existing?.type === 'user'
+				? (existing.conversation.has_story ?? false)
+				: (peer?.has_story ?? false),
+		peerStoryViewed:
+			existing?.type === 'user'
+				? (existing.conversation.story_viewed ?? false)
+				: (peer?.story_viewed ?? false),
 		currentUserId: locals.user.id,
 		messages: messages.map((message) => ({
 			id: message.message_id,

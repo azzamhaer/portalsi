@@ -66,6 +66,8 @@
 		title,
 		subtitle,
 		avatarUrl,
+		peerHasStory = false,
+		peerStoryViewed = false,
 		currentUserId,
 		messages: initialMessages,
 		canPin = false,
@@ -78,6 +80,9 @@
 		title: string;
 		subtitle: string;
 		avatarUrl: string | null;
+		/** Lingkar story lawan bicara (DM). */
+		peerHasStory?: boolean;
+		peerStoryViewed?: boolean;
 		currentUserId: number;
 		messages: ChatMessage[];
 		canPin?: boolean;
@@ -383,7 +388,13 @@
 			>
 		{:else}
 			<a class="peer-link" href={peerUsername ? `/u/${peerUsername}` : undefined}>
-				<Avatar name={title} src={avatarUrl ?? undefined} size="md" />
+				<Avatar
+					name={title}
+					src={avatarUrl ?? undefined}
+					size="md"
+					story={peerHasStory}
+					seen={peerStoryViewed}
+				/>
 				<div class="peer-meta"><h1>{peerUsername || title}</h1></div>
 			</a>
 		{/if}

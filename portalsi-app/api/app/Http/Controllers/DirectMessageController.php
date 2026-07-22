@@ -83,6 +83,8 @@ class DirectMessageController extends Controller
             'username' => $receiver->username,
             'profile_picture_url' => $receiver->profile_picture_url,
             'profile_picture_thumb_url' => $receiver->profile_picture_thumb_url,
+            'has_story' => $receiver->has_story,
+            'story_viewed' => $receiver->story_viewed,
             'last_message' => $message->content ?? '📎 Media',
             'last_media' => $message->media_url,
             'sent_at' => $message->sent_at?->toIso8601String(),
@@ -291,6 +293,9 @@ class DirectMessageController extends Controller
                     'username' => $user->username ?? null,
                     'profile_picture_url' => $user->profile_picture_url ?? null,
                     'profile_picture_thumb_url' => $user->profile_picture_thumb_url ?? null,
+                    // Lingkar story (sudah menghormati privasi akun lewat accessor di model User).
+                    'has_story' => $user?->has_story ?? false,
+                    'story_viewed' => $user?->story_viewed ?? false,
                     'is_verified' => (bool) ($user->is_verified ?? false), // 👈 tambahkan ini
                 ],
                 'last_chat' => [

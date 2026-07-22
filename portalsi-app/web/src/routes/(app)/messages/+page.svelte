@@ -84,7 +84,13 @@
 					>
 						{#if chat.type === 'group' && !chat.avatarUrl}<span class="group-avatar"
 								><Users size={20} /></span
-							>{:else}<Avatar name={chat.name} src={chat.avatarUrl ?? undefined} size="md" />{/if}
+							>{:else}<Avatar
+								name={chat.name}
+								src={chat.avatarUrl ?? undefined}
+								size="md"
+								story={chat.type === 'direct' ? chat.hasStory : false}
+								seen={chat.type === 'direct' ? chat.storyViewed : false}
+							/>{/if}
 						<span class="chat-copy"
 							><strong>{chat.name}</strong><small>{chat.handle}</small><small
 								class:unread={chat.unread}>{chat.text}</small

@@ -54,9 +54,11 @@ export const load: PageServerLoad = async ({ locals }) => {
 							? `@${item.conversation.username}`
 							: 'Pesan langsung',
 						avatarUrl: normalizeMediaUrl(
-						item.conversation.profile_picture_thumb_url ?? item.conversation.profile_picture_url,
-						mediaBaseUrl
-					),
+							item.conversation.profile_picture_thumb_url ?? item.conversation.profile_picture_url,
+							mediaBaseUrl
+						),
+						hasStory: item.conversation.has_story ?? false,
+						storyViewed: item.conversation.story_viewed ?? false,
 						text: previewText(item.last_chat.content, Boolean(item.last_chat.media)),
 						time: item.last_chat.sent_at ? relativeTimeId(item.last_chat.sent_at) : '',
 						unread: !item.last_chat.is_read,

@@ -8,6 +8,8 @@ export const directPeerSchema = z.object({
 	full_name: z.string().nullish(),
 	profile_picture_url: z.string().nullish(),
 	profile_picture_thumb_url: z.string().nullish(),
+	has_story: booleanish.optional().catch(false),
+	story_viewed: booleanish.optional().catch(false),
 	is_verified: booleanish.catch(false),
 	role: z.enum(['student', 'parent', 'teacher', 'dev', 'other']).catch('other')
 });
@@ -20,6 +22,8 @@ export const directChatListItemSchema = z.object({
 		username: z.string().nullish(),
 		profile_picture_url: z.string().nullish(),
 		profile_picture_thumb_url: z.string().nullish(),
+		has_story: booleanish.optional().catch(false),
+		story_viewed: booleanish.optional().catch(false),
 		is_verified: booleanish.catch(false)
 	}),
 	last_chat: z.object({
@@ -123,6 +127,9 @@ export const groupMemberSchema = z
 		full_name: z.string().nullish(),
 		username: z.string().min(1),
 		profile_picture_url: z.string().nullish(),
+		profile_picture_thumb_url: z.string().nullish(),
+		has_story: booleanish.optional().catch(false),
+		story_viewed: booleanish.optional().catch(false),
 		role: z.enum(['admin', 'member']),
 		joined_at: z.string().nullish(),
 		is_muted: booleanish.catch(false),

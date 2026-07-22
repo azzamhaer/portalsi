@@ -169,12 +169,16 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     private static ?array $activeStoryOwners = null;   // user_id => jumlah story aktif
     private static ?array $storySeenByViewer = null;    // user_id => jumlah story-nya yg dilihat viewer
+    private static ?array $storyOwnerPrivate = null;    // user_id => akun privat?
+    private static ?array $storyOwnerAllowed = null;    // user_id => viewer sudah di-acc?
     private static ?int $storyCacheFor = null;
 
     public static function forgetStoryCache(): void
     {
         self::$activeStoryOwners = null;
         self::$storySeenByViewer = null;
+        self::$storyOwnerPrivate = null;
+        self::$storyOwnerAllowed = null;
         self::$storyCacheFor = null;
     }
 
@@ -210,6 +214,33 @@ class User extends Authenticatable implements MustVerifyEmail
             }
         }
         self::$storySeenByViewer = $seen;
+
+        // Privasi & izin dihitung DI SINI (bukan dari kolom model), karena banyak endpoint
+        // memakai select() terbatas yang tidak menyertakan `is_private`. Kalau mengandalkan
+        // kolom itu, akun privat bisa terbaca sebagai publik → lingkar story-nya bocor.
+        $ownerIds = array_keys($owners);
+        $private = [];
+        $allowed = [];
+        if (! empty($ownerIds)) {
+            $rows = \Illuminate\Support\Facades\DB::table('users')
+                ->whereIn('user_id', $ownerIds)
+                ->get(['user_id', 'is_private']);
+            foreach ($rows as $row) {
+                $private[(int) $row->user_id] = (bool) $row->is_private;
+            }
+            if ($viewerId) {
+                $accepted = \Illuminate\Support\Facades\DB::table('follows')
+                    ->where('follower_id', $viewerId)
+                    ->whereIn('followed_id', $ownerIds)
+                    ->where('status', 'accepted')
+                    ->pluck('followed_id');
+                foreach ($accepted as $id) {
+                    $allowed[(int) $id] = true;
+                }
+            }
+        }
+        self::$storyOwnerPrivate = $private;
+        self::$storyOwnerAllowed = $allowed;
         self::$storyCacheFor = (int) $viewerId;
     }
 
@@ -222,21 +253,21 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     private function viewerMaySeeStory(?int $viewerId): bool
     {
-        if (! (bool) $this->is_private) {
-            return true;
+        $ownerId = (int) $this->user_id;
+
+        // Semua dibaca dari cache per-request, jadi tidak bergantung pada kolom mana yang
+        // ikut ter-select DAN tidak menambah query per user.
+        if (empty(self::$storyOwnerPrivate[$ownerId])) {
+            return true; // akun publik
         }
         if (! $viewerId) {
             return false;
         }
-        if ((int) $this->user_id === $viewerId) {
-            return true;
+        if ($ownerId === $viewerId) {
+            return true; // story sendiri
         }
 
-        return \Illuminate\Support\Facades\DB::table('follows')
-            ->where('follower_id', $viewerId)
-            ->where('followed_id', $this->user_id)
-            ->where('status', 'accepted')
-            ->exists();
+        return ! empty(self::$storyOwnerAllowed[$ownerId]);
     }
 
     public function getHasStoryAttribute(): bool

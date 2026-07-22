@@ -207,7 +207,13 @@
 		<div class="members">
 			{#each data.members as member (member.user_id)}
 				<article>
-					<Avatar name={member.fullName} src={member.avatarUrl ?? undefined} size="md" />
+					<Avatar
+						name={member.fullName}
+						src={member.avatarUrl ?? undefined}
+						size="md"
+						story={member.hasStory}
+						seen={member.storyViewed}
+					/>
 					<div class="member-copy">
 						<strong
 							>{member.fullName}

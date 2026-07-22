@@ -351,6 +351,9 @@ public function listMembers(Group $group)
             'username' => $member->user->username,
             'profile_picture_url' => $member->user->profile_picture_url,
             'profile_picture_thumb_url' => $member->user->profile_picture_thumb_url,
+            // Lingkar story (privasi akun sudah ditangani accessor di model User).
+            'has_story' => $member->user->has_story,
+            'story_viewed' => $member->user->story_viewed,
             'is_verified' => (bool) $member->user->is_verified,
             'is_online' => (bool) $member->user->is_online,
             'last_seen' => $member->user->last_seen,
