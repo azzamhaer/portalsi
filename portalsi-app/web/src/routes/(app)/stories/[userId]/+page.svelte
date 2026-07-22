@@ -8,6 +8,8 @@
 		MessageCircle,
 		Music2,
 		Trash2,
+		Volume2,
+		VolumeX,
 		X
 	} from '@lucide/svelte';
 	import { untrack } from 'svelte';
@@ -40,7 +42,16 @@
 	let index = $state(0);
 	let paused = $state(false);
 	let holding = $state(false);
+	// Video cerita HARUS mulai muted supaya autoplay diizinkan browser; suaranya
+	// dinyalakan menyusul lewat applyStorySound() (pola sama dengan SmartVideo).
 	let muted = $state(true);
+	// Preferensi bisu eksplisit dari user. Sekali dimatikan, cerita video berikutnya
+	// tetap bisu; tersimpan agar konsisten antar sesi.
+	const STORY_SOUND_KEY = 'psi_story_sound_off';
+	let userMuted = $state(false);
+	let soundBlocked = false;
+	// Waktu mulai menekan → membedakan ketuk cepat (navigasi) dari tahan (jeda).
+	let pressStart = 0;
 	let mediaElement = $state<HTMLMediaElement>();
 	let musicElement = $state<HTMLAudioElement>();
 	let viewers = $state<Array<{ id: number; username: string; avatarUrl: string | null }>>([]);
@@ -58,12 +69,14 @@
 	let vh = $state(900);
 	let frameAspect = $state(9 / 16);
 	let segmentDuration = $state(7_000);
+	const isMobileView = $derived(vw > 0 && vw < 768);
 	const frame = $derived.by(() => {
-		const mobile = vw > 0 && vw < 768;
-		const maxW = mobile ? Math.max(180, vw - 106) : Math.min(500, vw - 140);
-		const maxH = mobile ? vh - 18 : vh - 40;
-		// Frame SELALU portrait 9:16. Media landscape/potrait di-"contain" di dalamnya
-		// (dengan blur backdrop), sehingga ukuran frame tidak berubah antar cerita → transisi mulus.
+		// Mobile: penuh layar (tanpa bilah hitam) — media di-"cover".
+		if (isMobileView) return { width: Math.round(vw), height: Math.round(vh) };
+		// Desktop: frame portrait 9:16, media di-"contain" dengan blur backdrop, sehingga
+		// ukuran frame tetap antar cerita → transisi geser mulus.
+		const maxW = Math.min(500, vw - 140);
+		const maxH = vh - 40;
 		const aspect = 9 / 16;
 		let width = maxW;
 		let height = width / aspect;
@@ -163,6 +176,53 @@
 			if (music) void music.play().catch(() => undefined);
 		}
 	});
+
+	// Nyalakan suara video SETELAH benar-benar berjalan. Kalau browser menolak dan video
+	// ikut terjeda, kembalikan ke bisu lalu lanjutkan — pemutaran lebih penting.
+	function applyStorySound() {
+		const v = mediaElement;
+		if (!v || userMuted || soundBlocked || !v.muted) return;
+		v.muted = false;
+		muted = false;
+		setTimeout(() => {
+			if (v.paused && !effectivePaused) {
+				soundBlocked = true;
+				v.muted = true;
+				muted = true;
+				void v.play().catch(() => undefined);
+			}
+		}, 0);
+	}
+
+	function toggleStoryMute(event: Event) {
+		event.stopPropagation();
+		userMuted = !userMuted;
+		soundBlocked = false; // gesture user = izin sah untuk bunyi
+		muted = userMuted;
+		if (mediaElement) mediaElement.muted = userMuted;
+		try {
+			localStorage.setItem(STORY_SOUND_KEY, userMuted ? '1' : '0');
+		} catch {
+			/* abaikan */
+		}
+	}
+
+	$effect(() => {
+		try {
+			userMuted = localStorage.getItem(STORY_SOUND_KEY) === '1';
+			muted = userMuted;
+		} catch {
+			/* abaikan */
+		}
+	});
+
+	// Ketuk tepi kiri/kanan = navigasi, TAPI hanya bila ketukan cepat. Tekan-tahan tetap
+	// berfungsi untuk menjeda cerita (holding), jadi jangan ikut berpindah.
+	function edgeTap(direction: 'prev' | 'next') {
+		if (Date.now() - pressStart > 250) return;
+		if (direction === 'prev') previous();
+		else next();
+	}
 
 	function loopStoryMusic(event: Event) {
 		const audio = event.currentTarget as HTMLAudioElement;
@@ -316,10 +376,19 @@
 		style:width={`${frame.width}px`}
 		style:height={`${frame.height}px`}
 			style:view-transition-name="story-card"
-		onpointerdown={() => (holding = true)}
+		onpointerdown={() => {
+			holding = true;
+			pressStart = Date.now();
+		}}
 		onpointerup={() => (holding = false)}
 		onpointercancel={() => (holding = false)}
 	>
+		<!-- Zona ketuk tepi: navigasi terintegrasi di dalam media (kiri = mundur, kanan =
+		     maju). Di bawah header/footer/caption supaya tombol di sana tetap bisa ditekan. -->
+		<button class="tap-zone tap-prev" onclick={() => edgeTap('prev')} aria-label="Cerita sebelumnya"
+		></button>
+		<button class="tap-zone tap-next" onclick={() => edgeTap('next')} aria-label="Cerita berikutnya"
+		></button>
 		<div class="progress">
 			{#each stories as item, itemIndex (item.id)}<span class:complete={itemIndex < index}
 					>{#if itemIndex === index}<i
@@ -337,7 +406,20 @@
 				<Avatar name={data.user.username} src={data.user.avatarUrl ?? undefined} size="sm" />
 				<span><small>@{data.user.username} · {story?.createdLabel ?? ''}</small></span>
 			</a>
-			<button class="close" type="button" onclick={closeStory} aria-label="Tutup cerita"><X size={19} /></button>
+			<div class="head-actions">
+				{#if story && story.type === 'video'}
+					<button
+						class="mute-toggle"
+						type="button"
+						onclick={toggleStoryMute}
+						aria-label={muted ? 'Nyalakan suara' : 'Bisukan'}
+						>{#if muted}<VolumeX size={18} />{:else}<Volume2 size={18} />{/if}</button
+					>
+				{/if}
+				<button class="close" type="button" onclick={closeStory} aria-label="Tutup cerita"
+					><X size={19} /></button
+				>
+			</div>
 		</header>
 		{#if story && story.type === 'video' && story.mediaUrl}
 			<video
@@ -348,6 +430,7 @@
 				{muted}
 				playsinline
 				onended={next}
+				onplay={applyStorySound}
 				onwaiting={() => (mediaLoading = true)}
 				onloadedmetadata={(event) => {
 					const video = event.currentTarget;
@@ -470,31 +553,72 @@
 		background:
 			radial-gradient(circle at 50% 44%, rgb(115 81 47 / 22%), transparent 34rem), #100e0c;
 	}
+	/* Tombol navigasi (desktop): bulat kecil, agak samar saat diam, memutih penuh saat
+	   di-hover. */
 	.story-nav {
 		display: grid;
-		width: 46px;
-		height: 72px;
+		width: 40px;
+		height: 40px;
 		flex: none;
 		place-items: center;
-		background: rgb(255 255 255 / 11%);
-		border: 1px solid rgb(255 255 255 / 16%);
-		border-radius: 999px;
+		background: rgb(0 0 0 / 42%);
+		border: 0;
+		border-radius: 50%;
 		color: white;
 		cursor: pointer;
-		backdrop-filter: blur(12px);
+		opacity: 0.55;
+		backdrop-filter: blur(6px);
 		transition:
 			opacity 160ms ease,
-			transform 160ms ease,
-			background 160ms ease;
+			background 160ms ease,
+			color 160ms ease;
 	}
 	.story-nav:hover {
-		background: rgb(255 255 255 / 18%);
-		transform: translateY(-1px);
+		background: #fff;
+		color: #111;
+		opacity: 1;
 	}
 	.story-nav:disabled {
-		opacity: 0.25;
+		opacity: 0.18;
 		cursor: default;
-		transform: none;
+	}
+	/* Zona ketuk tepi: transparan, hanya di area tengah agar tidak menutup header/footer. */
+	.tap-zone {
+		position: absolute;
+		top: 64px;
+		bottom: 78px;
+		z-index: 1;
+		width: 32%;
+		padding: 0;
+		border: 0;
+		background: transparent;
+		cursor: pointer;
+	}
+	.tap-prev {
+		left: 0;
+	}
+	.tap-next {
+		right: 0;
+	}
+	.head-actions {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+	.mute-toggle {
+		display: grid;
+		width: 34px;
+		height: 34px;
+		place-items: center;
+		padding: 0;
+		background: rgb(0 0 0 / 32%);
+		border: 0;
+		border-radius: 50%;
+		color: white;
+		cursor: pointer;
+	}
+	.mute-toggle:hover {
+		background: rgb(0 0 0 / 50%);
 	}
 	.story-viewer > article {
 		position: relative;
@@ -661,6 +785,7 @@
 	}
 	.story-caption {
 		position: absolute;
+		z-index: 2;
 		right: 20px;
 		bottom: 74px;
 		left: 20px;
@@ -679,6 +804,7 @@
 	}
 	article > footer {
 		position: absolute;
+		z-index: 2;
 		right: 12px;
 		bottom: 12px;
 		left: 12px;
@@ -766,19 +892,30 @@
 	}
 	@media (max-width: 767px) {
 		.story-viewer {
-			gap: 6px;
-			padding: 8px;
+			padding: 0;
+			background: #000;
 		}
 		.story-viewer > article {
-			border-radius: 18px;
+			border: 0;
+			border-radius: 0;
+			box-shadow: none;
 		}
+		/* Penuhi layar: media di-cover, jadi tidak ada bilah hitam kiri-kanan. */
 		.story-viewer article > .story-media {
 			position: absolute;
 			inset: 0;
+			object-fit: cover;
 		}
+		.story-backdrop {
+			display: none;
+		}
+		/* Navigasi memakai ketuk tepi (integrasi di media), bukan tombol samping. */
 		.story-nav {
-			width: 38px;
-			height: 58px;
+			display: none;
+		}
+		.tap-zone {
+			top: 72px;
+			bottom: 86px;
 		}
 		article > footer button {
 			min-width: 0;
