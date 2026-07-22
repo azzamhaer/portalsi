@@ -222,6 +222,23 @@ class CollaboratorController extends Controller
             return response()->json(['message' => 'Anda bukan kolaborator postingan ini.'], 404);
         }
 
+        // Bersihkan jejak notifikasi kolaborasi supaya tidak menggantung:
+        // 1) undangan yang PERNAH diterima kolaborator ini.
+        Notification::where('recipient_id', $authId)
+            ->where('related_post_id', $postId)
+            ->where('type', 'collab_invite')
+            ->delete();
+
+        // 2) notifikasi "diterima" yang dikirim ke pemilik post dari kolaborator ini.
+        $post = Post::find($postId);
+        if ($post) {
+            Notification::where('recipient_id', $post->user_id)
+                ->where('related_user_id', $authId)
+                ->where('related_post_id', $postId)
+                ->where('type', 'collab_accepted')
+                ->delete();
+        }
+
         return response()->json(['message' => 'Kolaborasi dibatalkan.']);
     }
 }
