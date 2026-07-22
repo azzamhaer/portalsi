@@ -275,7 +275,7 @@ class DirectMessageController extends Controller
         // 🔹 2. Ambil data user + is_verified
         $userIds = $lastChats->pluck('user_id')->toArray();
         $users = User::whereIn('user_id', $userIds)
-            ->select('user_id', 'username', 'full_name', 'profile_picture_url', 'is_verified')
+            ->select('user_id', 'username', 'full_name', 'profile_picture_url', 'profile_picture_thumb_url', 'is_verified')
             ->get()
             ->keyBy('user_id');
 
@@ -289,6 +289,7 @@ class DirectMessageController extends Controller
                     'name' => $user->full_name ?? $user->username,
                     'username' => $user->username ?? null,
                     'profile_picture_url' => $user->profile_picture_url ?? null,
+                    'profile_picture_thumb_url' => $user->profile_picture_thumb_url ?? null,
                     'is_verified' => (bool) ($user->is_verified ?? false), // 👈 tambahkan ini
                 ],
                 'last_chat' => [

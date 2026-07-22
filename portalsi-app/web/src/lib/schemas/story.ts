@@ -78,6 +78,7 @@ export const storyViewersResponseSchema = z.object({
 			user_id: z.coerce.number().int().positive(),
 			username: z.string().min(1),
 			profile_picture_url: z.string().nullish(),
+			profile_picture_thumb_url: z.string().nullish(),
 			is_verified: booleanish.catch(false),
 			viewed_at: z.string()
 		})

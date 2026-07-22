@@ -88,6 +88,7 @@
 					username={data.profile.username}
 					name={data.profile.fullName}
 					avatarUrl={data.profile.avatarUrl ?? undefined}
+				avatarFullUrl={data.profile.avatarFullUrl ?? undefined}
 					size="xl"
 					hasStory={data.profile.hasStory}
 					seen={data.profile.storyViewed}
@@ -193,7 +194,7 @@
 	<div class="photo-modal" onclick={() => (photoOpen = false)}>
 		<img
 			class="photo-full"
-			src={data.profile.avatarUrl}
+			src={data.profile.avatarFullUrl ?? data.profile.avatarUrl}
 			alt={`Foto profil ${data.profile.fullName}`}
 			onclick={(event) => event.stopPropagation()}
 		/>

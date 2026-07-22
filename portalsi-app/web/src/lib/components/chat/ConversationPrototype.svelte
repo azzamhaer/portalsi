@@ -3,6 +3,7 @@
 	import {
 		ArrowLeft,
 		CheckCheck,
+		Clock,
 		CornerDownRight,
 		FileText,
 		ImagePlus,
@@ -422,31 +423,35 @@
 						{#if !message.mine && mode === 'group'}<strong>{message.senderName}</strong>{/if}
 						{#if message.isPinned}<span class="pinned"><Pin size={11} /> Disematkan</span>{/if}
 						{#if message.isStoryReply}
-							{#if message.storyExpired && !message.isStoryOwner}
-								<div class="story-reply-chip expired-note">Story ini telah kadaluarsa</div>
-							{:else if !message.storyExpired && message.storyMedia && message.storyOwnerId}
-								<a href={`/stories/${message.storyOwnerId}`} class="story-reply-chip clickable">
-									{#if mediaKind(message.storyMedia) === 'video'}<video
-											src={message.storyMedia}
-											muted
-											playsinline
-											preload="metadata"
-										></video>{:else}<img src={message.storyMedia} alt="Cerita yang dibalas" />{/if}
-									<em>Balasan cerita</em>
-								</a>
-							{:else if message.storyMedia}
-								<div class="story-reply-chip">
-									{#if mediaKind(message.storyMedia) === 'video'}<video
-											src={message.storyMedia}
-											muted
-											playsinline
-											preload="metadata"
-										></video>{:else}<img src={message.storyMedia} alt="Cerita yang dibalas" />{/if}
-									<em>{message.storyExpired ? 'Cerita berakhir' : 'Balasan cerita'}</em>
-								</div>
-							{/if}
-						{/if}
-						{#if message.text}<p><MentionText text={message.text} /></p>{/if}
+							<!-- Balasan cerita: story dikutip DI ATAS, teks balasan menginduk DI BAWAHNYA
+							     dalam satu blok, agar penerima tahu ini balasan untuk cerita tsb. -->
+							<div class="story-reply-quote">
+								{#if message.storyExpired && !message.isStoryOwner}
+									<div class="srq-head expired"><Clock size={12} /> Cerita telah berakhir</div>
+								{:else if !message.storyExpired && message.storyMedia && message.storyOwnerId}
+									<a href={`/stories/${message.storyOwnerId}`} class="srq-head clickable">
+										{#if mediaKind(message.storyMedia) === 'video'}<video
+												src={message.storyMedia}
+												muted
+												playsinline
+												preload="metadata"
+											></video>{:else}<img src={message.storyMedia} alt="Cerita yang dibalas" />{/if}
+										<em>Membalas cerita</em>
+									</a>
+								{:else if message.storyMedia}
+									<div class="srq-head">
+										{#if mediaKind(message.storyMedia) === 'video'}<video
+												src={message.storyMedia}
+												muted
+												playsinline
+												preload="metadata"
+											></video>{:else}<img src={message.storyMedia} alt="Cerita yang dibalas" />{/if}
+										<em>{message.storyExpired ? 'Cerita berakhir' : 'Membalas cerita'}</em>
+									</div>
+								{/if}
+								{#if message.text}<p class="srq-text"><MentionText text={message.text} /></p>{/if}
+							</div>
+						{:else if message.text}<p><MentionText text={message.text} /></p>{/if}
 						{#if message.mediaUrl}
 						{#if mediaKind(message.mediaUrl) === 'image'}<a
 								href={message.mediaUrl}
@@ -913,42 +918,54 @@
 		margin-right: auto;
 		font-weight: 700;
 	}
-	/* Pratinjau cerita di dalam gelembung pesan */
-	.story-reply-chip {
+	/* Balasan cerita: story dikutip di atas, teks balasan menginduk di bawah — satu blok. */
+	.story-reply-quote {
+		display: grid;
+		gap: 4px;
+		/* Garis aksen kiri = penanda "ini kutipan/induk". */
+		border-left: 2px solid rgb(0 0 0 / 18%);
+		padding-left: 8px;
+	}
+	.srq-head {
 		display: flex;
 		align-items: center;
 		gap: 8px;
-		margin-bottom: 5px;
-		padding: 5px 7px;
-		border-radius: 10px;
+		padding: 4px 6px;
+		border-radius: 9px;
 		background: rgb(0 0 0 / 8%);
 		color: inherit;
 		text-decoration: none;
 	}
-	.story-reply-chip.clickable {
+	.srq-head.clickable {
 		cursor: pointer;
 	}
-	.story-reply-chip.clickable:hover {
+	.srq-head.clickable:hover {
 		background: rgb(0 0 0 / 14%);
 	}
-	.story-reply-chip.expired-note {
+	.srq-head.expired {
 		font-size: 0.72rem;
 		font-style: italic;
 		opacity: 0.75;
 	}
-	.story-reply-chip img,
-	.story-reply-chip video {
-		width: 30px;
-		height: 42px;
+	.srq-head img,
+	.srq-head video {
+		width: 28px;
+		height: 40px;
 		object-fit: cover;
 		border-radius: 6px;
 		background: #000;
 	}
-	.story-reply-chip em {
-		font-size: 0.66rem;
+	.srq-head em {
+		font-size: 0.64rem;
 		font-style: normal;
 		font-weight: 700;
-		opacity: 0.75;
+		text-transform: uppercase;
+		letter-spacing: 0.02em;
+		opacity: 0.7;
+	}
+	/* Teks balasan: paragraf normal di bawah kutipan, tanpa margin ekstra. */
+	.srq-text {
+		margin: 0;
 	}
 	.story-expired {
 		display: grid;

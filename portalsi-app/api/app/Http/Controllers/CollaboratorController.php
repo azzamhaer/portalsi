@@ -104,7 +104,7 @@ class CollaboratorController extends Controller
             ->join('users as u', 'u.user_id', '=', 'pc.user_id')
             ->where('pc.post_id', $postId)
             ->when(! $isOwner, fn ($q) => $q->where('pc.status', 'accepted'))
-            ->select('u.user_id', 'u.username', 'u.full_name', 'u.profile_picture_url', 'pc.status')
+            ->select('u.user_id', 'u.username', 'u.full_name', 'u.profile_picture_url', 'u.profile_picture_thumb_url', 'pc.status')
             ->get();
 
         return response()->json([

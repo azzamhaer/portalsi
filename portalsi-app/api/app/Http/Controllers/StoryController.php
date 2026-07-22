@@ -288,7 +288,7 @@ class StoryController extends Controller
                     ->join('users', 'users.user_id', '=', 'f2.followed_id')
                     ->whereIn('f1.follower_id', $followedIds)
                     ->whereNotIn('users.user_id', $excludedIds)
-                    ->select('users.user_id', 'users.username', 'users.profile_picture_url')
+                    ->select('users.user_id', 'users.username', 'users.profile_picture_url', 'users.profile_picture_thumb_url')
                     ->distinct()
                     ->limit(8 - $suggestions->count())
                     ->get();

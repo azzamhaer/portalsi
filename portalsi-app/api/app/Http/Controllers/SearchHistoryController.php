@@ -43,7 +43,7 @@ class SearchHistoryController extends Controller
         $targetUser = null;
         if (! empty($data['target_user_id'])) {
             $targetUser = User::query()
-                ->select('user_id', 'username', 'full_name', 'profile_picture_url', 'role', 'is_verified', 'is_private')
+                ->select('user_id', 'username', 'full_name', 'profile_picture_url', 'profile_picture_thumb_url', 'role', 'is_verified', 'is_private')
                 ->find($data['target_user_id']);
         }
 

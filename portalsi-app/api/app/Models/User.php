@@ -275,7 +275,11 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function getProfilePictureThumbUrlAttribute(): ?string
     {
-        return $this->attributes['profile_picture_thumb_url'] ?? $this->profile_picture_url;
+        // Kembalikan HANYA nilai thumbnail asli (atau null). JANGAN fallback ke foto asli:
+        // dulu begitu, sehingga saat kolom ini tidak ikut ter-`select`, accessor mengirim URL
+        // foto ASLI ke frontend yang menyangkanya thumbnail → thumbnail tak pernah terpakai.
+        // Biarkan frontend yang memutuskan fallback (`thumb ?? asli`).
+        return $this->attributes['profile_picture_thumb_url'] ?? null;
     }
 
     /**

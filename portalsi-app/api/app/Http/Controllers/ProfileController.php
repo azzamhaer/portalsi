@@ -145,6 +145,7 @@ class ProfileController extends Controller
             'bio' => $user->bio,
             'email' => $user->email,
             'profile_picture_url' => $user->profile_picture_url,
+            'profile_picture_thumb_url' => $user->profile_picture_thumb_url,
             'banner_url' => $user->banner_url,
             'is_verified' => $user->is_verified,
             'role' => $user->role,
@@ -165,7 +166,7 @@ class ProfileController extends Controller
     public function showById(Request $request, $id)
     {
         return response()->json(
-            User::select('user_id', 'username', 'full_name', 'profile_picture_url', 'is_verified', 'role')
+            User::select('user_id', 'username', 'full_name', 'profile_picture_url', 'profile_picture_thumb_url', 'is_verified', 'role')
                 ->findOrFail($id)
         );
     }
@@ -268,6 +269,7 @@ class ProfileController extends Controller
             'email' => $user->email,
             'email_verified' => $user->hasVerifiedEmail(),
             'profile_picture_url' => $user->profile_picture_url,
+            'profile_picture_thumb_url' => $user->profile_picture_thumb_url,
             'banner_url' => $user->banner_url,
             'is_verified' => $user->is_verified,
             'role' => $user->role,
@@ -302,7 +304,7 @@ class ProfileController extends Controller
                 }
             })
             ->when($request->user(), fn ($q) => $q->where('user_id', '!=', $request->user()->user_id))
-            ->select('user_id', 'username', 'full_name', 'is_verified', 'profile_picture_url', 'role', 'is_private')
+            ->select('user_id', 'username', 'full_name', 'is_verified', 'profile_picture_url', 'profile_picture_thumb_url', 'role', 'is_private')
             ->paginate($perPage)
             ->appends([
                 'username' => $username,
@@ -333,7 +335,7 @@ class ProfileController extends Controller
         $mutualIds = array_values(array_intersect($followingIds, $followerIds));
 
         $mutuals = User::whereIn('user_id', $mutualIds)
-            ->select('user_id', 'username', 'full_name', 'is_verified', 'profile_picture_url')
+            ->select('user_id', 'username', 'full_name', 'is_verified', 'profile_picture_url', 'profile_picture_thumb_url')
             ->paginate($perPage);
 
         return response()->json($mutuals);

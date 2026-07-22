@@ -153,7 +153,7 @@ class FollowController extends Controller
 
         $followersQuery = $user->followers()
             ->wherePivot('status', 'accepted')
-            ->select('users.user_id', 'username', 'full_name', 'profile_picture_url', 'is_verified');
+            ->select('users.user_id', 'username', 'full_name', 'profile_picture_url', 'profile_picture_thumb_url', 'is_verified');
 
         $paginatedFollowers = $followersQuery->paginate($perPage, ['*'], 'page', $page);
         $items = $this->annotateFollowState($paginatedFollowers->items());
@@ -181,7 +181,7 @@ class FollowController extends Controller
 
         $followingQuery = $user->following()
             ->wherePivot('status', 'accepted')
-            ->select('users.user_id', 'username', 'full_name', 'profile_picture_url', 'is_verified');
+            ->select('users.user_id', 'username', 'full_name', 'profile_picture_url', 'profile_picture_thumb_url', 'is_verified');
 
         $paginatedFollowing = $followingQuery->paginate($perPage, ['*'], 'page', $page);
         $items = $this->annotateFollowState($paginatedFollowing->items());
@@ -282,7 +282,7 @@ class FollowController extends Controller
 
         $pending = $authUser->followers()
             ->wherePivot('status', 'pending')
-            ->select('users.user_id', 'users.username', 'users.full_name', 'users.profile_picture_url', 'users.is_verified', 'users.role')
+            ->select('users.user_id', 'users.username', 'users.full_name', 'users.profile_picture_url', 'users.profile_picture_thumb_url', 'users.is_verified', 'users.role')
             ->get();
 
         // Tandai siapa yang punya story aktif (untuk lingkaran story).

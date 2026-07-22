@@ -18,6 +18,7 @@ export const directChatListItemSchema = z.object({
 		name: z.string().nullish(),
 		username: z.string().nullish(),
 		profile_picture_url: z.string().nullish(),
+		profile_picture_thumb_url: z.string().nullish(),
 		is_verified: booleanish.catch(false)
 	}),
 	last_chat: z.object({

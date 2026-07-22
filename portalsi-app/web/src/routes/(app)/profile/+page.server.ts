@@ -29,7 +29,12 @@ export const load: PageServerLoad = async ({ locals }) => {
 			username: profile.username,
 			fullName: profile.full_name?.trim() || profile.username,
 			bio: profile.bio?.trim() || '',
-			avatarUrl: normalizeMediaUrl(profile.profile_picture_url, mediaBaseUrl),
+			avatarUrl: normalizeMediaUrl(
+				profile.profile_picture_thumb_url ?? profile.profile_picture_url,
+				mediaBaseUrl
+			),
+			// Foto asli untuk pratinjau saat avatar profil dipencet (membesar).
+			avatarFullUrl: normalizeMediaUrl(profile.profile_picture_url, mediaBaseUrl),
 			bannerUrl: normalizeMediaUrl(profile.banner_url, mediaBaseUrl),
 			role: profile.role,
 			badgeVerified: profile.is_verified,

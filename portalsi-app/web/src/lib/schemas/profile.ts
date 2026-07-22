@@ -56,6 +56,7 @@ export const profileResponseSchema = z
 		email: z.string().email().nullish(),
 		email_verified: z.boolean().optional(),
 		profile_picture_url: z.string().nullish(),
+		profile_picture_thumb_url: z.string().nullish(),
 		banner_url: z.string().nullish(),
 		is_verified: booleanish.catch(false),
 		role: userRoleSchema.catch('other'),

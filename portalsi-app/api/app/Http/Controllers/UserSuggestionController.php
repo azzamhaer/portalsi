@@ -32,7 +32,7 @@ class UserSuggestionController extends Controller
 
             // cek dulu apakah ada userIds, kalau kosong jangan pakai FIELD()
             $users = $userIds->isNotEmpty()
-                ? User::select('user_id', 'username', 'full_name', 'profile_picture_url', 'is_verified', 'is_private')
+                ? User::select('user_id', 'username', 'full_name', 'profile_picture_url', 'profile_picture_thumb_url', 'is_verified', 'is_private')
                     ->emailVerified()
                     ->whereIn('user_id', $userIds)
                     ->orderByRaw("FIELD(user_id, " . implode(',', $userIds->toArray()) . ")")
@@ -46,7 +46,7 @@ class UserSuggestionController extends Controller
         if ($suggestions->count() < 10) {
             $need = 10 - $suggestions->count();
 
-            $randomUsers = User::select('user_id', 'username', 'full_name', 'profile_picture_url', 'is_verified', 'is_private')
+            $randomUsers = User::select('user_id', 'username', 'full_name', 'profile_picture_url', 'profile_picture_thumb_url', 'is_verified', 'is_private')
                 ->emailVerified()
                 ->where('user_id', '!=', $authUser->user_id)
                 ->whereNotIn('user_id', $followingIds)

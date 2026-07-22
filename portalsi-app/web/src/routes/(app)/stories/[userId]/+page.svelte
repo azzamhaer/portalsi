@@ -269,7 +269,7 @@
 			viewers = response.viewers.map((viewer) => ({
 				id: viewer.user_id,
 				username: viewer.username,
-				avatarUrl: viewer.profile_picture_url ?? null
+				avatarUrl: viewer.profile_picture_thumb_url ?? viewer.profile_picture_url ?? null
 			}));
 		} catch {
 			viewerStatus = 'Daftar penonton belum dapat dimuat.';
@@ -428,7 +428,16 @@
 				aria-label={`Buka profil @${data.user.username}`}
 			>
 				<Avatar name={data.user.username} src={data.user.avatarUrl ?? undefined} size="sm" />
-				<span><small>@{data.user.username} · {story?.createdLabel ?? ''}</small></span>
+				<span class="story-id">
+					<strong>@{data.user.username}</strong><small>{story?.createdLabel ?? ''}</small>
+					{#if story?.musicTitle}
+						{@const label = `${story.musicTitle}${story.musicArtist ? ` · ${story.musicArtist}` : ''}`}
+						<span class="story-music" class:marquee={label.length > 26} title={label}>
+							<Music2 size={11} />
+							<span class="sm-track"><span>{label}</span></span>
+						</span>
+					{/if}
+				</span>
 			</a>
 			<div class="head-actions">
 				{#if story && story.type === 'video'}
@@ -744,6 +753,71 @@
 	}
 	.story-user span {
 		display: grid;
+	}
+	/* Hierarki: username tebal & terang, waktu tipis, judul lagu paling kecil & redup. */
+	.story-id {
+		min-width: 0;
+		line-height: 1.15;
+	}
+	.story-id > strong {
+		font-size: 0.78rem;
+		font-weight: 700;
+		color: #fff;
+	}
+	.story-id > small {
+		margin-left: 6px;
+		color: rgb(255 255 255 / 62%);
+		font-size: 0.62rem;
+	}
+	.story-music {
+		display: flex;
+		align-items: center;
+		gap: 4px;
+		max-width: 200px;
+		margin-top: 2px;
+		color: rgb(255 255 255 / 82%);
+		font-size: 0.64rem;
+	}
+	.story-music :global(svg) {
+		flex: none;
+		opacity: 0.85;
+	}
+	/* Track judul lagu: default terpotong elipsis; bila terlalu panjang → marquee. */
+	.sm-track {
+		overflow: hidden;
+		min-width: 0;
+	}
+	.sm-track > span {
+		display: inline-block;
+		max-width: 172px;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		vertical-align: bottom;
+	}
+	.story-music.marquee .sm-track {
+		width: 172px;
+	}
+	.story-music.marquee .sm-track > span {
+		max-width: none;
+		padding-left: 100%;
+		animation: story-marquee 9s linear infinite;
+	}
+	@keyframes story-marquee {
+		from {
+			transform: translateX(0);
+		}
+		to {
+			transform: translateX(-100%);
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.story-music.marquee .sm-track > span {
+			animation: none;
+			padding-left: 0;
+			max-width: 172px;
+			text-overflow: ellipsis;
+		}
 	}
 	article > header small {
 		color: rgb(255 255 255 / 70%);

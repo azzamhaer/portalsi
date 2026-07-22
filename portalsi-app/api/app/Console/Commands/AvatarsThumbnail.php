@@ -53,9 +53,19 @@ class AvatarsThumbnail extends Command
 
         // ---------- MODE SCAN: hitung dulu, tanpa menulis ----------
         if ($scanOnly) {
+            // Rincian supaya jelas kenapa jumlahnya bisa lebih kecil dari total pengguna:
+            // user tanpa foto (pakai inisial) memang tidak butuh thumbnail.
+            $allUsers = User::query()->count();
+            $withPhoto = User::query()->whereNotNull('profile_picture_url')->where('profile_picture_url', '!=', '')->count();
+            $alreadyThumb = User::query()->whereNotNull('profile_picture_thumb_url')->count();
+
             $this->line('');
             $this->info('== Pratinjau (scan) — tidak ada yang diubah ==');
-            $this->line("  Foto profil yang akan diproses : <fg=yellow>{$total}</>");
+            $this->line("  Total pengguna                 : {$allUsers}");
+            $this->line("  Punya foto profil              : {$withPhoto}");
+            $this->line('  Tanpa foto (pakai inisial)     : '.($allUsers - $withPhoto).' (tidak perlu thumbnail)');
+            $this->line("  Sudah punya thumbnail          : {$alreadyThumb}");
+            $this->line("  <fg=yellow>Akan diproses sekarang          : {$total}</>");
 
             $sampleN = min(200, $total);
             $origBytes = 0;

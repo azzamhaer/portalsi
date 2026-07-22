@@ -154,7 +154,10 @@
 		property="og:description"
 		content={data.profile.bio || `Profil @${data.profile.username}`}
 	/>
-	{#if data.profile.avatarUrl}<meta property="og:image" content={data.profile.avatarUrl} />{/if}
+	{#if data.profile.avatarFullUrl ?? data.profile.avatarUrl}<meta
+			property="og:image"
+			content={data.profile.avatarFullUrl ?? data.profile.avatarUrl}
+		/>{/if}
 </svelte:head>
 
 <div class="other-profile">
@@ -169,6 +172,7 @@
 				username={data.profile.username}
 				name={data.profile.fullName}
 				avatarUrl={data.profile.avatarUrl ?? undefined}
+				avatarFullUrl={data.profile.avatarFullUrl ?? undefined}
 				size="xl"
 				previewable
 				hasStory={data.profile.hasStory}
