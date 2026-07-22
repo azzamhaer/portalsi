@@ -213,11 +213,42 @@ class User extends Authenticatable implements MustVerifyEmail
         self::$storyCacheFor = (int) $viewerId;
     }
 
+    /**
+     * Bolehkah viewer melihat story user ini?
+     *
+     * Story mengikuti privasi akun: akun privat hanya bisa dilihat oleh dirinya sendiri
+     * atau pengikut yang SUDAH diterima. Akun publik selalu boleh. Tanpa aturan ini,
+     * lingkar story akan bocor untuk akun privat yang belum kita follow.
+     */
+    private function viewerMaySeeStory(?int $viewerId): bool
+    {
+        if (! (bool) $this->is_private) {
+            return true;
+        }
+        if (! $viewerId) {
+            return false;
+        }
+        if ((int) $this->user_id === $viewerId) {
+            return true;
+        }
+
+        return \Illuminate\Support\Facades\DB::table('follows')
+            ->where('follower_id', $viewerId)
+            ->where('followed_id', $this->user_id)
+            ->where('status', 'accepted')
+            ->exists();
+    }
+
     public function getHasStoryAttribute(): bool
     {
-        self::ensureStoryCache(self::viewerId());
+        $viewerId = self::viewerId();
+        self::ensureStoryCache($viewerId);
 
-        return isset(self::$activeStoryOwners[(int) $this->user_id]);
+        if (! isset(self::$activeStoryOwners[(int) $this->user_id])) {
+            return false;
+        }
+
+        return $this->viewerMaySeeStory($viewerId);
     }
 
     public function getStoryViewedAttribute(): bool
@@ -226,7 +257,7 @@ class User extends Authenticatable implements MustVerifyEmail
         self::ensureStoryCache($viewerId);
 
         $total = self::$activeStoryOwners[(int) $this->user_id] ?? 0;
-        if ($total === 0) {
+        if ($total === 0 || ! $this->viewerMaySeeStory($viewerId)) {
             return false;
         }
         // "Dilihat" (ring abu-abu) hanya bila SEMUA story aktifnya sudah ditonton viewer.

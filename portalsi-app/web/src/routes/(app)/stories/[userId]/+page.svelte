@@ -932,27 +932,24 @@
 			border-radius: 0;
 			box-shadow: none;
 		}
+		/* Gambar DAN video di-"contain" supaya media apa pun (potret/lanskap) terlihat UTUH
+		   tanpa terpotong atau tergencet. */
 		.story-viewer article > .story-media {
 			position: absolute;
 			inset: 0;
-		}
-		/* GAMBAR di-"contain" supaya terlihat utuh (tidak terpotong). Sisa ruang diisi
-		   backdrop blur dari gambar itu sendiri, jadi layar tetap penuh tanpa bilah hitam.
-		   Video tetap "cover" (mengisi penuh) seperti sebelumnya. */
-		.story-viewer article > img.story-media {
 			object-fit: contain;
 		}
-		.story-viewer article > video.story-media {
-			object-fit: cover;
-		}
-		/* Backdrop blur mengisi ruang sisa di belakang gambar yang di-contain (overscan
-		   inset/scale-nya diwarisi dari aturan desktop supaya tepi blur tidak terlihat). */
+		/* Backdrop blur (gambar) mengisi ruang sisa di belakang media yang di-contain,
+		   overscan inset/scale-nya diwarisi dari aturan desktop supaya tepi blur tak terlihat. */
 		.story-backdrop {
 			display: block;
 			opacity: 0.55;
 		}
-		/* Navigasi memakai ketuk tepi (integrasi di media), bukan tombol samping. */
-		.story-nav {
+		/* Navigasi memakai ketuk tepi (integrasi di media), bukan tombol samping.
+		   Spacer JUGA disembunyikan — kalau tidak, di ujung rangkaian ia menyisakan
+		   bilah hitam 40px di sisi kanan/kiri (inilah bug bilah hitam itu). */
+		.story-nav,
+		.story-nav-spacer {
 			display: none;
 		}
 		.tap-zone {
