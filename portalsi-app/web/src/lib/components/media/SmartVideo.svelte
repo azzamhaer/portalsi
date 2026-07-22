@@ -504,20 +504,32 @@
 		if (!el || !container) return;
 		// iOS: cerminkan atribut muted agar autoplay diizinkan sejak awal.
 		if (!forceMuted && el.muted) el.defaultMuted = true;
+		// Lacak apakah video SEDANG di viewport, agar reset "userPaused" hanya terjadi saat
+		// benar-benar MASUK ulang — bukan tiap kali observer memicu selagi masih terlihat.
+		// Dulu tanpa ini: user jeda video → scroll sedikit (masih terlihat) → observer
+		// memicu lagi → userPaused=false → video jalan sendiri. Sekarang jeda dihormati
+		// sampai video keluar penuh dari viewport lalu masuk lagi (atau user menekan play).
+		let inView = false;
 		const observer = new IntersectionObserver(
 			(entries) => {
 				const entry = entries[0];
 				if (!entry) return;
-				if (entry.isIntersecting && entry.intersectionRatio >= 0.55) {
+				const nowIn = entry.isIntersecting && entry.intersectionRatio >= 0.55;
+				if (nowIn && !inView) {
+					// Baru MASUK viewport → mulai autoplay (jeda manual sebelumnya dilepas).
+					inView = true;
 					shouldPlay = true;
 					userPaused = false;
 					ensurePlaying();
-				} else {
+				} else if (!nowIn && inView) {
+					// KELUAR viewport → jeda; jeda manual direset agar masuk lagi bisa autoplay.
+					inView = false;
 					shouldPlay = false;
 					userPaused = false;
 					stopPlayRetry();
 					if (!el.paused) el.pause();
 				}
+				// Masih terlihat (nowIn && inView): jangan utak-atik — hormati userPaused.
 			},
 			{ threshold: [0, 0.55, 1] }
 		);

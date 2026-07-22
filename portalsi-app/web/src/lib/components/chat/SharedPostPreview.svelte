@@ -64,7 +64,7 @@
 					multiple: gallery.length > 1,
 					username: post.user.username,
 					fullName: post.user.full_name?.trim() || post.user.username,
-					avatarUrl: normalizeMediaUrl(post.user.profile_picture_url, mediaBaseUrl) ?? null,
+					avatarUrl: normalizeMediaUrl(post.user.profile_picture_thumb_url ?? post.user.profile_picture_url, mediaBaseUrl) ?? null,
 					verified: post.user.is_verified,
 					role: post.user.role
 				} satisfies SharedPost;

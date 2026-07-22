@@ -85,7 +85,9 @@ export function mapPost(post: BackendPost, mediaBaseUrl: string): PostPreview {
 			id: u.user_id,
 			username: u.username,
 			fullName: u.full_name?.trim() || u.username,
-			avatarUrl: normalizeMediaUrl(u.profile_picture_url, mediaBaseUrl) ?? undefined,
+			avatarUrl:
+				normalizeMediaUrl(u.profile_picture_thumb_url ?? u.profile_picture_url, mediaBaseUrl) ??
+				undefined,
 			verified: u.is_verified
 		})),
 		viewerCollabStatus: post.viewer_collab_status ?? null,
@@ -136,7 +138,9 @@ export function mapStoryGroups(
 				id: group.user_id,
 				username: group.username,
 				fullName: group.full_name?.trim() || group.username,
-				avatarUrl: normalizeMediaUrl(group.profile_picture_url, mediaBaseUrl) ?? undefined,
+				avatarUrl:
+					normalizeMediaUrl(group.profile_picture_thumb_url ?? group.profile_picture_url, mediaBaseUrl) ??
+					undefined,
 				role: group.role,
 				badgeVerified: group.is_verified,
 				emailVerified: true,

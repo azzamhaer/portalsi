@@ -194,7 +194,7 @@ class StoryController extends Controller
         $allIds = array_merge([$authUser->user_id], $followedIds);
 
         // 🔹 Ambil daftar user yang punya story aktif
-        $usersWithStories = Story::with('user:user_id,username,profile_picture_url')
+        $usersWithStories = Story::with('user:user_id,username,profile_picture_url,profile_picture_thumb_url')
             ->whereIn('user_id', $allIds)
             ->where('expires_at', '>', now())
             ->selectRaw('user_id, MAX(created_at) as latest_story_time')
@@ -203,7 +203,7 @@ class StoryController extends Controller
             ->get();
 
         // 🔹 Ambil semua story aktif
-        $stories = Story::with(['user:user_id,username,profile_picture_url'])
+        $stories = Story::with(['user:user_id,username,profile_picture_url,profile_picture_thumb_url'])
             ->whereIn('user_id', $usersWithStories->pluck('user_id'))
             ->where('expires_at', '>', now())
             ->orderBy('created_at', 'asc')
@@ -230,6 +230,7 @@ class StoryController extends Controller
                 'user_id' => $storyOwner->user_id,
                 'username' => $storyOwner->username,
                 'profile_picture_url' => $storyOwner->profile_picture_url,
+                'profile_picture_thumb_url' => $storyOwner->profile_picture_thumb_url,
                 'is_viewed' => $isAllViewed,
                 'stories' => $userStories->map(function ($story) use ($authUser) {
                     $alreadyViewed = \DB::table('story_views')
@@ -274,7 +275,7 @@ class StoryController extends Controller
                 ->whereNotIn('users.user_id', $followedIds)
                 ->where('users.user_id', '<>', $authUser->user_id)
                 ->limit(8)
-                ->get(['users.user_id', 'users.username', 'users.profile_picture_url']);
+                ->get(['users.user_id', 'users.username', 'users.profile_picture_url', 'users.profile_picture_thumb_url']);
 
             $suggestions = $suggestions->merge($notFollowedBack);
 
@@ -303,7 +304,7 @@ class StoryController extends Controller
                 $randomUsers = User::whereNotIn('user_id', $excludedIds)
                     ->inRandomOrder()
                     ->limit(8 - $suggestions->count())
-                    ->get(['user_id', 'username', 'profile_picture_url']);
+                    ->get(['user_id', 'username', 'profile_picture_url', 'profile_picture_thumb_url']);
 
                 $suggestions = $suggestions->merge($randomUsers);
             }
@@ -421,6 +422,7 @@ class StoryController extends Controller
                 'is_verified' => (bool) $target->is_verified,
                 'role' => $target->role,
                 'profile_picture_url' => $target->profile_picture_url,
+                'profile_picture_thumb_url' => $target->profile_picture_thumb_url,
             ],
             'stories' => $formattedStories,
             'prev_user_id' => $prevUserId,
@@ -523,7 +525,7 @@ class StoryController extends Controller
             ->exists();
         abort_unless($canView, 403, 'Ikuti akun privat ini untuk melihat cerita.');
 
-        $stories = Story::with(['user:user_id,username,profile_picture_url'])
+        $stories = Story::with(['user:user_id,username,profile_picture_url,profile_picture_thumb_url'])
             ->where('user_id', $userId)
             ->where('expires_at', '>', now())
             ->latest()
@@ -562,6 +564,7 @@ class StoryController extends Controller
             'user_id' => $userId,
             'username' => $user->username ?? null,
             'profile_picture_url' => $user->profile_picture_url ?? null,
+            'profile_picture_thumb_url' => $user->profile_picture_thumb_url ?? null,
             'stories' => $stories,
         ]);
     }
@@ -576,7 +579,7 @@ class StoryController extends Controller
         $page = max(1, (int) $request->input('page', 1));
         $perPage = max(1, (int) $request->input('per_page', 10));
 
-        $query = Story::with(['user:user_id,username,profile_picture_url'])
+        $query = Story::with(['user:user_id,username,profile_picture_url,profile_picture_thumb_url'])
             ->where('user_id', $authUser->user_id)
             ->where('expires_at', '<=', now())
             ->latest();

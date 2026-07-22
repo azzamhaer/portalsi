@@ -156,7 +156,7 @@
 									id: item.sender.user_id,
 									username: item.sender.username,
 									fullName: item.sender.full_name?.trim() || item.sender.username,
-									avatarUrl: normalizeMediaUrl(item.sender.profile_picture_url, mediaBaseUrl),
+									avatarUrl: normalizeMediaUrl(item.sender.profile_picture_thumb_url ?? item.sender.profile_picture_url, mediaBaseUrl),
 									role: item.sender.role,
 									badgeVerified: item.sender.is_verified,
 									hasStory: false,

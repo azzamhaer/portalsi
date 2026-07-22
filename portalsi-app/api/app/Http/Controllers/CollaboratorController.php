@@ -36,7 +36,8 @@ class CollaboratorController extends Controller
                 'u.user_id as inviter_id',
                 'u.username as inviter_username',
                 'u.full_name as inviter_name',
-                'u.profile_picture_url as inviter_avatar'
+                'u.profile_picture_url as inviter_avatar',
+                'u.profile_picture_thumb_url as inviter_avatar_thumb'
             )
             ->limit(50)
             ->get();
@@ -54,6 +55,7 @@ class CollaboratorController extends Controller
                     'username' => $r->inviter_username,
                     'full_name' => $r->inviter_name,
                     'profile_picture_url' => $r->inviter_avatar,
+                    'profile_picture_thumb_url' => $r->inviter_avatar_thumb,
                 ],
             ]),
         ]);
@@ -115,6 +117,7 @@ class CollaboratorController extends Controller
                 'username' => $r->username,
                 'full_name' => $r->full_name,
                 'profile_picture_url' => $r->profile_picture_url,
+                'profile_picture_thumb_url' => $r->profile_picture_thumb_url,
                 'status' => $r->status,
             ]),
         ]);
@@ -197,5 +200,28 @@ class CollaboratorController extends Controller
             ->delete();
 
         return response()->json(['message' => 'Undangan kolaborasi ditolak.']);
+    }
+
+    /**
+     * Kolaborator membatalkan kolaborasinya sendiri pada sebuah post yang SUDAH diterima.
+     *
+     * Barisnya DIHAPUS (bukan dikembalikan ke pending), sehingga di daftar kolaborator milik
+     * pemilik post orang ini benar-benar hilang. Bila ingin berkolaborasi lagi, pemilik post
+     * tinggal menambahkannya kembali sebagai kolaborator.
+     */
+    public function leave($postId)
+    {
+        $authId = Auth::id();
+        $deleted = DB::table('post_collaborators')
+            ->where('post_id', $postId)
+            ->where('user_id', $authId)
+            ->where('status', 'accepted')
+            ->delete();
+
+        if (! $deleted) {
+            return response()->json(['message' => 'Anda bukan kolaborator postingan ini.'], 404);
+        }
+
+        return response()->json(['message' => 'Kolaborasi dibatalkan.']);
     }
 }

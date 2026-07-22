@@ -57,7 +57,7 @@
 			id: user.user_id,
 			name: user.full_name?.trim() || user.username,
 			handle: `@${user.username}`,
-			avatarUrl: normalizeMediaUrl(user.profile_picture_url, mediaBaseUrl) ?? null,
+			avatarUrl: normalizeMediaUrl(user.profile_picture_thumb_url ?? user.profile_picture_url, mediaBaseUrl) ?? null,
 			verified: Boolean(user.is_verified),
 			role: user.role ?? 'other'
 		};
@@ -86,7 +86,7 @@
 									item.conversation.name || item.conversation.username || 'Pengguna Portal SI',
 								handle: item.conversation.username ? `@${item.conversation.username}` : 'Pesan',
 								avatarUrl:
-									normalizeMediaUrl(item.conversation.profile_picture_url, mediaBaseUrl) ?? null,
+									normalizeMediaUrl(item.conversation.profile_picture_thumb_url ?? item.conversation.profile_picture_url, mediaBaseUrl) ?? null,
 								verified: false,
 								role: 'other'
 							}

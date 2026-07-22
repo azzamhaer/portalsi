@@ -55,7 +55,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 		storyReply,
 		avatarUrl:
 			existing?.type === 'user'
-				? normalizeMediaUrl(existing.conversation.profile_picture_url, mediaBaseUrl)
+				? normalizeMediaUrl(existing.conversation.profile_picture_thumb_url ?? existing.conversation.profile_picture_url, mediaBaseUrl)
 				: normalizeMediaUrl(peer?.profile_picture_url || queryAvatar, mediaBaseUrl),
 		currentUserId: locals.user.id,
 		messages: messages.map((message) => ({

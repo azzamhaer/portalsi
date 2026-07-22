@@ -35,6 +35,7 @@ class WebSocketController extends Controller
       'username' => $user->username,
       'full_name' => $user->full_name,
       'profile_picture_url' => $user->profile_picture_url,
+      'profile_picture_thumb_url' => $user->profile_picture_thumb_url,
     ]);
   }
 
@@ -87,6 +88,7 @@ class WebSocketController extends Controller
           'username' => $follower->username,
           'full_name' => $follower->full_name,
           'profile_picture_url' => $follower->profile_picture_url,
+          'profile_picture_thumb_url' => $follower->profile_picture_thumb_url,
         ];
       })
     ]);

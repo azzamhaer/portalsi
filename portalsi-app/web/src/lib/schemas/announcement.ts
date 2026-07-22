@@ -14,7 +14,8 @@ export const announcementSchema = z
 				user_id: z.coerce.number().int().positive(),
 				full_name: z.string().nullish(),
 				username: z.string().min(1),
-				profile_picture_url: z.string().nullish()
+				profile_picture_url: z.string().nullish(),
+				profile_picture_thumb_url: z.string().nullish(),
 			})
 			.nullish()
 	})

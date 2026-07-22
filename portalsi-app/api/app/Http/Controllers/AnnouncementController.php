@@ -24,7 +24,7 @@ class AnnouncementController extends Controller
 public function index()
 {
     return Announcement::with([
-        'creator:user_id,full_name,username,profile_picture_url'
+        'creator:user_id,full_name,username,profile_picture_url,profile_picture_thumb_url'
     ])->latest()->get();
 }
 
@@ -33,7 +33,7 @@ public function index()
 public function pinned()
 {
     return Announcement::with([
-        'creator:user_id,full_name,username,profile_picture_url'
+        'creator:user_id,full_name,username,profile_picture_url,profile_picture_thumb_url'
     ])->where('pinned', 1)
       ->latest()
       ->get();
@@ -72,7 +72,7 @@ public function pinned()
         }
 
         $announcement = Announcement::create($data);
-        $announcement->load('creator:user_id,full_name,username,profile_picture_url');
+        $announcement->load('creator:user_id,full_name,username,profile_picture_url,profile_picture_thumb_url');
         event(new \App\Events\NewAnnouncement($announcement));
         return response()->json($announcement, 201);
     }
@@ -118,7 +118,7 @@ public function pinned()
         }
 
         $announcement->update($data);
-        $announcement->load('creator:user_id,full_name,username,profile_picture_url');
+        $announcement->load('creator:user_id,full_name,username,profile_picture_url,profile_picture_thumb_url');
         event(new \App\Events\NewAnnouncement($announcement));
         return response()->json($announcement);
     }

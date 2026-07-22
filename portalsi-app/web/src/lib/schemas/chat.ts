@@ -7,6 +7,7 @@ export const directPeerSchema = z.object({
 	username: z.string().min(1),
 	full_name: z.string().nullish(),
 	profile_picture_url: z.string().nullish(),
+	profile_picture_thumb_url: z.string().nullish(),
 	is_verified: booleanish.catch(false),
 	role: z.enum(['student', 'parent', 'teacher', 'dev', 'other']).catch('other')
 });

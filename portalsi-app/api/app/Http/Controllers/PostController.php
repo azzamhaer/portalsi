@@ -326,6 +326,7 @@ class PostController extends Controller
                                 'username' => $user->username,
                                 'full_name' => $user->full_name,
                                 'profile_picture_url' => $user->profile_picture_url,
+                                'profile_picture_thumb_url' => $user->profile_picture_thumb_url,
                                 'role' => $user->role ?? 'student',
                                 'is_private' => (bool) $user->is_private,
                                 'is_follow_back' => (bool) $user->is_follow_back,

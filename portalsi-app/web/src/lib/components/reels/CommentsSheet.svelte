@@ -186,7 +186,7 @@
 				userId: response.data.user.user_id ?? currentUserId ?? 0,
 				name: response.data.user.full_name?.trim() || response.data.user.username,
 				username: response.data.user.username,
-				avatarUrl: normalizeMediaUrl(response.data.user.profile_picture_url, mediaBaseUrl) ?? undefined,
+				avatarUrl: normalizeMediaUrl(response.data.user.profile_picture_thumb_url ?? response.data.user.profile_picture_url, mediaBaseUrl) ?? undefined,
 				hasStory: false,
 				storyViewed: false,
 				text: response.data.content,

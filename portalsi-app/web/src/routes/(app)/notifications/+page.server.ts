@@ -46,7 +46,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 						id: item.sender.user_id,
 						username: item.sender.username,
 						fullName: item.sender.full_name?.trim() || item.sender.username,
-						avatarUrl: normalizeMediaUrl(item.sender.profile_picture_url, mediaBaseUrl),
+						avatarUrl: normalizeMediaUrl(item.sender.profile_picture_thumb_url ?? item.sender.profile_picture_url, mediaBaseUrl),
 						role: item.sender.role,
 						badgeVerified: item.sender.is_verified,
 						hasStory: storyStatus.has(item.sender.user_id),
@@ -59,7 +59,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 				id: user.user_id,
 				username: user.username,
 				fullName: user.full_name?.trim() || user.username,
-				avatarUrl: normalizeMediaUrl(user.profile_picture_url, mediaBaseUrl),
+				avatarUrl: normalizeMediaUrl(user.profile_picture_thumb_url ?? user.profile_picture_url, mediaBaseUrl),
 				role: user.role,
 				badgeVerified: user.is_verified
 			})) ?? [],

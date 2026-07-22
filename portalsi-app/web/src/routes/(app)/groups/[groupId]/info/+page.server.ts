@@ -76,7 +76,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 	].map((member) => ({
 		...member,
 		fullName: member.full_name?.trim() || member.username,
-		avatarUrl: normalizeMediaUrl(member.profile_picture_url, mediaBaseUrl)
+		avatarUrl: normalizeMediaUrl(member.profile_picture_thumb_url ?? member.profile_picture_url, mediaBaseUrl)
 	}));
 	return {
 		group: {

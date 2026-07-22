@@ -22,6 +22,7 @@ export const storyGroupSchema = z.object({
 	is_verified: booleanish.catch(false),
 	is_recommended: booleanish.catch(false),
 	profile_picture_url: z.string().nullish(),
+	profile_picture_thumb_url: z.string().nullish(),
 	is_viewed: booleanish.catch(false),
 	stories: z.array(storySchema).min(1)
 });
@@ -36,7 +37,8 @@ export const storyFeedResponseSchema = z.object({
 				full_name: z.string().nullish(),
 				role: z.enum(['student', 'parent', 'teacher', 'dev', 'other']).catch('other'),
 				is_verified: booleanish.catch(false),
-				profile_picture_url: z.string().nullish()
+				profile_picture_url: z.string().nullish(),
+				profile_picture_thumb_url: z.string().nullish(),
 			})
 			.passthrough()
 	)
@@ -58,7 +60,8 @@ export const storyViewerResponseSchema = z.object({
 		full_name: z.string().nullish(),
 		role: z.enum(['student', 'parent', 'teacher', 'dev', 'other']).catch('other'),
 		is_verified: booleanish.catch(false),
-		profile_picture_url: z.string().nullish()
+		profile_picture_url: z.string().nullish(),
+		profile_picture_thumb_url: z.string().nullish(),
 	}),
 	stories: z.array(storyViewerItemSchema).min(1),
 	prev_user_id: z.coerce.number().int().positive().nullable(),

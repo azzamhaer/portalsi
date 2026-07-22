@@ -23,7 +23,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 			inviter: {
 				username: inv.inviter.username,
 				fullName: inv.inviter.full_name?.trim() || inv.inviter.username,
-				avatarUrl: normalizeMediaUrl(inv.inviter.profile_picture_url, mediaBaseUrl) ?? undefined
+				avatarUrl: normalizeMediaUrl(inv.inviter.profile_picture_thumb_url ?? inv.inviter.profile_picture_url, mediaBaseUrl) ?? undefined
 			}
 		}))
 	};

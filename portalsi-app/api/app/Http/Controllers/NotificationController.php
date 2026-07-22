@@ -63,6 +63,7 @@ class NotificationController extends Controller
                     'username' => $notif->sender->username,
                     'full_name' => $notif->sender->full_name,
                     'profile_picture_url' => $notif->sender->profile_picture_url,
+                    'profile_picture_thumb_url' => $notif->sender->profile_picture_thumb_url,
                     'role' => $notif->sender->role,
                     'is_verified' => (bool) $notif->sender->is_verified,
                 ] : null,

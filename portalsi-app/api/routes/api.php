@@ -608,6 +608,8 @@ Route::middleware(['auth:sanctum', 'notBanned'])->group(function () {
     Route::delete('/posts/{postId}/collaborators/{userId}', [CollaboratorController::class, 'removeByOwner'])->whereNumber('postId')->whereNumber('userId');
     Route::post('/posts/{postId}/collaborators/accept', [CollaboratorController::class, 'accept'])->whereNumber('postId');
     Route::post('/posts/{postId}/collaborators/reject', [CollaboratorController::class, 'reject'])->whereNumber('postId');
+    // Kolaborator membatalkan kolaborasinya sendiri (menghapus dirinya dari post).
+    Route::post('/posts/{postId}/collaborators/leave', [CollaboratorController::class, 'leave'])->whereNumber('postId');
     Route::get('/circle-avatar/{id}', [PostController::class, 'circleAvatar']);
     Route::get('/clips/{id}', [PostController::class, 'clips']);
     Route::get('/reels', [PostController::class, 'reels']);

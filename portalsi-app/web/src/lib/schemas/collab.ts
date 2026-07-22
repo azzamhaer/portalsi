@@ -11,6 +11,7 @@ export const postCollaboratorsSchema = z.object({
 			username: z.string().min(1),
 			full_name: z.string().nullish(),
 			profile_picture_url: z.string().nullish(),
+			profile_picture_thumb_url: z.string().nullish(),
 			status: z.enum(['pending', 'accepted']).catch('pending')
 		})
 	)
@@ -29,7 +30,8 @@ export const collabPendingSchema = z.object({
 				user_id: z.coerce.number().int().positive(),
 				username: z.string().min(1),
 				full_name: z.string().nullish(),
-				profile_picture_url: z.string().nullish()
+				profile_picture_url: z.string().nullish(),
+				profile_picture_thumb_url: z.string().nullish(),
 			})
 		})
 	)

@@ -464,7 +464,7 @@
 						id: u.user_id,
 						username: u.username,
 						fullName: u.full_name?.trim() || u.username,
-						avatarUrl: normalizeMediaUrl(u.profile_picture_url, composerMediaBase) ?? undefined
+						avatarUrl: normalizeMediaUrl(u.profile_picture_thumb_url ?? u.profile_picture_url, composerMediaBase) ?? undefined
 					}));
 			} catch {
 				if (!controller.signal.aborted) collabResults = [];

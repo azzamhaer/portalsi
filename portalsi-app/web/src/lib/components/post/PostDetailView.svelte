@@ -9,6 +9,7 @@
 		MapPin,
 		MessageCircle,
 		MoreHorizontal,
+		UserMinus,
 		Music2,
 		Pin,
 		Send,
@@ -109,7 +110,7 @@
 			collabList = res.collaborators.map((c) => ({
 				userId: c.user_id,
 				username: c.username,
-				avatarUrl: normalizeMediaUrl(c.profile_picture_url, detailMediaBase) ?? undefined,
+				avatarUrl: normalizeMediaUrl(c.profile_picture_thumb_url ?? c.profile_picture_url, detailMediaBase) ?? undefined,
 				status: c.status
 			}));
 		} catch {
@@ -139,7 +140,7 @@
 					.map((u) => ({
 						id: u.user_id,
 						username: u.username,
-						avatarUrl: normalizeMediaUrl(u.profile_picture_url, detailMediaBase) ?? undefined
+						avatarUrl: normalizeMediaUrl(u.profile_picture_thumb_url ?? u.profile_picture_url, detailMediaBase) ?? undefined
 					}));
 			} catch {
 				/* abaikan */
@@ -283,6 +284,30 @@
 	let likeBurst = $state(false);
 	let shareOpen = $state(false);
 	let ownerMenuOpen = $state(false);
+
+	// ---- Batalkan kolaborasi (dari sisi kolaborator) ----
+	let leavingCollab = $state(false);
+	let leftCollab = $state(false);
+	async function leaveCollab() {
+		if (leavingCollab) return;
+		const ok = await confirmAction({
+			title: 'Batalkan kolaborasi?',
+			description:
+				'Postingan ini tidak lagi muncul di profil Anda. Pemilik bisa mengundang Anda lagi kapan saja.',
+			confirmLabel: 'Batalkan collab',
+			tone: 'danger'
+		});
+		if (!ok) return;
+		leavingCollab = true;
+		try {
+			await clientRequest(`posts/${data.post.id}/collaborators/leave`, { method: 'POST' });
+			leftCollab = true;
+		} catch {
+			formMessage = 'Kolaborasi belum dapat dibatalkan. Coba lagi.';
+		} finally {
+			leavingCollab = false;
+		}
+	}
 
 	// ---- Draft ----
 	let isDraft = $state(untrack(() => data.post.isDraft ?? false));
@@ -940,6 +965,12 @@
 							if (!collabLoaded) void loadCollaborators();
 						}}
 						aria-label="Kelola postingan"><MoreHorizontal size={20} /></button
+					>{:else if data.post.viewerCollabStatus === 'accepted' && !leftCollab}<button
+						class="ds-leave"
+						disabled={leavingCollab}
+						onclick={leaveCollab}
+						aria-label="Batalkan kolaborasi"
+						><UserMinus size={15} /> {leavingCollab ? 'Membatalkan…' : 'Batalkan collab'}</button
 					>{/if}
 			</header>
 			<div class="comment-list">
@@ -1857,6 +1888,30 @@
 	}
 	.ds-more:hover {
 		background: var(--color-surface-soft, #f1f2f4);
+	}
+	/* Tombol batalkan collab: menempati posisi tombol kelola (kanan atas), gaya danger halus. */
+	.ds-leave {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		margin-left: auto;
+		flex: none;
+		padding: 7px 12px;
+		background: transparent;
+		border: 1px solid var(--color-border);
+		border-radius: 10px;
+		color: #c0392b;
+		font-size: 0.78rem;
+		font-weight: 700;
+		cursor: pointer;
+	}
+	.ds-leave:hover:not(:disabled) {
+		background: rgb(192 57 43 / 8%);
+		border-color: rgb(192 57 43 / 35%);
+	}
+	.ds-leave:disabled {
+		opacity: 0.6;
+		cursor: default;
 	}
 	.ds-costack {
 		display: inline-flex;

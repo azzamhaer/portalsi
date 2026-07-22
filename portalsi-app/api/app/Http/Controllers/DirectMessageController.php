@@ -82,6 +82,7 @@ class DirectMessageController extends Controller
             'name' => $receiver->full_name ?? $receiver->username,
             'username' => $receiver->username,
             'profile_picture_url' => $receiver->profile_picture_url,
+            'profile_picture_thumb_url' => $receiver->profile_picture_thumb_url,
             'last_message' => $message->content ?? '📎 Media',
             'last_media' => $message->media_url,
             'sent_at' => $message->sent_at?->toIso8601String(),
