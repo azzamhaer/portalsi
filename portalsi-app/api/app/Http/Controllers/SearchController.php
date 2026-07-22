@@ -31,7 +31,7 @@ class SearchController extends Controller
                 ->emailVerified()
                 ->where(fn ($w) => $w->where('username', 'like', $like)->orWhere('full_name', 'like', $like))
                 ->when($authUser, fn ($x) => $x->where('user_id', '!=', $authUser->user_id))
-                ->select('user_id', 'username', 'full_name', 'is_verified', 'profile_picture_url', 'role', 'is_private')
+                ->select('user_id', 'username', 'full_name', 'is_verified', 'profile_picture_url', 'profile_picture_thumb_url', 'role', 'is_private')
                 ->orderByRaw('CASE WHEN username LIKE ? THEN 0 ELSE 1 END', [$q.'%'])
                 ->limit($type === 'users' ? 30 : 8)
                 ->get()
@@ -41,6 +41,10 @@ class SearchController extends Controller
                     'full_name' => $u->full_name,
                     'is_verified' => (bool) $u->is_verified,
                     'profile_picture_url' => $u->profile_picture_url,
+                    'profile_picture_thumb_url' => $u->profile_picture_thumb_url,
+                    // Lingkar story global juga di pencarian.
+                    'has_story' => $u->has_story,
+                    'story_viewed' => $u->story_viewed,
                     'role' => $u->role,
                     'is_private' => (bool) $u->is_private,
                 ])

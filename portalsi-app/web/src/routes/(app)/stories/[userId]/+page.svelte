@@ -122,7 +122,20 @@
 
 	let navDir: 'forward' | 'back' = 'forward';
 
-	function next() {
+	// Throttle navigasi: spam kiri/kanan (apalagi saat ada video) memicu banyak pergantian
+	// beruntun — tiap pergantian me-mount video baru & mengunduh, plus mencatat view →
+	// sangat berat. Batasi minimal 220ms antar-navigasi agar spam mengendap ke satu langkah.
+	let lastNav = 0;
+	function canNavigate() {
+		const now = Date.now();
+		if (now - lastNav < 220) return false;
+		lastNav = now;
+		return true;
+	}
+
+	// Maju otomatis (timer/akhir video): TIDAK di-throttle, supaya cerita tidak pernah
+	// macet karena kebetulan berdekatan dengan navigasi manual.
+	function advance() {
 		viewersOpen = false;
 		if (index < stories.length - 1) index += 1;
 		else if (data.nextUserId) {
@@ -131,7 +144,13 @@
 		} else closeStory();
 	}
 
+	function next() {
+		if (!canNavigate()) return;
+		advance();
+	}
+
 	function previous() {
+		if (!canNavigate()) return;
 		viewersOpen = false;
 		if (index > 0) index -= 1;
 		else if (data.previousUserId) {
@@ -161,7 +180,7 @@
 	// JANGAN mulai selama media masih loading — supaya cerita tidak keburu terskip.
 	$effect(() => {
 		if (!story || effectivePaused || mediaLoading || story.type === 'video') return;
-		const timer = window.setTimeout(next, segmentDuration);
+		const timer = window.setTimeout(advance, segmentDuration);
 		return () => window.clearTimeout(timer);
 	});
 
@@ -366,12 +385,17 @@
 
 
 <div class="story-viewer">
-	<button
-		class="story-nav outside-prev"
-		disabled={index === 0 && !data.previousUserId}
-		onclick={previous}
-		aria-label="Cerita sebelumnya"><ChevronLeft size={28} /></button
-	>
+	<!-- Panah disembunyikan (bukan sekadar diredupkan) saat sudah mentok, supaya tidak ada
+	     tombol mati yang menggantung. -->
+	{#if index > 0 || data.previousUserId}
+		<button
+			class="story-nav outside-prev"
+			onclick={previous}
+			aria-label="Cerita sebelumnya"><ChevronLeft size={28} /></button
+		>
+	{:else}
+		<span class="story-nav-spacer"></span>
+	{/if}
 	<article
 		style:width={`${frame.width}px`}
 		style:height={`${frame.height}px`}
@@ -429,7 +453,7 @@
 				autoplay
 				{muted}
 				playsinline
-				onended={next}
+				onended={advance}
 				onplay={applyStorySound}
 				onwaiting={() => (mediaLoading = true)}
 				onloadedmetadata={(event) => {
@@ -532,12 +556,15 @@
 				</div>
 			</aside>{/if}
 	</article>
-	<button
-		class="story-nav outside-next"
-		disabled={index === stories.length - 1 && !data.nextUserId}
-		onclick={next}
-		aria-label="Cerita berikutnya"><ChevronRight size={28} /></button
-	>
+	{#if index < stories.length - 1 || data.nextUserId}
+		<button
+			class="story-nav outside-next"
+			onclick={next}
+			aria-label="Cerita berikutnya"><ChevronRight size={28} /></button
+		>
+	{:else}
+		<span class="story-nav-spacer"></span>
+	{/if}
 </div>
 
 <style>
@@ -552,6 +579,11 @@
 		padding: 20px;
 		background:
 			radial-gradient(circle at 50% 44%, rgb(115 81 47 / 22%), transparent 34rem), #100e0c;
+	}
+	/* Penyeimbang saat satu panah disembunyikan → article tetap di tengah (desktop). */
+	.story-nav-spacer {
+		width: 40px;
+		flex: none;
 	}
 	/* Tombol navigasi (desktop): bulat kecil, agak samar saat diam, memutih penuh saat
 	   di-hover. */
@@ -900,14 +932,24 @@
 			border-radius: 0;
 			box-shadow: none;
 		}
-		/* Penuhi layar: media di-cover, jadi tidak ada bilah hitam kiri-kanan. */
 		.story-viewer article > .story-media {
 			position: absolute;
 			inset: 0;
+		}
+		/* GAMBAR di-"contain" supaya terlihat utuh (tidak terpotong). Sisa ruang diisi
+		   backdrop blur dari gambar itu sendiri, jadi layar tetap penuh tanpa bilah hitam.
+		   Video tetap "cover" (mengisi penuh) seperti sebelumnya. */
+		.story-viewer article > img.story-media {
+			object-fit: contain;
+		}
+		.story-viewer article > video.story-media {
 			object-fit: cover;
 		}
+		/* Backdrop blur mengisi ruang sisa di belakang gambar yang di-contain (overscan
+		   inset/scale-nya diwarisi dari aturan desktop supaya tepi blur tidak terlihat). */
 		.story-backdrop {
-			display: none;
+			display: block;
+			opacity: 0.55;
 		}
 		/* Navigasi memakai ketuk tepi (integrasi di media), bukan tombol samping. */
 		.story-nav {

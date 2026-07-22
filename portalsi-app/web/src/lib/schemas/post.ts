@@ -8,6 +8,7 @@ export const compactUserSchema = z
 		username: z.string().min(1),
 		full_name: z.string().nullish(),
 		profile_picture_url: z.string().nullish(),
+		profile_picture_thumb_url: z.string().nullish(),
 		role: z.enum(['student', 'parent', 'teacher', 'dev', 'other']).catch('other'),
 		is_verified: booleanish.catch(false),
 		is_private: booleanish.catch(false),

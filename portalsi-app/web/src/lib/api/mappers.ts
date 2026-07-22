@@ -6,13 +6,17 @@ import { normalizeMediaUrl } from '$lib/utils/media';
 import { relativeTimeId } from '$lib/utils/time';
 
 export function mapCompactUser(user: CompactUser, mediaBaseUrl?: string): PortalUser {
+	const norm = (value?: string | null) =>
+		mediaBaseUrl ? (normalizeMediaUrl(value, mediaBaseUrl) ?? undefined) : (value ?? undefined);
+	// Foto asli untuk pratinjau; thumbnail kecil (kalau ada) untuk ditampilkan di avatar.
+	const full = norm(user.profile_picture_url);
+	const thumb = norm(user.profile_picture_thumb_url) ?? full;
 	return {
 		id: user.user_id,
 		username: user.username,
 		fullName: user.full_name?.trim() || user.username,
-		avatarUrl: mediaBaseUrl
-			? (normalizeMediaUrl(user.profile_picture_url, mediaBaseUrl) ?? undefined)
-			: (user.profile_picture_url ?? undefined),
+		avatarUrl: thumb,
+		avatarFullUrl: full,
 		role: user.role,
 		badgeVerified: user.is_verified,
 		emailVerified: true,

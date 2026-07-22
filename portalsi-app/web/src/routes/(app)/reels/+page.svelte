@@ -398,6 +398,8 @@
 										name={reel.user.fullName}
 										src={reel.user.avatarUrl ?? undefined}
 										size="sm"
+										story={reel.user.hasStory}
+										seen={reel.user.storyViewed}
 									/>
 									<strong>{reel.user.username}</strong>
 									<UserBadges verified={reel.user.badgeVerified} role={reel.user.role} />

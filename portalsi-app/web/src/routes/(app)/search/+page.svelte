@@ -6,6 +6,7 @@
 	import { clientRequest } from '$lib/api/client';
 	import { searchResponseSchema, type SearchResponse } from '$lib/schemas/search';
 	import Avatar from '$lib/components/ui/Avatar.svelte';
+	import StoryAvatarLink from '$lib/components/story/StoryAvatarLink.svelte';
 	import UserBadges from '$lib/components/ui/UserBadges.svelte';
 	import { normalizeMediaUrl } from '$lib/utils/media';
 	import type { PageProps } from './$types';
@@ -131,18 +132,19 @@
 					<ul class="user-list">
 						{#each results.users as u (u.user_id)}
 							<li>
-								<a href={`/u/${u.username}`}>
-									<Avatar
-										name={u.full_name ?? u.username}
-										src={normalizeMediaUrl(u.profile_picture_url, mediaBaseUrl) ?? undefined}
-										size="md"
-									/>
-									<span class="u-info">
-										<strong
-											>{u.username}<UserBadges verified={u.is_verified} role={u.role} /></strong
-										>
-										<small>{u.full_name ?? u.username}{u.is_private ? ' · Private' : ''}</small>
-									</span>
+								<StoryAvatarLink
+									userId={u.user_id}
+									username={u.username}
+									name={u.full_name ?? u.username}
+									avatarUrl={normalizeMediaUrl(u.profile_picture_thumb_url ?? u.profile_picture_url, mediaBaseUrl) ?? undefined}
+									avatarFullUrl={normalizeMediaUrl(u.profile_picture_url, mediaBaseUrl) ?? undefined}
+									hasStory={u.has_story ?? false}
+									seen={u.story_viewed ?? false}
+									size="md"
+								/>
+								<a class="u-info" href={`/u/${u.username}`}>
+									<strong>{u.username}<UserBadges verified={u.is_verified} role={u.role} /></strong>
+									<small>{u.full_name ?? u.username}{u.is_private ? ' · Private' : ''}</small>
 								</a>
 							</li>
 						{/each}
@@ -292,7 +294,7 @@
 		margin: 0;
 		padding: 0;
 	}
-	.user-list a,
+	.user-list li,
 	.tag-list button {
 		display: flex;
 		align-items: center;
@@ -305,9 +307,12 @@
 		text-align: left;
 		cursor: pointer;
 	}
-	.user-list a:hover,
+	.user-list li:hover,
 	.tag-list button:hover {
 		background: var(--color-surface-soft, #f4f5f7);
+	}
+	.u-info {
+		flex: 1;
 	}
 	.u-info,
 	.t-info {

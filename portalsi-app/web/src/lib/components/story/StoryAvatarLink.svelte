@@ -9,6 +9,7 @@
 		username,
 		name,
 		avatarUrl,
+		avatarFullUrl,
 		hasStory = false,
 		seen = false,
 		size = 'md',
@@ -20,6 +21,8 @@
 		username: string;
 		name: string;
 		avatarUrl?: string;
+		/** Foto asli (ukuran penuh) untuk pratinjau saat avatar diketuk. */
+		avatarFullUrl?: string;
 		hasStory?: boolean;
 		seen?: boolean;
 		size?: 'sm' | 'md' | 'lg' | 'xl';
@@ -27,6 +30,8 @@
 		profileHref?: string;
 		previewable?: boolean;
 	} = $props();
+	// Pratinjau memakai foto asli bila tersedia, jatuh ke thumbnail bila tidak.
+	const previewUrl = $derived(avatarFullUrl ?? avatarUrl);
 
 	let loading = $state(false);
 	let photoOpen = $state(false);
@@ -122,7 +127,7 @@
 			<button type="button" class="photo-close" onclick={closePhoto} aria-label="Tutup foto profil"
 				><X size={20} /></button
 			>
-			<img src={avatarUrl} alt={`Foto profil ${name}`} />
+			<img src={previewUrl} alt={`Foto profil ${name}`} />
 			<strong>{name}</strong><span>@{username}</span>
 		</div>
 	</div>{/if}

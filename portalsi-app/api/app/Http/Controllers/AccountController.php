@@ -63,8 +63,16 @@ class AccountController extends Controller
                 Storage::disk($disk)->delete($oldPath);
             }
 
+            // Hapus juga thumbnail lama agar tidak jadi sampah di storage.
+            if ($user->profile_picture_thumb_url) {
+                Storage::disk($disk)->delete($this->storagePathFromUrl($user->profile_picture_thumb_url));
+            }
+
             $path = $request->file('profile_picture')->store('profile_pictures', $disk);
             $user->profile_picture_url = Storage::disk($disk)->url($path);
+            // Buat thumbnail kecil untuk ditampilkan di mana pun (foto asli untuk pratinjau).
+            $user->profile_picture_thumb_url = app(\App\Services\AvatarThumbnailService::class)
+                ->generateFromKey($path);
         }
 
         // ✅ Upload banner

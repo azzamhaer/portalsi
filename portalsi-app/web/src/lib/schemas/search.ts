@@ -10,6 +10,9 @@ export const searchResponseSchema = z.object({
 			full_name: z.string().nullish(),
 			is_verified: booleanish.catch(false),
 			profile_picture_url: z.string().nullish(),
+			profile_picture_thumb_url: z.string().nullish(),
+			has_story: booleanish.optional().catch(false),
+			story_viewed: booleanish.optional().catch(false),
 			role: z.enum(['student', 'parent', 'teacher', 'dev', 'other']).catch('other'),
 			is_private: booleanish.catch(false)
 		})

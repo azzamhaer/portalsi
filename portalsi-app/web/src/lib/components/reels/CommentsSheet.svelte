@@ -31,6 +31,8 @@
 		name: string;
 		username: string;
 		avatarUrl?: string;
+		hasStory: boolean;
+		storyViewed: boolean;
 		text: string;
 		gifUrl?: string;
 		createdLabel: string;
@@ -53,7 +55,15 @@
 	function mapNode(c: {
 		comment_id: number;
 		user_id?: number;
-		user: { user_id?: number; full_name?: string | null; username: string; profile_picture_url?: string | null };
+		user: {
+			user_id?: number;
+			full_name?: string | null;
+			username: string;
+			profile_picture_url?: string | null;
+			profile_picture_thumb_url?: string | null;
+			has_story?: boolean;
+			story_viewed?: boolean;
+		};
 		content: string;
 		gif_url?: string | null;
 		created_at: string;
@@ -65,7 +75,13 @@
 			userId: c.user.user_id ?? c.user_id ?? 0,
 			name: c.user.full_name?.trim() || c.user.username,
 			username: c.user.username,
-			avatarUrl: normalizeMediaUrl(c.user.profile_picture_url, mediaBaseUrl) ?? undefined,
+			avatarUrl:
+				normalizeMediaUrl(
+					c.user.profile_picture_thumb_url ?? c.user.profile_picture_url,
+					mediaBaseUrl
+				) ?? undefined,
+			hasStory: Boolean(c.user.has_story),
+			storyViewed: Boolean(c.user.story_viewed),
 			text: c.content,
 			gifUrl: c.gif_url ?? undefined,
 			createdLabel: relativeTimeId(c.created_at),
@@ -171,6 +187,8 @@
 				name: response.data.user.full_name?.trim() || response.data.user.username,
 				username: response.data.user.username,
 				avatarUrl: normalizeMediaUrl(response.data.user.profile_picture_url, mediaBaseUrl) ?? undefined,
+				hasStory: false,
+				storyViewed: false,
 				text: response.data.content,
 				gifUrl: response.data.gif_url ?? gifUrl ?? undefined,
 				createdLabel: 'baru saja',
@@ -251,7 +269,7 @@
 			{:else}
 				{#each comments as item (item.id)}
 					<article class="c-item">
-						<Avatar name={item.name} src={item.avatarUrl} size="sm" />
+						<Avatar name={item.name} src={item.avatarUrl} size="sm" story={item.hasStory} seen={item.storyViewed} />
 						<div class="c-body">
 							<p>
 								<a href={`/u/${item.username}`}>{item.username}</a>
@@ -275,7 +293,7 @@
 							{#if item.showReplies}
 								{#each item.replies as reply (reply.id)}
 									<div class="c-reply">
-										<Avatar name={reply.name} src={reply.avatarUrl} size="sm" />
+										<Avatar name={reply.name} src={reply.avatarUrl} size="sm" story={reply.hasStory} seen={reply.storyViewed} />
 										<div class="c-body">
 											<p>
 												<a href={`/u/${reply.username}`}>{reply.username}</a>

@@ -88,7 +88,7 @@ class User extends Authenticatable implements MustVerifyEmail
      * lebih dulu mengikuti kita. Ditaruh di model, bukan di tiap controller, supaya tidak
      * ada satu pun tempat yang kelewatan.
      */
-    protected $appends = ['is_followed_by'];
+    protected $appends = ['is_followed_by', 'has_story', 'story_viewed', 'profile_picture_thumb_url'];
 
     /**
      * Cache daftar pengikut viewer selama satu request.
@@ -155,6 +155,96 @@ class User extends Authenticatable implements MustVerifyEmail
         }
 
         return isset(self::$viewerFollowerIds[(int) $this->user_id]);
+    }
+
+    /**
+     * Cache lingkar story per request.
+     *
+     * `has_story` & `story_viewed` disertakan di SETIAP serialisasi user agar lingkar story
+     * muncul di mana pun ada avatar (pencarian, komentar, follower, penonton, dsb.) tanpa
+     * perlu tiap controller menghitungnya sendiri.
+     *
+     * Efisien karena himpunannya kecil: hanya user yang PUNYA story aktif (24 jam terakhir),
+     * bukan seluruh pengguna. Dua query untuk seluruh request — bukan satu per user.
+     */
+    private static ?array $activeStoryOwners = null;   // user_id => jumlah story aktif
+    private static ?array $storySeenByViewer = null;    // user_id => jumlah story-nya yg dilihat viewer
+    private static ?int $storyCacheFor = null;
+
+    public static function forgetStoryCache(): void
+    {
+        self::$activeStoryOwners = null;
+        self::$storySeenByViewer = null;
+        self::$storyCacheFor = null;
+    }
+
+    private static function ensureStoryCache(?int $viewerId): void
+    {
+        if (self::$activeStoryOwners !== null && self::$storyCacheFor === (int) $viewerId) {
+            return;
+        }
+
+        $activeStories = \Illuminate\Support\Facades\DB::table('stories')
+            ->where('expires_at', '>', now())
+            ->get(['story_id', 'user_id']);
+
+        $owners = [];
+        foreach ($activeStories as $row) {
+            $owners[(int) $row->user_id] = ($owners[(int) $row->user_id] ?? 0) + 1;
+        }
+        self::$activeStoryOwners = $owners;
+
+        $seen = [];
+        if ($viewerId && $activeStories->isNotEmpty()) {
+            $storyIds = $activeStories->pluck('story_id')->all();
+            $ownerByStory = $activeStories->pluck('user_id', 'story_id');
+            $viewedIds = \Illuminate\Support\Facades\DB::table('story_views')
+                ->where('viewer_id', $viewerId)
+                ->whereIn('story_id', $storyIds)
+                ->pluck('story_id');
+            foreach ($viewedIds as $storyId) {
+                $ownerId = (int) ($ownerByStory[$storyId] ?? 0);
+                if ($ownerId) {
+                    $seen[$ownerId] = ($seen[$ownerId] ?? 0) + 1;
+                }
+            }
+        }
+        self::$storySeenByViewer = $seen;
+        self::$storyCacheFor = (int) $viewerId;
+    }
+
+    public function getHasStoryAttribute(): bool
+    {
+        self::ensureStoryCache(self::viewerId());
+
+        return isset(self::$activeStoryOwners[(int) $this->user_id]);
+    }
+
+    public function getStoryViewedAttribute(): bool
+    {
+        $viewerId = self::viewerId();
+        self::ensureStoryCache($viewerId);
+
+        $total = self::$activeStoryOwners[(int) $this->user_id] ?? 0;
+        if ($total === 0) {
+            return false;
+        }
+        // "Dilihat" (ring abu-abu) hanya bila SEMUA story aktifnya sudah ditonton viewer.
+        $seen = self::$storySeenByViewer[(int) $this->user_id] ?? 0;
+
+        return $seen >= $total;
+    }
+
+    /**
+     * URL thumbnail foto profil (kecil) untuk ditampilkan di mana pun avatar muncul.
+     *
+     * Foto asli tetap dipakai untuk pratinjau saat avatar diketuk; thumbnail dipangkas kecil
+     * ini yang dimuat di daftar/komentar/dll supaya jauh lebih ringan. Bila thumbnail belum
+     * ada (PP lama yang belum di-scan), jatuh ke foto asli agar tidak pernah kosong.
+     */
+    public function getProfilePictureThumbUrlAttribute(): ?string
+    {
+        return $this->attributes['profile_picture_thumb_url'] ?? $this->profile_picture_url;
     }
 
     /**

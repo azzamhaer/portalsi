@@ -5,6 +5,7 @@ export interface PortalUser {
 	username: string;
 	fullName: string;
 	avatarUrl?: string;
+	avatarFullUrl?: string;
 	role: UserRole;
 	badgeVerified: boolean;
 	emailVerified: boolean;
