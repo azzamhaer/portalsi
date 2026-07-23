@@ -75,6 +75,7 @@ class PostController extends Controller
                 ->withCount(['likes', 'comments'])
                 ->where('is_archived', false)
                 ->where('is_draft', false)
+                ->whereNull('moderated_at')
                 ->whereHas('user', fn ($q) => $q->where('is_private', 0)->whereNotNull('email_verified_at'))
                 ->orderByDesc('created_at')
                 ->take(100)
@@ -116,6 +117,7 @@ class PostController extends Controller
                 ->withCount(['likes', 'comments'])
                 ->where('is_archived', false)
                 ->where('is_draft', false)
+                ->whereNull('moderated_at')
                 ->whereIn('user_id', $timelineUserIds)
                 ->orderByDesc('created_at')
                 ->take($countTimeline)
@@ -132,6 +134,7 @@ class PostController extends Controller
                 ->withCount(['likes', 'comments'])
                 ->where('is_archived', false)
                 ->where('is_draft', false)
+                ->whereNull('moderated_at')
                 ->whereIn('user_id', $secondDegreeIds)
                 ->whereHas('user', fn ($q) => $q->where('is_private', 0))
                 ->orderByDesc('created_at')
@@ -143,6 +146,7 @@ class PostController extends Controller
                 ->withCount(['likes', 'comments'])
                 ->where('is_archived', false)
                 ->where('is_draft', false)
+                ->whereNull('moderated_at')
                 ->whereNotIn('user_id', $followingIds)
                 ->where('user_id', '!=', $authUser->user_id)
                 ->whereHas('user', fn ($q) => $q->where('is_private', 0))
@@ -159,6 +163,7 @@ class PostController extends Controller
                 ->withCount(['likes', 'comments'])
                 ->where('is_archived', false)
                 ->where('is_draft', false)
+                ->whereNull('moderated_at')
                 ->whereIn('post_id', $likedByFollowingIds)
                 ->whereHas('user', fn ($q) => $q->where('is_private', 0))
                 ->orderByDesc('created_at')
@@ -204,6 +209,7 @@ class PostController extends Controller
                 ->withCount(['likes', 'comments'])
                 ->where('is_archived', false)
                 ->where('is_draft', false)
+                ->whereNull('moderated_at')
                 ->whereHas('user', fn ($q) => $q->where('is_private', 0))
                 ->orderByDesc('created_at')
                 ->take(100)
@@ -391,6 +397,7 @@ class PostController extends Controller
             ->withCount(['likes', 'comments'])
             ->where('is_archived', false)
             ->where('is_draft', false)
+            ->whereNull('moderated_at')
             ->whereHas('user', fn ($q) => $q->whereNotNull('email_verified_at')->where('is_private', false));
 
         if ($request->filled('tag')) {
@@ -465,6 +472,14 @@ class PostController extends Controller
             return response()->json(['message' => 'Postingan tidak ditemukan.'], 404);
         }
 
+        // Postingan yang dimoderasi hanya boleh dibuka oleh pemiliknya (untuk menghapus)
+        // atau moderator (Developer terverifikasi, mis. untuk meninjau/membatalkan).
+        $isModerator = $authUser && (int) $authUser->is_verified === 1 && $authUser->role === 'dev';
+        if ($post->moderated_at !== null
+            && (! $authUser || ($authUser->user_id !== $post->user_id && ! $isModerator))) {
+            return response()->json(['message' => 'Postingan tidak ditemukan.'], 404);
+        }
+
         // Cek akses view
         $canView = ! $owner->is_private ||
             ($authUser && (
@@ -494,6 +509,8 @@ class PostController extends Controller
         // Dipakai modal edit untuk menampilkan status sematan.
         $post->is_pinned = $post->pinned_at !== null;
         $post->is_draft = (bool) $post->is_draft;
+        // Status moderasi untuk banner pemilik / kontrol moderator di halaman detail.
+        $post->is_moderated = $post->moderated_at !== null;
 
         if ($authUser) {
             if ($authUser->user_id === $owner->user_id) {
@@ -1086,6 +1103,7 @@ class PostController extends Controller
             ->where('is_video', true)
             ->where('is_archived', false)
             ->where('is_draft', false)
+            ->whereNull('moderated_at')
             ->whereHas('user', $visibleToViewer)
             ->findOrFail($id);
 
@@ -1117,6 +1135,7 @@ class PostController extends Controller
             ->where('is_video', true)
             ->where('is_archived', false)
             ->where('is_draft', false)
+            ->whereNull('moderated_at')
             ->whereHas('user', fn ($u) => $u->where('is_private', false))
             ->whereNotIn('post_id', $excludeIds)
             ->inRandomOrder()
@@ -1194,6 +1213,7 @@ class PostController extends Controller
             ->where('is_video', true)
             ->where('is_archived', false)
             ->where('is_draft', false)
+            ->whereNull('moderated_at')
             ->whereHas('user', function ($u) use ($allowedIds) {
                 $u->where(function ($w) use ($allowedIds) {
                     $w->where('is_private', false);

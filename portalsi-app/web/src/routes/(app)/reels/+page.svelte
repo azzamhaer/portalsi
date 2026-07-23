@@ -22,6 +22,8 @@
 	import SmartVideo from '$lib/components/media/SmartVideo.svelte';
 	import CommentsSheet from '$lib/components/reels/CommentsSheet.svelte';
 	import SharePostSheet from '$lib/components/feed/SharePostSheet.svelte';
+	import ModerationModal from '$lib/components/moderation/ModerationModal.svelte';
+	import { isModerator } from '$lib/stores/session';
 	import BackButton from '$lib/components/ui/BackButton.svelte';
 	import MentionText from '$lib/components/ui/MentionText.svelte';
 	import Avatar from '$lib/components/ui/Avatar.svelte';
@@ -37,6 +39,7 @@
 	let loadingMore = $state(false);
 	let activeIndex = $state(0);
 	let commentsFor = $state<number | null>(null);
+	let moderationFor = $state<number | null>(null);
 	let shareFor = $state<number | null>(null);
 	let burstId = $state<number | null>(null);
 	let expanded = $state(new Set<number>());
@@ -375,6 +378,16 @@
 											<span>Bersih tiap ganti reel <em>setelan tetap</em></span>
 											{#if clearOnScroll}<Check size={15} />{/if}</button
 										>
+										{#if $isModerator}
+											<small>Moderasi</small>
+											<button
+												onclick={(event) => {
+													event.stopPropagation();
+													moderationFor = reel.id;
+													close();
+												}}><ShieldAlert size={16} /> <span>Moderasi postingan</span></button
+											>
+										{/if}
 									{/snippet}
 								</SmartVideo>
 							{:else}
@@ -508,6 +521,18 @@
 		postId={shareFor}
 		shareUrl={new URL(`/posts/${shareFor}`, location.origin).toString()}
 		onClose={() => (shareFor = null)}
+	/>
+{/if}
+
+{#if moderationFor !== null}
+	<ModerationModal
+		postId={moderationFor}
+		onClose={() => (moderationFor = null)}
+		onDone={() => {
+			// Reel yang dimoderasi langsung dibuang dari feed reels.
+			reels = reels.filter((r) => r.id !== moderationFor);
+			moderationFor = null;
+		}}
 	/>
 {/if}
 

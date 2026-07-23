@@ -100,6 +100,7 @@ export function mapPost(post: BackendPost, mediaBaseUrl: string): PostPreview {
 		isBookmarked: post.is_bookmarked,
 		isPinned: post.is_pinned ?? false,
 		isDraft: post.is_draft ?? false,
+		isModerated: post.is_moderated ?? false,
 		music: post.music_track_name
 			? {
 					title: post.music_track_name,

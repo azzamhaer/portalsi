@@ -66,6 +66,7 @@ class Kernel extends HttpKernel
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         'verified.api' => \App\Http\Middleware\EnsureEmailIsVerifiedApi::class,
         'admin.panel' => \App\Http\Middleware\EnsureAdminPanelAccess::class,
+        'moderator' => \App\Http\Middleware\EnsureModerator::class,
         'notBanned' => \App\Http\Middleware\EnsureUserNotBanned::class,
 
         // Portal SI Marketplace (unified backend)
@@ -81,6 +82,7 @@ class Kernel extends HttpKernel
         // Tambahkan ini untuk hanya user yang verified badge (is_verified == 1)
         'onlyVerified' => \App\Http\Middleware\OnlyVerified::class,
         'admin.panel' => \App\Http\Middleware\EnsureAdminPanelAccess::class,
+        'moderator' => \App\Http\Middleware\EnsureModerator::class,
         'notBanned' => \App\Http\Middleware\EnsureUserNotBanned::class,
     ];
     

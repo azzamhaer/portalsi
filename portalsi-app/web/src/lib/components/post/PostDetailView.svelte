@@ -9,6 +9,7 @@
 		MapPin,
 		MessageCircle,
 		MoreHorizontal,
+		ShieldAlert,
 		UserMinus,
 		Music2,
 		Pin,
@@ -25,6 +26,8 @@
 	import SmartVideo from '$lib/components/media/SmartVideo.svelte';
 	import ViewportMusic from '$lib/components/media/ViewportMusic.svelte';
 	import MediaLightbox from '$lib/components/media/MediaLightbox.svelte';
+	import ModerationModal from '$lib/components/moderation/ModerationModal.svelte';
+	import { isModerator } from '$lib/stores/session';
 	import SharePostSheet from '$lib/components/feed/SharePostSheet.svelte';
 	import CommentsSheet from '$lib/components/reels/CommentsSheet.svelte';
 	import UserBadges from '$lib/components/ui/UserBadges.svelte';
@@ -284,6 +287,23 @@
 	let likeBurst = $state(false);
 	let shareOpen = $state(false);
 	let ownerMenuOpen = $state(false);
+
+	// ---- Moderasi (moderator) & banner take-down (pemilik) ----
+	let isModerated = $state(untrack(() => data.post.isModerated ?? false));
+	let moderationOpen = $state(false);
+	let modBusy = $state(false);
+	async function cancelModeration() {
+		if (modBusy) return;
+		modBusy = true;
+		try {
+			await clientRequest(`posts/${data.post.id}/moderation/cancel`, { method: 'POST' });
+			isModerated = false;
+		} catch {
+			formMessage = 'Gagal membatalkan moderasi. Coba lagi.';
+		} finally {
+			modBusy = false;
+		}
+	}
 
 	// ---- Batalkan kolaborasi (dari sisi kolaborator) ----
 	let leavingCollab = $state(false);
@@ -921,6 +941,17 @@
 					</button>
 				</div>
 			{/if}
+			{#if isModerated && isPostOwner}
+				<div class="mod-banner" role="status">
+					<div>
+						<strong><ShieldAlert size={14} /> Postingan dimoderasi</strong>
+						<small
+							>Postingan ini telah diturunkan dan tidak tampil ke publik. Silakan hapus sesuai
+							kebijakan. Akan dihapus permanen setelah 30 hari.</small
+						>
+					</div>
+				</div>
+			{/if}
 			<header class="ds-head">
 				<StoryAvatarLink
 					userId={data.post.user.id}
@@ -972,6 +1003,22 @@
 						aria-label="Batalkan kolaborasi"
 						><UserMinus size={15} /> {leavingCollab ? 'Membatalkan…' : 'Batalkan collab'}</button
 					>{/if}
+				{#if $isModerator}
+					{#if isModerated}
+						<button
+							class="ds-modmenu restore"
+							disabled={modBusy}
+							onclick={cancelModeration}
+							aria-label="Batalkan moderasi">{modBusy ? 'Memproses…' : 'Batalkan moderasi'}</button
+						>
+					{:else}
+						<button
+							class="ds-modmenu"
+							onclick={() => (moderationOpen = true)}
+							aria-label="Moderasi postingan"><ShieldAlert size={18} /></button
+						>
+					{/if}
+				{/if}
 			</header>
 			<div class="comment-list">
 				{#if data.post.caption}
@@ -1210,6 +1257,14 @@
 
 {#if shareOpen}
 	<SharePostSheet postId={data.post.id} {shareUrl} onClose={() => (shareOpen = false)} />
+{/if}
+
+{#if moderationOpen}
+	<ModerationModal
+		postId={data.post.id}
+		onClose={() => (moderationOpen = false)}
+		onDone={() => (isModerated = true)}
+	/>
 {/if}
 
 {#if lightboxOpen}
@@ -1466,6 +1521,57 @@
 	}
 	.cib-actions button:disabled {
 		opacity: 0.6;
+	}
+	.ds-modmenu {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		margin-left: 8px;
+		flex: none;
+		padding: 7px 11px;
+		background: rgb(192 57 43 / 8%);
+		border: 1px solid rgb(192 57 43 / 30%);
+		border-radius: 10px;
+		color: #c0392b;
+		font-size: 0.76rem;
+		font-weight: 700;
+		cursor: pointer;
+	}
+	.ds-modmenu:hover:not(:disabled) {
+		background: rgb(192 57 43 / 14%);
+	}
+	.ds-modmenu.restore {
+		background: transparent;
+		border-color: var(--color-border);
+		color: var(--color-text);
+	}
+	.ds-modmenu:disabled {
+		opacity: 0.6;
+		cursor: default;
+	}
+	.mod-banner {
+		display: flex;
+		flex: none;
+		padding: 12px 16px;
+		background: rgb(192 57 43 / 8%);
+		border-bottom: 1px solid var(--color-border);
+		border-radius: inherit;
+		border-bottom-left-radius: 0;
+		border-bottom-right-radius: 0;
+	}
+	.mod-banner strong {
+		display: inline-flex;
+		align-items: center;
+		gap: 5px;
+		font-size: 0.86rem;
+		color: #c0392b;
+	}
+	.mod-banner small {
+		display: block;
+		margin-top: 3px;
+		color: var(--color-muted);
+		font-size: 0.74rem;
+		line-height: 1.45;
 	}
 	.draft-banner {
 		display: flex;

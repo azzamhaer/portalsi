@@ -50,6 +50,7 @@ export interface PostPreview {
 	isBookmarked: boolean;
 	isPinned?: boolean;
 	isDraft?: boolean;
+	isModerated?: boolean;
 	music?: {
 		title: string;
 		artist: string;

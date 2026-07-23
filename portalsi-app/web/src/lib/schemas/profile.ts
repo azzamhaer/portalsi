@@ -14,6 +14,7 @@ export const profilePostSchema = z
 		is_multiple: booleanish.catch(false),
 		// Longgar: post lama dari server yang belum mengirim field ini tidak boleh gagal.
 		is_pinned: booleanish.optional().catch(false),
+		is_moderated: booleanish.optional().catch(false),
 		created_at: z.string()
 	})
 	.passthrough();

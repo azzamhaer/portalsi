@@ -60,6 +60,7 @@ export const postSchema = z
 		// Sematan profil; opsional supaya endpoint lama tetap lolos kontrak.
 		is_pinned: booleanish.optional().catch(false),
 		is_draft: booleanish.optional().catch(false),
+		is_moderated: booleanish.optional().catch(false),
 		music_track_name: z.string().nullish(),
 		music_artist_name: z.string().nullish(),
 		music_preview_url: z.string().nullish(),

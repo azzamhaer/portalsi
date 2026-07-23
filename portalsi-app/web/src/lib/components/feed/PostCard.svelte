@@ -8,7 +8,8 @@
 		MapPin,
 		Maximize2,
 		MessageCircle,
-		Send
+		Send,
+		ShieldAlert
 	} from '@lucide/svelte';
 	import { onMount } from 'svelte';
 	import StoryAvatarLink from '$lib/components/story/StoryAvatarLink.svelte';
@@ -23,6 +24,10 @@
 	import type { PostPreview } from '$lib/types/domain';
 	import MentionText from '$lib/components/ui/MentionText.svelte';
 	import SharePostSheet from '$lib/components/feed/SharePostSheet.svelte';
+	import ModerationModal from '$lib/components/moderation/ModerationModal.svelte';
+	import { isModerator } from '$lib/stores/session';
+
+	// (gaya .mod-btn & .moderated-note ada di <style> bawah)
 
 	let {
 		post,
@@ -34,6 +39,8 @@
 	let collabPopupOpen = $state(false);
 	let lightboxIndex = $state(0);
 	let shareOpen = $state(false);
+	let moderationOpen = $state(false);
+	let moderatedHidden = $state(false);
 	let openingPost = $state(false);
 
 	// Tombol follow di header: hanya muncul kalau BELUM mengikuti saat load.
@@ -163,6 +170,11 @@
 	});
 </script>
 
+{#if moderatedHidden}
+	<article class="post-card moderated-note" aria-label="Postingan dimoderasi">
+		<ShieldAlert size={16} /> Postingan telah dimoderasi & diturunkan.
+	</article>
+{:else}
 <article class="post-card" aria-labelledby={`post-${post.id}-author`}>
 	<header>
 		<div class="author">
@@ -212,6 +224,13 @@
 				disabled={followBusy}
 				aria-pressed={following}
 				>{following ? 'Mengikuti' : post.user.followsYou ? 'Ikuti balik' : 'Ikuti'}</button
+			>
+		{/if}
+		{#if $isModerator}
+			<button
+				class="mod-btn"
+				onclick={() => (moderationOpen = true)}
+				aria-label="Moderasi postingan"><ShieldAlert size={17} /></button
 			>
 		{/if}
 	</header>
@@ -334,6 +353,7 @@
 		<a class="comments" href={`/posts/${post.id}#comments`}>Lihat percakapan</a>
 	</div>
 </article>
+{/if}
 
 <MediaLightbox
 	open={lightboxOpen}
@@ -343,6 +363,14 @@
 	poster={post.thumbnailUrl}
 	onClose={() => (lightboxOpen = false)}
 />
+
+{#if moderationOpen}
+	<ModerationModal
+		postId={post.id}
+		onClose={() => (moderationOpen = false)}
+		onDone={() => (moderatedHidden = true)}
+	/>
+{/if}
 
 {#if shareOpen}
 	<SharePostSheet postId={post.id} {shareUrl} onClose={() => (shareOpen = false)} />
@@ -550,6 +578,30 @@
 		}
 	}
 
+	.mod-btn {
+		display: grid;
+		width: 34px;
+		height: 34px;
+		flex: none;
+		place-items: center;
+		padding: 0;
+		background: rgb(192 57 43 / 8%);
+		border: 1px solid rgb(192 57 43 / 28%);
+		border-radius: 9px;
+		color: #c0392b;
+		cursor: pointer;
+	}
+	.mod-btn:hover {
+		background: rgb(192 57 43 / 15%);
+	}
+	.moderated-note {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 16px 18px;
+		color: var(--color-muted);
+		font-size: 0.82rem;
+	}
 	.follow-btn {
 		flex: 0 0 auto;
 		padding: 7px 18px;

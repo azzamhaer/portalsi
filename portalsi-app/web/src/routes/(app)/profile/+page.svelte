@@ -8,6 +8,7 @@
 		Lock,
 		Maximize2,
 		Pin,
+		ShieldAlert,
 		Play,
 		Settings,
 		Share2,
@@ -168,6 +169,8 @@
 						>{/if}
 					{#if post.isPinned}<span class="pin-badge"
 							><Pin size={12} fill="currentColor" /> Pinned</span
+						>{/if}
+					{#if post.isModerated}<span class="mod-badge"><ShieldAlert size={12} /> Dimoderasi</span
 						>{/if}
 				</a>
 			{/each}
@@ -405,6 +408,24 @@
 	}
 	/* Penanda sematan: kiri atas supaya tidak bertabrakan dengan ikon video/multi-foto
 	   yang menempati kanan atas. Berlabel teks supaya maksudnya langsung jelas. */
+	.profile-grid a .mod-badge {
+		position: absolute;
+		right: auto;
+		bottom: 7px;
+		left: 7px;
+		top: auto;
+		display: inline-flex;
+		align-items: center;
+		width: auto;
+		height: 22px;
+		gap: 4px;
+		padding: 0 8px;
+		background: #c0392b;
+		border-radius: 999px;
+		color: #fff;
+		font-size: 0.6rem;
+		font-weight: 750;
+	}
 	.profile-grid a .pin-badge {
 		right: auto;
 		left: 7px;

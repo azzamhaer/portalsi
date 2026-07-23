@@ -611,6 +611,17 @@ Route::middleware(['auth:sanctum', 'notBanned'])->group(function () {
     // Kolaborator membatalkan kolaborasinya sendiri (menghapus dirinya dari post).
     Route::post('/posts/{postId}/collaborators/leave', [CollaboratorController::class, 'leave'])->whereNumber('postId');
     Route::get('/circle-avatar/{id}', [PostController::class, 'circleAvatar']);
+
+    // ── MODERASI POSTINGAN ──
+    // Pemberitahuan untuk PEMILIK post (modal saat login/refresh) — semua user login.
+    Route::get('/moderation/notices', [\App\Http\Controllers\ModerationController::class, 'notices']);
+    Route::post('/moderation/notices/{id}/ack', [\App\Http\Controllers\ModerationController::class, 'acknowledge'])->whereNumber('id');
+    // Aksi moderasi — HANYA Developer terverifikasi (middleware 'moderator').
+    Route::middleware('moderator')->group(function () {
+        Route::post('/posts/{id}/moderate', [\App\Http\Controllers\ModerationController::class, 'moderate'])->whereNumber('id');
+        Route::post('/posts/{id}/moderation/cancel', [\App\Http\Controllers\ModerationController::class, 'cancel'])->whereNumber('id');
+        Route::get('/moderation/posts', [\App\Http\Controllers\ModerationController::class, 'index']);
+    });
     Route::get('/clips/{id}', [PostController::class, 'clips']);
     Route::get('/reels', [PostController::class, 'reels']);
 

@@ -8,6 +8,7 @@
 		CheckCheck,
 		Heart,
 		MessageCircle,
+		ShieldAlert,
 		UserPlus,
 		Users,
 		X
@@ -45,7 +46,8 @@
 		mention: AtSign,
 		story_mention: AtSign,
 		collab_invite: Users,
-		collab_accepted: Users
+		collab_accepted: Users,
+		post_moderated: ShieldAlert
 	};
 
 	// Terima/tolak undangan kolaborasi langsung dari notifikasi.

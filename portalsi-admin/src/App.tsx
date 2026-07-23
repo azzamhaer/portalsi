@@ -17,6 +17,7 @@ import {
   Pencil,
   Radio,
   RefreshCw,
+  RotateCcw,
   Save,
   Search,
   Settings,
@@ -35,7 +36,7 @@ const PORTAL_API = (import.meta.env.VITE_PORTALSI_API_URL || 'https://api..porta
 const MEET_API = (import.meta.env.VITE_MEET_API_URL || 'https://meet.portalsi.com/api').replace(/\/+$/, '');
 const STORAGE_KEY = 'portalsi-admin-session';
 
-type Tab = 'dashboard' | 'users' | 'admins' | 'chats' | 'content' | 'meet' | 'appeals' | 'security' | 'audit';
+type Tab = 'dashboard' | 'users' | 'admins' | 'chats' | 'content' | 'moderation' | 'meet' | 'appeals' | 'security' | 'audit';
 
 interface DialogOpts {
   title: string;
@@ -97,6 +98,7 @@ const navGroups: Array<{ heading: string; items: NavItem[] }> = [
     heading: 'Konten & Pesan',
     items: [
       { id: 'content', label: 'Konten', icon: FileText },
+      { id: 'moderation', label: 'Moderasi', icon: ShieldAlert },
       { id: 'chats', label: 'Direct Message', icon: MessageSquare },
     ],
   },
@@ -210,6 +212,7 @@ export function App() {
   const [contentMode, setContentMode] = useState<ContentMode>('posts');
   const [contentRows, setContentRows] = useState<any[]>([]);
   const [contentSearch, setContentSearch] = useState('');
+  const [moderationRows, setModerationRows] = useState<any[]>([]);
   const [rooms, setRooms] = useState<any[]>([]);
   const [roomSearch, setRoomSearch] = useState('');
   const [selectedRoom, setSelectedRoom] = useState<any | null>(null);
@@ -289,6 +292,24 @@ export function App() {
     if (contentSearch.trim()) query.set('search', contentSearch.trim());
     const page = await portal<PageResult<any>>(`/admin-panel/${contentMode}?${query}`);
     setContentRows(page.data || []);
+  }
+
+  async function loadModeration() {
+    const res = await portal<{ data: any[] }>(`/moderation/posts?per_page=50`);
+    setModerationRows(res.data || []);
+  }
+
+  async function cancelModeration(postId: number) {
+    const ok = await askDialog({
+      title: 'Batalkan moderasi?',
+      message: 'Postingan akan dipulihkan dan kembali tampil di aplikasi.',
+      confirmLabel: 'Batalkan moderasi'
+    });
+    if (ok === null) return;
+    await run('Moderasi dibatalkan', async () => {
+      await portal(`/posts/${postId}/moderation/cancel`, { method: 'POST' });
+      await loadModeration();
+    });
   }
 
   async function loadRooms() {
@@ -390,6 +411,7 @@ export function App() {
       if (tab === 'admins') await loadAdmins();
       if (tab === 'chats') await loadChats();
       if (tab === 'content') await loadContent();
+      if (tab === 'moderation') await loadModeration();
       if (tab === 'meet') await loadRooms();
       if (tab === 'appeals') await loadAppeals();
       if (tab === 'security') await loadSecurity();
@@ -835,6 +857,13 @@ export function App() {
             onEdit={editContent}
             onDelete={deleteContent}
             onGroupChat={viewGroupChat}
+          />
+        )}
+        {tab === 'moderation' && (
+          <ModerationPanel
+            rows={moderationRows}
+            reload={() => run('', loadModeration)}
+            onCancel={cancelModeration}
           />
         )}
         {tab === 'meet' && (
@@ -1356,6 +1385,74 @@ function AppealsPanel(props: {
   );
 }
 
+function ModerationPanel(props: {
+  rows: any[];
+  reload: () => void;
+  onCancel: (postId: number) => void;
+}) {
+  return (
+    <section className="panel">
+      <Header
+        title="Moderasi Postingan"
+        subtitle="Postingan yang diturunkan (soft take-down). Tersimpan ~30 hari lalu dihapus permanen otomatis. Batalkan untuk memulihkan."
+        action={
+          <button className="secondary-button" onClick={props.reload}>
+            <RefreshCw size={16} /> Muat ulang
+          </button>
+        }
+      />
+      <Table>
+        <thead>
+          <tr>
+            <th>Postingan</th>
+            <th>Pemilik</th>
+            <th>Alasan</th>
+            <th>Moderator</th>
+            <th>Dimoderasi</th>
+            <th>Sisa retensi</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody>
+          {props.rows.map((r) => (
+            <tr key={r.post_id}>
+              <td>
+                <a href={`https://app.portalsi.com/posts/${r.post_id}`} target="_blank" rel="noreferrer" className="mod-thumb-link">
+                  {r.thumbnail_url || r.media_url
+                    ? <img src={r.thumbnail_url || r.media_url} alt="" className="mod-thumb" />
+                    : <span className="mod-thumb placeholder" />}
+                  <span className="detail-sub">#{r.post_id}{r.is_video ? ' · video' : ''}</span>
+                </a>
+              </td>
+              <td>
+                {r.owner
+                  ? <div className="user-cell"><strong>{r.owner.full_name || r.owner.username}</strong><span>@{r.owner.username}</span></div>
+                  : '-'}
+              </td>
+              <td className="mod-reason">{r.reason || '-'}</td>
+              <td>{r.moderated_by ? `@${r.moderated_by.username}` : '-'}</td>
+              <td>{fmt(r.moderated_at)}</td>
+              <td>
+                {typeof r.days_left === 'number'
+                  ? <Badge danger={r.days_left <= 3}>{r.days_left} hari lagi</Badge>
+                  : '-'}
+              </td>
+              <td>
+                <ActionBar>
+                  <IconAction title="Batalkan moderasi (pulihkan)" icon={RotateCcw} onClick={() => props.onCancel(r.post_id)} />
+                </ActionBar>
+              </td>
+            </tr>
+          ))}
+          {props.rows.length === 0 && (
+            <tr><td colSpan={7} className="empty-cell">Tidak ada postingan yang sedang dimoderasi.</td></tr>
+          )}
+        </tbody>
+      </Table>
+    </section>
+  );
+}
+
 function SecurityPanel({ blocks, onClear }: { blocks: any[]; onClear: (ip: string) => void }) {
   return (
     <section className="panel">
@@ -1728,8 +1825,13 @@ function Metric({ label, value, icon: Icon, tone }: { label: string; value: unkn
   );
 }
 
-function Header({ title, subtitle }: { title: string; subtitle?: string }) {
-  return <div className="section-header"><h2>{title}</h2>{subtitle && <p>{subtitle}</p>}</div>;
+function Header({ title, subtitle, action }: { title: string; subtitle?: string; action?: ReactNode }) {
+  return (
+    <div className="section-header">
+      <div><h2>{title}</h2>{subtitle && <p>{subtitle}</p>}</div>
+      {action}
+    </div>
+  );
 }
 
 function Toolbar({ children }: { children: ReactNode }) {

@@ -57,6 +57,8 @@ class ProfileController extends Controller
             })
                 ->where('is_archived', false)
                 ->where('is_draft', false)
+                // Profil orang lain: sembunyikan postingan yang dimoderasi.
+                ->whereNull('moderated_at')
                 // Post yang disematkan selalu di atas; sisanya urut terbaru seperti biasa.
                 // Sematan hanya berlaku untuk post milik sendiri, bukan post kolaborasi.
                 ->orderByRaw('CASE WHEN pinned_at IS NOT NULL AND user_id = ? THEN 0 ELSE 1 END', [$user->user_id])
@@ -98,6 +100,7 @@ class ProfileController extends Controller
                         'thumbnail_url' => $thumbnail,
                         'created_at' => $post->created_at,
                         'is_pinned' => $isPinned,
+                        'is_moderated' => $post->moderated_at !== null,
                     ];
                 } catch (Throwable $e) {
                     Log::error('Failed to map post', [
@@ -201,7 +204,9 @@ class ProfileController extends Controller
             ->orderByRaw('CASE WHEN pinned_at IS NOT NULL AND user_id = ? THEN 0 ELSE 1 END', [$user->user_id])
             ->orderByDesc('pinned_at')
             ->latest()
-            ->select('post_id', 'user_id', 'caption', 'media_url', 'media_urls', 'is_video', 'created_at', 'thumbnail_url', 'media_variants', 'pinned_at');
+            ->select('post_id', 'user_id', 'caption', 'media_url', 'media_urls', 'is_video', 'created_at', 'thumbnail_url', 'media_variants', 'pinned_at', 'moderated_at')
+            // Owner tetap melihat postingannya yang dimoderasi (ditandai) di profil sendiri.
+            ;
 
         $paginatedPosts = $postsQuery->paginate($perPage, ['*'], 'page', $page);
         $profileOwnerId = $user->user_id;
@@ -235,6 +240,7 @@ class ProfileController extends Controller
                     'thumbnail_url' => $thumbnail,
                     'created_at' => $post->created_at,
                     'is_pinned' => $isPinned,
+                    'is_moderated' => $post->moderated_at !== null,
                 ];
             } catch (Throwable $e) {
                 Log::error('Failed to map post in me()', [

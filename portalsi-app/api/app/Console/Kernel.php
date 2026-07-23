@@ -17,6 +17,12 @@ class Kernel extends ConsoleKernel
             ->everyMinute()
             ->withoutOverlapping()
             ->runInBackground();
+
+        // Hapus permanen postingan termoderasi yang melewati masa retensi 30 hari.
+        $schedule->command('moderation:purge')
+            ->dailyAt('03:00')
+            ->withoutOverlapping()
+            ->runInBackground();
     }
 
     /**
