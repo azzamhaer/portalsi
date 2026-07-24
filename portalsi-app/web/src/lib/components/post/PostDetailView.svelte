@@ -322,11 +322,20 @@
 		try {
 			const body = new FormData();
 			body.set('thumbnail_second', thumbSecond.toFixed(2));
-			await clientRequest(`posts/${data.post.id}/update`, { method: 'POST', body });
-			thumbMsg = 'Thumbnail tersimpan.';
+			const res = (await clientRequest(`posts/${data.post.id}/update`, {
+				method: 'POST',
+				body
+			})) as { processing?: boolean } | null;
 			thumbChanged = false;
-			thumbEditOpen = false;
-			await invalidateAll();
+			if (res && res.processing) {
+				// Diproses di latar belakang (queue). Muat ulang beberapa detik lagi.
+				thumbMsg = 'Thumbnail sedang diproses, akan muncul beberapa detik lagi…';
+				setTimeout(() => void invalidateAll(), 6000);
+			} else {
+				thumbMsg = 'Thumbnail tersimpan.';
+				thumbEditOpen = false;
+				await invalidateAll();
+			}
 		} catch (e) {
 			thumbMsg =
 				e instanceof Error && e.message ? e.message : 'Gagal menyimpan thumbnail. Coba lagi.';

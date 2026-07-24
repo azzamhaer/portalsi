@@ -955,9 +955,12 @@ class PostController extends Controller
             unset($variants['thumbnail']);
             $post->media_variants = $variants;
         } elseif ($request->filled('thumbnail_second') && ((bool) $post->is_video || preg_match('/\.(mp4|mov|avi|mkv|webm|3gp|m4v)$/i', (string) $post->media_url))) {
-            // User memilih frame video (detik) → server ekstrak dengan ffmpeg.
+            // User memilih frame video (detik). Coba ekstrak SINKRON dulu (kalau shell_exec
+            // diizinkan di web). Bila gagal — umumnya karena PHP-FPM mematikan shell_exec —
+            // serahkan ke QUEUE worker (CLI) yang biasanya mengizinkannya.
+            $second = (float) $request->input('thumbnail_second');
             $svc = app(\App\Services\MediaVariantService::class);
-            $newUrl = $svc->extractVideoFrameThumbnail($post, (float) $request->input('thumbnail_second'));
+            $newUrl = $svc->extractVideoFrameThumbnail($post, $second);
             if ($newUrl) {
                 $post->thumbnail_url = $newUrl;
                 $post->has_custom_thumbnail = true;
@@ -965,11 +968,20 @@ class PostController extends Controller
                 unset($variants['thumbnail']);
                 $post->media_variants = $variants;
             } else {
-                // Ekstraksi gagal (ffmpeg tak tersedia / frame kosong). Beri tahu jelas
-                // ketimbang mengembalikan "sukses" padahal thumbnail tak berubah.
+                // Simpan perubahan lain dulu, lalu proses thumbnail di latar belakang.
+                if ($request->has('caption')) {
+                    $post->caption = $request->input('caption');
+                }
+                if ($request->has('location')) {
+                    $post->location = $request->input('location');
+                }
+                $post->save();
+                \App\Jobs\SetVideoThumbnail::dispatch($post->post_id, $second);
+
                 return response()->json([
-                    'message' => 'Gagal membuat thumbnail dari video di server. Pastikan ffmpeg aktif, lalu coba lagi.',
-                ], 422);
+                    'message' => 'Thumbnail sedang diproses di latar belakang, akan muncul sebentar lagi.',
+                    'processing' => true,
+                ], 202);
             }
         }
 
