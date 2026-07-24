@@ -330,7 +330,7 @@
 			if (res && res.processing) {
 				// Diproses di latar belakang (queue). Muat ulang beberapa detik lagi,
 				// lalu bersihkan pesan & tutup editor.
-				thumbMsg = 'Thumbnail sedang diproses, akan muncul beberapa detik lagi…';
+				thumbMsg = 'Thumbnail sedang diproses, silahkan kembali dan akan muncul beberapa detik lagi…';
 				setTimeout(async () => {
 					await invalidateAll();
 					thumbMsg = '';
