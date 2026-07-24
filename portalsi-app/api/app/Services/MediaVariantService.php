@@ -264,6 +264,66 @@ class MediaVariantService
         return file_exists($dest) && filesize($dest) > 100;
     }
 
+    /**
+     * Ekstrak frame video pada detik tertentu (pilihan user) sebagai thumbnail penuh
+     * (bukan square), unggah ke storage, dan kembalikan URL publiknya. null bila gagal.
+     * Dipakai saat user memilih/ubah thumbnail lewat halaman edit.
+     */
+    public function extractVideoFrameThumbnail(Post $post, float $second): ?string
+    {
+        if (! $this->hasFfmpeg()) {
+            return null;
+        }
+        $key = $this->relativePath($post->media_url);
+        if (! $key) {
+            return null;
+        }
+        $ext = pathinfo($key, PATHINFO_EXTENSION) ?: 'mp4';
+        $src = $this->downloadToTemp($key, '.'.$ext);
+        if (! $src) {
+            return null;
+        }
+        $tmp = tempnam(sys_get_temp_dir(), 'psi_frame_').'.jpg';
+        try {
+            $second = max(0, $second);
+            // Frame penuh (jaga rasio), lebar maksimum 1280px.
+            $cmd = sprintf(
+                '%s -y -ss %s -i %s -frames:v 1 -vf %s -q:v 3 %s 2>/dev/null',
+                escapeshellarg($this->ffmpeg),
+                escapeshellarg((string) $second),
+                escapeshellarg($src),
+                escapeshellarg("scale='min(1280,iw)':-2"),
+                escapeshellarg($tmp)
+            );
+            $this->sh($cmd);
+            if (! file_exists($tmp) || filesize($tmp) < 100) {
+                // Fallback: frame awal bila detik tsb kosong.
+                $cmd0 = sprintf(
+                    '%s -y -i %s -frames:v 1 -vf %s -q:v 3 %s 2>/dev/null',
+                    escapeshellarg($this->ffmpeg),
+                    escapeshellarg($src),
+                    escapeshellarg("scale='min(1280,iw)':-2"),
+                    escapeshellarg($tmp)
+                );
+                $this->sh($cmd0);
+            }
+            if (! file_exists($tmp) || filesize($tmp) < 100) {
+                return null;
+            }
+            $name = pathinfo($key, PATHINFO_FILENAME);
+            // Nama unik agar cache CDN tidak menyajikan versi lama.
+            $thumbKey = 'uploads/posts/thumbnails/'.$name.'-custom-'.time().'.jpg';
+            if (! $this->upload($tmp, $thumbKey)) {
+                return null;
+            }
+
+            return $this->publicUrl($thumbKey);
+        } finally {
+            @unlink($src);
+            @unlink($tmp);
+        }
+    }
+
     /** Download objek storage ke file lokal sementara. Return path atau null. */
     public function downloadToTemp(string $key, string $suffix = ''): ?string
     {

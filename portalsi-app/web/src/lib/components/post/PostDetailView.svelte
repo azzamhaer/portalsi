@@ -6,6 +6,7 @@
 		ChevronRight,
 		CornerDownRight,
 		Heart,
+		Image as ImageIcon,
 		MapPin,
 		MessageCircle,
 		MoreHorizontal,
@@ -288,6 +289,24 @@
 	let likeBurst = $state(false);
 	let shareOpen = $state(false);
 	let ownerMenuOpen = $state(false);
+
+	// ---- Ubah thumbnail video (pemilik, di modal kelola) ----
+	let thumbEditOpen = $state(false);
+	let thumbVideoEl = $state<HTMLVideoElement | null>(null);
+	let thumbDuration = $state(0);
+	let thumbSecond = $state(0);
+	let thumbChanged = $state(false);
+	function onThumbSeek(sec: number) {
+		thumbSecond = sec;
+		thumbChanged = true;
+		if (thumbVideoEl) {
+			try {
+				thumbVideoEl.currentTime = Math.min(sec, Math.max(0, thumbDuration - 0.05));
+			} catch {
+				/* abaikan */
+			}
+		}
+	}
 
 	// ---- Moderasi (moderator) & banner take-down (pemilik) ----
 	let isModerated = $state(untrack(() => data.post.isModerated ?? false));
@@ -793,7 +812,51 @@
 								</div>
 							{/if}
 						</div>
+						<!-- Ikut terkirim ke action ?/update walau di luar <form>. -->
+						<input
+							type="hidden"
+							name="thumbnail_second"
+							form="editPostForm"
+							value={thumbChanged ? thumbSecond.toFixed(2) : ''}
+						/>
 					</form>
+
+					{#if data.post.isVideo}
+						<div class="thumb-manage">
+							<strong><ImageIcon size={15} /> Thumbnail video</strong>
+							<p>Pilih frame yang dijadikan sampul. Geser untuk memilih momen yang pas.</p>
+							{#if thumbEditOpen}
+								<div class="thumb-stage">
+									<!-- svelte-ignore a11y_media_has_caption -->
+									<video
+										bind:this={thumbVideoEl}
+										src={normalizeMediaUrl(data.post.mediaUrl, detailMediaBase)}
+										preload="metadata"
+										muted
+										playsinline
+										onloadedmetadata={() => {
+											thumbDuration = thumbVideoEl?.duration || 0;
+										}}
+									></video>
+								</div>
+								<input
+									class="thumb-range"
+									type="range"
+									min="0"
+									max={Math.max(0.1, thumbDuration)}
+									step="0.1"
+									value={thumbSecond}
+									oninput={(e) => onThumbSeek(Number((e.currentTarget).value))}
+								/>
+								<div class="thumb-meta">
+									<span>{thumbSecond.toFixed(1)} dtk</span>
+									{#if thumbChanged}<span class="thumb-chip">Frame dipilih — simpan untuk menerapkan</span>{/if}
+								</div>
+							{:else}
+								<button type="button" class="thumb-open" onclick={() => (thumbEditOpen = true)}>Ganti thumbnail</button>
+							{/if}
+						</div>
+					{/if}
 
 					{#if isDraft}
 						<div class="draft-music">
@@ -1836,6 +1899,65 @@
 	.draft-music > button:disabled {
 		opacity: 0.6;
 		cursor: default;
+	}
+	.thumb-manage {
+		display: grid;
+		gap: 8px;
+		margin-top: 14px;
+		padding-top: 12px;
+		border-top: 1px solid var(--color-border);
+	}
+	.thumb-manage > strong {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		font-size: 0.9rem;
+	}
+	.thumb-manage > p {
+		margin: 0;
+		color: var(--color-muted);
+		font-size: 0.78rem;
+		line-height: 1.5;
+	}
+	.thumb-stage {
+		display: flex;
+		justify-content: center;
+		background: #0a0b0c;
+		border-radius: 12px;
+		overflow: hidden;
+	}
+	.thumb-stage video {
+		max-height: 240px;
+		max-width: 100%;
+	}
+	.thumb-range {
+		width: 100%;
+		accent-color: var(--color-primary);
+	}
+	.thumb-meta {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		font-size: 0.76rem;
+		color: var(--color-muted);
+	}
+	.thumb-chip {
+		padding: 2px 8px;
+		background: var(--color-primary-soft);
+		border-radius: 999px;
+		color: var(--color-primary-strong, var(--color-primary));
+		font-weight: 700;
+	}
+	.thumb-open {
+		justify-self: start;
+		padding: 8px 14px;
+		background: transparent;
+		border: 1px solid var(--color-border);
+		border-radius: 10px;
+		color: var(--color-text);
+		font-size: 0.82rem;
+		font-weight: 700;
+		cursor: pointer;
 	}
 	.pin-manage {
 		display: grid;

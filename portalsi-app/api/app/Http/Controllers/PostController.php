@@ -913,6 +913,8 @@ class PostController extends Controller
             'caption' => 'nullable|string|max:2200',
             'media' => 'nullable|file|mimes:jpg,jpeg,png,mp4,mov,webm,avi,3gp,mkv|max:512000',
             'thumbnail' => 'nullable|file|mimes:jpg,jpeg,png|max:51200',
+            // Detik frame video yang dipilih user sebagai thumbnail (server yang ekstrak).
+            'thumbnail_second' => 'nullable|numeric|min:0|max:86400',
             'location' => 'nullable|string',
             'is_archived' => 'nullable|boolean',
             'is_video' => 'nullable|boolean',
@@ -952,6 +954,17 @@ class PostController extends Controller
             $variants = is_array($post->media_variants) ? $post->media_variants : [];
             unset($variants['thumbnail']);
             $post->media_variants = $variants;
+        } elseif ($request->filled('thumbnail_second') && ((bool) $post->is_video || preg_match('/\.(mp4|mov|avi|mkv|webm|3gp|m4v)$/i', (string) $post->media_url))) {
+            // User memilih frame video (detik) → server ekstrak dengan ffmpeg.
+            $svc = app(\App\Services\MediaVariantService::class);
+            $newUrl = $svc->extractVideoFrameThumbnail($post, (float) $request->input('thumbnail_second'));
+            if ($newUrl) {
+                $post->thumbnail_url = $newUrl;
+                $post->has_custom_thumbnail = true;
+                $variants = is_array($post->media_variants) ? $post->media_variants : [];
+                unset($variants['thumbnail']);
+                $post->media_variants = $variants;
+            }
         }
 
         // Update fields — pakai has() agar caption/lokasi bisa DIKOSONGKAN.

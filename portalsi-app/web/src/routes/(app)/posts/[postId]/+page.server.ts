@@ -132,9 +132,12 @@ export const actions: Actions = {
 		const source = await request.formData();
 		const caption = String(source.get('caption') ?? '').trim();
 		const location = String(source.get('location') ?? '').trim();
+		const thumbnailSecond = String(source.get('thumbnail_second') ?? '').trim();
 		const body = new FormData();
 		body.set('caption', caption);
 		body.set('location', location);
+		// Hanya kirim bila user memilih frame thumbnail baru (server yang ekstrak via ffmpeg).
+		if (thumbnailSecond !== '') body.set('thumbnail_second', thumbnailSecond);
 		try {
 			await backendRequest(`posts/${postId}/update`, {
 				method: 'POST',
