@@ -21,6 +21,7 @@ class RepairThumbnails extends Command
 {
     protected $signature = 'thumbnails:repair
         {--scan : Hanya periksa & laporkan, tanpa mengubah}
+        {--only-null : Hanya post yang thumbnail_url-nya kosong (murah, tanpa cek R2 tiap objek)}
         {--limit=0 : Batasi jumlah post yang diperiksa (0 = semua)}
         {--chunk=200 : Ukuran chunk query}';
 
@@ -29,6 +30,7 @@ class RepairThumbnails extends Command
     public function handle(MediaVariantService $svc): int
     {
         $scan = (bool) $this->option('scan');
+        $onlyNull = (bool) $this->option('only-null');
         $limit = max(0, (int) $this->option('limit'));
         $chunk = max(20, (int) $this->option('chunk'));
 
@@ -42,8 +44,10 @@ class RepairThumbnails extends Command
         $stop = false;
 
         Post::whereNotNull('media_url')->where('media_url', '!=', '')
+            // --only-null: hanya yang jelas belum punya thumbnail (murah, tak perlu cek R2).
+            ->when($onlyNull, fn ($q) => $q->where(fn ($w) => $w->whereNull('thumbnail_url')->orWhere('thumbnail_url', '')))
             ->orderByDesc('post_id')
-            ->chunkById($chunk, function ($posts) use ($svc, $scan, $limit, &$s, &$stop) {
+            ->chunkById($chunk, function ($posts) use ($svc, $scan, $onlyNull, $limit, &$s, &$stop) {
                 foreach ($posts as $post) {
                     if ($stop) {
                         return false;
@@ -61,7 +65,9 @@ class RepairThumbnails extends Command
                         continue;
                     }
 
-                    if ($svc->isValidImageObject($thumbKey)) {
+                    // Mode --only-null: kolomnya sudah kosong → pasti butuh, lewati cek R2.
+                    // Mode normal: cek objek langsung di R2.
+                    if (! $onlyNull && $svc->isValidImageObject($thumbKey)) {
                         $s['valid']++;
                         continue;
                     }

@@ -32,6 +32,13 @@ class Kernel extends ConsoleKernel
                 ->where('last_seen_at', '<', now()->subDays(14))
                 ->delete();
         })->dailyAt('03:30');
+
+        // Self-heal thumbnail: perbaiki post yang thumbnail_url-nya kosong (mis. upload baru
+        // yang generasinya sempat gagal). Murah karena hanya menyasar kolom kosong.
+        $schedule->command('thumbnails:repair --only-null --limit=300')
+            ->dailyAt('04:00')
+            ->withoutOverlapping()
+            ->runInBackground();
     }
 
     /**

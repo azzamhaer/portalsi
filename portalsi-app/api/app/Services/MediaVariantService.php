@@ -342,7 +342,7 @@ class MediaVariantService
         }
     }
 
-    /** Baca beberapa byte pertama objek (untuk cek magic-number). null bila gagal. */
+    /** Baca N byte pertama objek (untuk cek magic-number). null bila gagal. */
     public function firstBytes(string $key, int $n = 4): ?string
     {
         try {
@@ -350,10 +350,18 @@ class MediaVariantService
             if (! $stream) {
                 return null;
             }
-            $bytes = fread($stream, $n);
+            // Stream S3/R2 bisa mengembalikan potongan kecil per fread — kumpulkan sampai N.
+            $data = '';
+            while (strlen($data) < $n && ! feof($stream)) {
+                $chunk = fread($stream, $n - strlen($data));
+                if ($chunk === false || $chunk === '') {
+                    break;
+                }
+                $data .= $chunk;
+            }
             fclose($stream);
 
-            return $bytes === false || $bytes === '' ? null : $bytes;
+            return $data === '' ? null : $data;
         } catch (\Throwable $e) {
             return null;
         }
@@ -366,15 +374,17 @@ class MediaVariantService
     public function isValidImageObject(string $key): bool
     {
         if (! $this->exists($key)) {
-            return false;
+            return false; // benar-benar hilang
         }
         $size = $this->size($key);
         if ($size !== null && $size < 100) {
             return false; // 0-byte / terlalu kecil = rusak
         }
         $b = $this->firstBytes($key, 12);
-        if ($b === null) {
-            return false;
+        // Objek ADA & ukurannya wajar tapi byte-nya gagal dibaca sesaat → JANGAN vonis rusak
+        // (hindari regenerasi objek yang sebenarnya sehat karena hiccup jaringan).
+        if ($b === null || strlen($b) < 3) {
+            return true;
         }
 
         return str_starts_with($b, "\xFF\xD8\xFF")        // JPEG
