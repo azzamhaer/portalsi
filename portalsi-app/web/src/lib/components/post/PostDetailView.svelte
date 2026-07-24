@@ -40,6 +40,7 @@
 	import GifPicker from '$lib/components/comment/GifPicker.svelte';
 	import { portal } from '$lib/actions/portal';
 	import { page } from '$app/state';
+	import { invalidateAll } from '$app/navigation';
 	import { env } from '$env/dynamic/public';
 	import { normalizeMediaUrl } from '$lib/utils/media';
 	import { postCollaboratorsSchema } from '$lib/schemas/collab';
@@ -297,10 +298,33 @@
 	let thumbVideoEl = $state<HTMLVideoElement | null>(null);
 	let thumbSecond = $state(0);
 	let thumbChanged = $state(false);
+	let thumbSaving = $state(false);
+	let thumbMsg = $state('');
 	function pickCurrentFrame() {
 		if (!thumbVideoEl) return;
 		thumbSecond = Math.max(0, thumbVideoEl.currentTime || 0);
 		thumbChanged = true;
+		thumbMsg = '';
+	}
+	// Simpan thumbnail secara mandiri (dengan umpan balik jelas), lepas dari form caption.
+	async function saveThumbnail() {
+		if (!thumbChanged || thumbSaving) return;
+		thumbSaving = true;
+		thumbMsg = '';
+		try {
+			const body = new FormData();
+			body.set('thumbnail_second', thumbSecond.toFixed(2));
+			await clientRequest(`posts/${data.post.id}/update`, { method: 'POST', body });
+			thumbMsg = 'Thumbnail tersimpan.';
+			thumbChanged = false;
+			thumbEditOpen = false;
+			await invalidateAll();
+		} catch (e) {
+			thumbMsg =
+				e instanceof Error && e.message ? e.message : 'Gagal menyimpan thumbnail. Coba lagi.';
+		} finally {
+			thumbSaving = false;
+		}
 	}
 
 	// ---- Moderasi (moderator) & banner take-down (pemilik) ----
@@ -807,13 +831,6 @@
 								</div>
 							{/if}
 						</div>
-						<!-- Ikut terkirim ke action ?/update walau di luar <form>. -->
-						<input
-							type="hidden"
-							name="thumbnail_second"
-							form="editPostForm"
-							value={thumbChanged ? thumbSecond.toFixed(2) : ''}
-						/>
 					</form>
 
 					{#if data.post.isVideo}
@@ -832,10 +849,14 @@
 										playsinline
 									></video>
 								</div>
-								<button type="button" class="thumb-btn" onclick={pickCurrentFrame}>Gunakan frame ini</button>
-								{#if thumbChanged}<p class="thumb-chip">Frame pada {thumbSecond.toFixed(1)} dtk dipilih — tekan Simpan untuk menerapkan.</p>{/if}
+								<div class="thumb-actions">
+									<button type="button" class="thumb-btn ghost" onclick={pickCurrentFrame} disabled={thumbSaving}>Gunakan frame ini</button>
+									<button type="button" class="thumb-btn" onclick={saveThumbnail} disabled={!thumbChanged || thumbSaving}>{thumbSaving ? 'Menyimpan…' : 'Simpan thumbnail'}</button>
+								</div>
+								{#if thumbChanged && !thumbSaving}<p class="thumb-hint">Frame pada {thumbSecond.toFixed(1)} dtk dipilih.</p>{/if}
+								{#if thumbMsg}<p class="thumb-hint">{thumbMsg}</p>{/if}
 							{:else}
-								<button type="button" class="thumb-btn ghost" onclick={() => (thumbEditOpen = true)}>Ganti thumbnail</button>
+								<button type="button" class="thumb-btn" onclick={() => (thumbEditOpen = true)}>Ganti thumbnail</button>
 							{/if}
 						</div>
 					{/if}
@@ -1914,15 +1935,21 @@
 	}
 	/* Selektor 2-kelas agar menang dari aturan global `.edit-modal-card button`
 	   (yang jika tidak, memaksa semua tombol jadi primary & padding tak konsisten). */
+	.thumb-actions {
+		display: flex;
+		gap: 8px;
+	}
+	/* Selektor 2-kelas agar menang dari aturan global `.edit-modal-card button`. */
 	.thumb-manage .thumb-btn {
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
+		flex: 1;
 		width: 100%;
 		min-height: 42px;
 		padding: 0 16px;
 		background: var(--color-primary);
-		border: 0;
+		border: 1px solid var(--color-primary);
 		border-radius: 11px;
 		color: #fff;
 		font-size: 0.82rem;
@@ -1934,14 +1961,14 @@
 		border: 1px solid var(--color-border);
 		color: var(--color-text);
 	}
-	.thumb-chip {
+	.thumb-manage .thumb-btn:disabled {
+		opacity: 0.55;
+		cursor: default;
+	}
+	.thumb-hint {
 		margin: 0;
-		padding: 8px 11px;
-		background: var(--color-primary-soft);
-		border-radius: 10px;
-		color: var(--color-primary-strong, var(--color-primary));
+		color: var(--color-muted);
 		font-size: 0.76rem;
-		font-weight: 700;
 	}
 	.pin-manage {
 		display: grid;

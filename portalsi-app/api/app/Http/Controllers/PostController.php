@@ -964,6 +964,12 @@ class PostController extends Controller
                 $variants = is_array($post->media_variants) ? $post->media_variants : [];
                 unset($variants['thumbnail']);
                 $post->media_variants = $variants;
+            } else {
+                // Ekstraksi gagal (ffmpeg tak tersedia / frame kosong). Beri tahu jelas
+                // ketimbang mengembalikan "sukses" padahal thumbnail tak berubah.
+                return response()->json([
+                    'message' => 'Gagal membuat thumbnail dari video di server. Pastikan ffmpeg aktif, lalu coba lagi.',
+                ], 422);
             }
         }
 
