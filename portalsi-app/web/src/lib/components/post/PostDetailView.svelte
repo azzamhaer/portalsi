@@ -291,21 +291,16 @@
 	let ownerMenuOpen = $state(false);
 
 	// ---- Ubah thumbnail video (pemilik, di modal kelola) ----
+	// Pakai kontrol video native untuk mencari frame (andal walau video lintas domain),
+	// lalu ambil currentTime saat user menekan "Gunakan frame ini".
 	let thumbEditOpen = $state(false);
 	let thumbVideoEl = $state<HTMLVideoElement | null>(null);
-	let thumbDuration = $state(0);
 	let thumbSecond = $state(0);
 	let thumbChanged = $state(false);
-	function onThumbSeek(sec: number) {
-		thumbSecond = sec;
+	function pickCurrentFrame() {
+		if (!thumbVideoEl) return;
+		thumbSecond = Math.max(0, thumbVideoEl.currentTime || 0);
 		thumbChanged = true;
-		if (thumbVideoEl) {
-			try {
-				thumbVideoEl.currentTime = Math.min(sec, Math.max(0, thumbDuration - 0.05));
-			} catch {
-				/* abaikan */
-			}
-		}
 	}
 
 	// ---- Moderasi (moderator) & banner take-down (pemilik) ----
@@ -824,7 +819,7 @@
 					{#if data.post.isVideo}
 						<div class="thumb-manage">
 							<strong><ImageIcon size={15} /> Thumbnail video</strong>
-							<p>Pilih frame yang dijadikan sampul. Geser untuk memilih momen yang pas.</p>
+							<p>Putar / geser video ke frame yang diinginkan, lalu tekan "Gunakan frame ini".</p>
 							{#if thumbEditOpen}
 								<div class="thumb-stage">
 									<!-- svelte-ignore a11y_media_has_caption -->
@@ -832,28 +827,15 @@
 										bind:this={thumbVideoEl}
 										src={normalizeMediaUrl(data.post.mediaUrl, detailMediaBase)}
 										preload="metadata"
+										controls
 										muted
 										playsinline
-										onloadedmetadata={() => {
-											thumbDuration = thumbVideoEl?.duration || 0;
-										}}
 									></video>
 								</div>
-								<input
-									class="thumb-range"
-									type="range"
-									min="0"
-									max={Math.max(0.1, thumbDuration)}
-									step="0.1"
-									value={thumbSecond}
-									oninput={(e) => onThumbSeek(Number((e.currentTarget).value))}
-								/>
-								<div class="thumb-meta">
-									<span>{thumbSecond.toFixed(1)} dtk</span>
-									{#if thumbChanged}<span class="thumb-chip">Frame dipilih — simpan untuk menerapkan</span>{/if}
-								</div>
+								<button type="button" class="thumb-btn" onclick={pickCurrentFrame}>Gunakan frame ini</button>
+								{#if thumbChanged}<p class="thumb-chip">Frame pada {thumbSecond.toFixed(1)} dtk dipilih — tekan Simpan untuk menerapkan.</p>{/if}
 							{:else}
-								<button type="button" class="thumb-open" onclick={() => (thumbEditOpen = true)}>Ganti thumbnail</button>
+								<button type="button" class="thumb-btn ghost" onclick={() => (thumbEditOpen = true)}>Ganti thumbnail</button>
 							{/if}
 						</div>
 					{/if}
@@ -1927,37 +1909,39 @@
 		overflow: hidden;
 	}
 	.thumb-stage video {
-		max-height: 240px;
-		max-width: 100%;
-	}
-	.thumb-range {
 		width: 100%;
-		accent-color: var(--color-primary);
+		max-height: 260px;
 	}
-	.thumb-meta {
-		display: flex;
+	/* Selektor 2-kelas agar menang dari aturan global `.edit-modal-card button`
+	   (yang jika tidak, memaksa semua tombol jadi primary & padding tak konsisten). */
+	.thumb-manage .thumb-btn {
+		display: inline-flex;
 		align-items: center;
-		gap: 10px;
-		font-size: 0.76rem;
-		color: var(--color-muted);
+		justify-content: center;
+		width: 100%;
+		min-height: 42px;
+		padding: 0 16px;
+		background: var(--color-primary);
+		border: 0;
+		border-radius: 11px;
+		color: #fff;
+		font-size: 0.82rem;
+		font-weight: 720;
+		cursor: pointer;
 	}
-	.thumb-chip {
-		padding: 2px 8px;
-		background: var(--color-primary-soft);
-		border-radius: 999px;
-		color: var(--color-primary-strong, var(--color-primary));
-		font-weight: 700;
-	}
-	.thumb-open {
-		justify-self: start;
-		padding: 8px 14px;
+	.thumb-manage .thumb-btn.ghost {
 		background: transparent;
 		border: 1px solid var(--color-border);
-		border-radius: 10px;
 		color: var(--color-text);
-		font-size: 0.82rem;
+	}
+	.thumb-chip {
+		margin: 0;
+		padding: 8px 11px;
+		background: var(--color-primary-soft);
+		border-radius: 10px;
+		color: var(--color-primary-strong, var(--color-primary));
+		font-size: 0.76rem;
 		font-weight: 700;
-		cursor: pointer;
 	}
 	.pin-manage {
 		display: grid;

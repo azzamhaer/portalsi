@@ -271,7 +271,8 @@ class MediaVariantService
      */
     public function extractVideoFrameThumbnail(Post $post, float $second): ?string
     {
-        if (! $this->hasFfmpeg()) {
+        // Ekstraksi 1 frame hanya butuh ffmpeg (tidak perlu ffprobe).
+        if (! self::shellAvailable() || $this->ffmpeg === '' || ! @is_executable($this->ffmpeg)) {
             return null;
         }
         $key = $this->relativePath($post->media_url);
