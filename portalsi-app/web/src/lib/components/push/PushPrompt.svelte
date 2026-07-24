@@ -1,28 +1,49 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { Bell, X, LoaderCircle } from '@lucide/svelte';
 	import { portal } from '$lib/actions/portal';
 	import { pushSupported, pushPermission, enablePush } from '$lib/push';
 
 	const DISMISS_KEY = 'portalsi-push-prompt-v1';
+	const AUTO_CLOSE_MS = 3500;
 
 	let open = $state(false);
 	let busy = $state(false);
-	let done = $state<'' | 'granted' | 'denied'>('');
+	let view = $state<'ask' | 'result'>('ask');
+	let result = $state<'granted' | 'blocked' | 'later' | 'error'>('later');
+	let closeTimer: ReturnType<typeof setTimeout> | undefined;
+
+	const resultCopy = {
+		granted: {
+			title: 'Notifikasi aktif 🎉',
+			body: 'Sekarang kamu akan langsung tahu setiap ada aktivitas penting di akunmu.'
+		},
+		blocked: {
+			title: 'Belum diizinkan',
+			body: 'Tidak apa-apa. Kamu bisa mengaktifkannya nanti di Pengaturan › Preferensi, atau lewat pengaturan situs di browser.'
+		},
+		later: {
+			title: 'Oke, nanti ya 👍',
+			body: 'Kamu bisa mengaktifkan notifikasi kapan saja di Pengaturan › Preferensi.'
+		},
+		error: {
+			title: 'Belum bisa diaktifkan',
+			body: 'Coba lagi nanti dari Pengaturan › Preferensi.'
+		}
+	} as const;
 
 	onMount(() => {
 		if (!pushSupported()) return;
-		// Hanya saat izin masih 'default' (belum granted/denied). Kalau default, user pasti
-		// belum berlangganan, jadi tak perlu cek langganan (yang bisa menggantung di SW).
 		if (pushPermission() !== 'default') return;
 		try {
 			if (localStorage.getItem(DISMISS_KEY)) return;
 		} catch {
 			/* localStorage bisa diblokir; lanjut saja */
 		}
-		// Muncul halus beberapa saat setelah masuk.
 		setTimeout(() => (open = true), 1400);
 	});
+
+	onDestroy(() => clearTimeout(closeTimer));
 
 	function remember() {
 		try {
@@ -32,7 +53,20 @@
 		}
 	}
 
-	function dismiss() {
+	function scheduleClose() {
+		clearTimeout(closeTimer);
+		closeTimer = setTimeout(() => (open = false), AUTO_CLOSE_MS);
+	}
+
+	function toResult(kind: typeof result) {
+		result = kind;
+		view = 'result';
+		remember();
+		scheduleClose();
+	}
+
+	function closeNow() {
+		clearTimeout(closeTimer);
 		remember();
 		open = false;
 	}
@@ -40,31 +74,29 @@
 	async function accept() {
 		if (busy) return;
 		busy = true;
-		const res = await enablePush();
+		const res = await enablePush(); // prompt izin browser muncul selama ini
 		busy = false;
-		remember();
-		if (res === 'granted') {
-			done = 'granted';
-			setTimeout(() => (open = false), 1200);
-		} else {
-			// denied / error / unsupported → tutup saja tanpa memaksa.
-			open = false;
-		}
+		if (res === 'granted') toResult('granted');
+		else if (res === 'denied') toResult('blocked');
+		else toResult('error');
 	}
 </script>
 
 {#if open}
 	<div class="pp-scrim" use:portal role="dialog" aria-modal="true" aria-label="Aktifkan notifikasi">
 		<div class="pp-card">
-			<button class="pp-x" onclick={dismiss} aria-label="Tutup"><X size={18} /></button>
+			<button class="pp-x" onclick={closeNow} aria-label="Tutup"><X size={18} /></button>
 			<div class="pp-hero">
 				<img src="https://portalsi.com/notification.webp" alt="" loading="eager" />
-				<span class="pp-bell"><Bell size={26} /></span>
 			</div>
 			<div class="pp-body">
-				{#if done === 'granted'}
-					<h2>Notifikasi aktif 🎉</h2>
-					<p>Sekarang kamu akan langsung tahu setiap ada aktivitas penting.</p>
+				<span class="pp-bell"><Bell size={26} /></span>
+				{#if view === 'result'}
+					<h2>{resultCopy[result].title}</h2>
+					<p>{resultCopy[result].body}</p>
+					<div class="pp-actions">
+						<button class="pp-ok" onclick={closeNow}>Tutup</button>
+					</div>
 				{:else}
 					<h2>Jangan sampai ketinggalan</h2>
 					<p>
@@ -72,9 +104,11 @@
 						mengajakmu berkolaborasi. <strong>Bukan promosi</strong> — murni aktivitas akunmu.
 					</p>
 					<div class="pp-actions">
-						<button class="pp-later" onclick={dismiss} disabled={busy}>Nanti saja</button>
+						<button class="pp-later" onclick={() => toResult('later')} disabled={busy}>
+							Nanti saja
+						</button>
 						<button class="pp-ok" onclick={accept} disabled={busy}>
-							{#if busy}<LoaderCircle size={17} class="pp-spin" /> Menyiapkan…{:else}Oke, aktifkan{/if}
+							{#if busy}<LoaderCircle size={17} class="pp-spin" /> Klik "Izinkan"{:else}Oke, aktifkan{/if}
 						</button>
 					</div>
 				{/if}
@@ -108,7 +142,7 @@
 		position: absolute;
 		top: 12px;
 		right: 12px;
-		z-index: 2;
+		z-index: 3;
 		display: grid;
 		width: 34px;
 		height: 34px;
@@ -125,17 +159,19 @@
 		position: relative;
 		aspect-ratio: 16 / 10;
 		background: linear-gradient(135deg, var(--color-primary), var(--color-primary-strong, #1f6f43));
-		overflow: hidden;
 	}
 	.pp-hero img {
 		width: 100%;
 		height: 100%;
 		object-fit: cover;
 	}
+	/* Lonceng menempel di batas hero↔body (top negatif dari body), z-index tinggi
+	   supaya selalu di depan dan TIDAK terpotong hero. */
 	.pp-bell {
 		position: absolute;
 		left: 20px;
-		bottom: -22px;
+		top: -26px;
+		z-index: 2;
 		display: grid;
 		width: 52px;
 		height: 52px;
@@ -148,7 +184,8 @@
 		transform-origin: 50% 10%;
 	}
 	.pp-body {
-		padding: 34px 22px 22px;
+		position: relative;
+		padding: 36px 22px 22px;
 	}
 	.pp-body h2 {
 		margin: 0 0 8px;
@@ -191,7 +228,7 @@
 		color: #fff;
 	}
 	.pp-actions button:disabled {
-		opacity: 0.6;
+		opacity: 0.7;
 		cursor: default;
 	}
 	:global(.pp-spin) {
