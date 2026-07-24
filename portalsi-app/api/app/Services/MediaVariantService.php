@@ -364,11 +364,28 @@ class MediaVariantService
         }
     }
 
-    /** Unggah file lokal ke storage sebagai public. */
+    /** Unggah file lokal ke storage sebagai public, dengan Content-Type eksplisit. */
     public function upload(string $localPath, string $key): bool
     {
         try {
-            Storage::disk($this->disk)->put($key, file_get_contents($localPath), 'public');
+            $ext = strtolower(pathinfo($key, PATHINFO_EXTENSION));
+            $mime = match ($ext) {
+                'jpg', 'jpeg' => 'image/jpeg',
+                'png' => 'image/png',
+                'webp' => 'image/webp',
+                'gif' => 'image/gif',
+                'mp4', 'm4v' => 'video/mp4',
+                'webm' => 'video/webm',
+                default => 'application/octet-stream',
+            };
+
+            // Content-Type eksplisit mencegah objek tersimpan sebagai octet-stream —
+            // penyebab umum CDN/Cloudflare salah menyajikan / gagal mengoptimasi gambar.
+            Storage::disk($this->disk)->put($key, file_get_contents($localPath), [
+                'visibility' => 'public',
+                'ContentType' => $mime,
+                'mimetype' => $mime,
+            ]);
 
             return true;
         } catch (\Throwable $e) {
