@@ -74,6 +74,13 @@ class CollaboratorController extends Controller
             ->where('post_id', $postId)->where('user_id', $authId)
             ->update(['status' => 'accepted', 'responded_at' => now(), 'updated_at' => now()]);
 
+        // Undangan sudah ditindaklanjuti → hapus notifikasi undangannya agar tidak
+        // muncul lagi setelah daftar notifikasi dimuat ulang.
+        Notification::where('recipient_id', $authId)
+            ->where('related_post_id', $postId)
+            ->where('type', 'collab_invite')
+            ->delete();
+
         // Beri tahu pemilik post.
         $post = Post::find($postId);
         if ($post) {
