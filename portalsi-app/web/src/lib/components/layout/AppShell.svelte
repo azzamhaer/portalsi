@@ -223,11 +223,23 @@
 			<div>
 				<a href="/marketplace" aria-label="Marketplace"><ShoppingBag size={21} /></a>
 				<a href="/explore" aria-label="Cari"><Search size={21} /></a>
-				<a href="/notifications" aria-label="Notifikasi" class:has-dot={unreadCount > 0}
-					><Bell size={21} /></a
+				<a
+					href="/notifications"
+					class="mh-icon"
+					aria-label={unreadCount > 0
+						? `Notifikasi (${unreadCount} belum dibaca)`
+						: 'Notifikasi'}
+					><Bell size={21} />{#if unreadCount > 0}<i class="mh-count"
+							>{unreadCount > 99 ? '99+' : unreadCount}</i
+						>{/if}</a
 				>
-				<a href="/messages" aria-label="Pesan" class:has-dot={unreadMessages > 0}
-					><MessageCircle size={21} /></a
+				<a
+					href="/messages"
+					class="mh-icon"
+					aria-label={unreadMessages > 0 ? `Pesan (${unreadMessages} belum dibaca)` : 'Pesan'}
+					><MessageCircle size={21} />{#if unreadMessages > 0}<i class="mh-count"
+							>{unreadMessages > 99 ? '99+' : unreadMessages}</i
+						>{/if}</a
 				>
 			</div>
 		</header>
@@ -497,16 +509,24 @@
 		background: var(--color-primary-soft);
 	}
 
-	.has-dot::after {
+	/* Badge angka di header mobile (jumlah belum dibaca). */
+	.mh-count {
 		position: absolute;
-		top: 9px;
-		right: 9px;
-		width: 7px;
-		height: 7px;
+		top: 3px;
+		right: 2px;
+		display: grid;
+		min-width: 17px;
+		height: 17px;
+		padding: 0 4px;
+		place-items: center;
 		background: var(--color-danger);
 		border: 2px solid var(--color-surface);
-		border-radius: 50%;
-		content: '';
+		border-radius: 999px;
+		color: #fff;
+		font-size: 0.6rem;
+		font-style: normal;
+		font-weight: 800;
+		line-height: 1;
 	}
 
 	.app-main {

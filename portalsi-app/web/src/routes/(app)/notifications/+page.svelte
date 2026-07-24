@@ -5,7 +5,6 @@
 		AtSign,
 		Bell,
 		Check,
-		CheckCheck,
 		Heart,
 		MessageCircle,
 		ShieldAlert,
@@ -30,7 +29,6 @@
 	let { data }: PageProps = $props();
 	const mediaBaseUrl = env.PUBLIC_MEDIA_BASE_URL?.trim() || 'https://api.portalsi.com/storage';
 	let items = $state(untrack(() => [...data.items]));
-	let busy = $state(false);
 	let statusMessage = $state('');
 	let requests = $state(untrack(() => [...data.requests]));
 	let nextPage = $state(untrack(() => data.page + 1));
@@ -79,6 +77,8 @@
 	}
 
 	onMount(() => {
+		// Kunjungan ke halaman ini otomatis menandai semua notifikasi sebagai dibaca.
+		void markAllReadOnVisit();
 		if (!data.user) return;
 		return subscribePrivate(
 			`user.${data.user.id}`,
@@ -112,19 +112,15 @@
 		await goto(destination(item));
 	}
 
-	async function markAllRead() {
-		if (busy || unreadCount === 0) return;
-		busy = true;
-		statusMessage = '';
+	// Mengunjungi halaman ini = semua notifikasi dianggap dibaca (tanpa tombol).
+	// Badge di navigasi langsung dikosongkan.
+	async function markAllReadOnVisit() {
+		if (unreadCount === 0) return;
 		try {
 			await clientRequest('notifications/read/all', { method: 'PATCH' });
-			for (const item of items) item.read = true;
 			window.dispatchEvent(new CustomEvent('portal:notifications-read', { detail: { count: 0 } }));
-			statusMessage = 'Semua notifikasi ditandai dibaca.';
 		} catch {
-			statusMessage = 'Notifikasi belum dapat diperbarui.';
-		} finally {
-			busy = false;
+			/* diamkan: bukan aksi kritis, akan tercoba lagi saat kunjungan berikutnya */
 		}
 	}
 	async function decideRequest(id: number, accept: boolean) {
@@ -186,11 +182,6 @@
 <SectionPage
 	title="Notifikasi"
 >
-	{#snippet actions()}<button
-			class="read-all"
-			onclick={markAllRead}
-			disabled={busy || unreadCount === 0}><CheckCheck size={17} /> Tandai semua dibaca</button
-		>{/snippet}
 	<div class="notifications-layout">
 		<section class="notification-list surface" aria-labelledby="notification-heading">
 			{#if requests.length}<div class="follow-requests">
@@ -283,21 +274,6 @@
 </SectionPage>
 
 <style>
-	.read-all {
-		display: flex;
-		min-height: 42px;
-		align-items: center;
-		gap: 7px;
-		padding: 0 13px;
-		background: white;
-		border: 1px solid var(--color-border);
-		border-radius: 11px;
-		font-size: 0.78rem;
-		font-weight: 680;
-	}
-	.read-all:disabled {
-		opacity: 0.55;
-	}
 	.notifications-layout {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr) 280px;
@@ -533,12 +509,6 @@
 		}
 	}
 	@media (max-width: 767px) {
-		.read-all {
-			width: 42px;
-			padding: 0;
-			justify-content: center;
-			font-size: 0;
-		}
 		.notification-list {
 			border-inline: 0;
 			border-radius: 0;
