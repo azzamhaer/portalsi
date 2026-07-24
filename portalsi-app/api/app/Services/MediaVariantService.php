@@ -342,6 +342,104 @@ class MediaVariantService
         }
     }
 
+    /** Baca beberapa byte pertama objek (untuk cek magic-number). null bila gagal. */
+    public function firstBytes(string $key, int $n = 4): ?string
+    {
+        try {
+            $stream = Storage::disk($this->disk)->readStream($key);
+            if (! $stream) {
+                return null;
+            }
+            $bytes = fread($stream, $n);
+            fclose($stream);
+
+            return $bytes === false || $bytes === '' ? null : $bytes;
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    /**
+     * Objek gambar terlihat valid? (ada + magic-number JPEG/PNG/WEBP + ukuran wajar).
+     * Dipakai untuk mendeteksi thumbnail korup di R2 tanpa mengunduh seluruh file.
+     */
+    public function isValidImageObject(string $key): bool
+    {
+        if (! $this->exists($key)) {
+            return false;
+        }
+        $size = $this->size($key);
+        if ($size !== null && $size < 100) {
+            return false; // 0-byte / terlalu kecil = rusak
+        }
+        $b = $this->firstBytes($key, 12);
+        if ($b === null) {
+            return false;
+        }
+
+        return str_starts_with($b, "\xFF\xD8\xFF")        // JPEG
+            || str_starts_with($b, "\x89PNG")              // PNG
+            || (str_starts_with($b, 'RIFF') && substr($b, 8, 4) === 'WEBP'); // WEBP
+    }
+
+    /**
+     * Regenerasi HANYA thumbnail sebuah post (tanpa rendition video) lalu unggah &
+     * simpan. Ringan — dipakai command perbaikan thumbnail korup.
+     * Return: 'ok' | 'skip' | 'fail'.
+     */
+    public function regenerateThumbnailOnly(Post $post): string
+    {
+        if (! $this->hasFfmpeg()) {
+            return 'fail';
+        }
+        $key = $this->relativePath($post->media_url);
+        if (! $key) {
+            return 'fail';
+        }
+
+        $isVideo = (bool) $post->is_video || $this->isVideoUrl($post->media_url);
+        $hasCustom = (bool) ($post->has_custom_thumbnail ?? false) && ! empty($post->thumbnail_url);
+
+        // Sumber frame: gambar custom pilihan user (bila ada) atau media aslinya.
+        $srcKey = $hasCustom ? $this->relativePath($post->thumbnail_url) : $key;
+        if (! $srcKey) {
+            return 'fail';
+        }
+        $ext = pathinfo($srcKey, PATHINFO_EXTENSION) ?: ($isVideo && ! $hasCustom ? 'mp4' : 'jpg');
+        $src = $this->downloadToTemp($srcKey, '.'.$ext);
+        if (! $src) {
+            return 'fail';
+        }
+
+        $thumbKey = $this->thumbKey($key);
+        $tThumb = tempnam(sys_get_temp_dir(), 'psi_fix_').'.jpg';
+        try {
+            $fromVideo = $isVideo && ! $hasCustom;
+            if (! $this->makeThumbnail($src, $tThumb, $fromVideo) || ! $this->upload($tThumb, $thumbKey)) {
+                return 'fail';
+            }
+
+            $variants = is_array($post->media_variants) ? $post->media_variants : [];
+            $variants['thumbnail'] = array_filter([
+                'url' => $this->publicUrl($thumbKey),
+                'key' => $thumbKey,
+                'w' => self::THUMB,
+                'h' => self::THUMB,
+                'bytes' => @filesize($tThumb) ?: null,
+            ], fn ($v) => $v !== null);
+            $post->media_variants = $variants;
+            if (! $hasCustom) {
+                $post->thumbnail_url = $variants['thumbnail']['url'];
+            }
+            $post->save();
+
+            return 'ok';
+        } finally {
+            @unlink($src);
+            @unlink($tThumb);
+        }
+    }
+
     /** Download objek storage ke file lokal sementara. Return path atau null. */
     public function downloadToTemp(string $key, string $suffix = ''): ?string
     {
