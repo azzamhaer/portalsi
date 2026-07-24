@@ -281,6 +281,7 @@
 		flex: none;
 		width: 48px;
 		height: 28px;
+		min-height: 28px;
 		padding: 0;
 		background: var(--color-border, #cbd0d6);
 		border: 0;
