@@ -637,6 +637,7 @@ Route::middleware(['auth:sanctum', 'notBanned'])->group(function () {
     Route::post('/policies/{id}/accept', [\App\Http\Controllers\PolicyController::class, 'accept'])->whereNumber('id');
 
     // ── WEB PUSH (notifikasi perangkat) ──
+    Route::get('/push/public-key', [\App\Http\Controllers\PushController::class, 'publicKey']);
     Route::post('/push/subscribe', [\App\Http\Controllers\PushController::class, 'subscribe']);
     Route::post('/push/unsubscribe', [\App\Http\Controllers\PushController::class, 'unsubscribe']);
     Route::get('/clips/{id}', [PostController::class, 'clips']);

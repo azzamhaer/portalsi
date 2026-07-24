@@ -8,6 +8,12 @@ use Illuminate\Support\Facades\Auth;
 
 class PushController extends Controller
 {
+    /** Public key VAPID untuk frontend (bukan rahasia). */
+    public function publicKey()
+    {
+        return response()->json(['key' => (string) config('webpush.vapid.public_key')]);
+    }
+
     /** Simpan/segarkan langganan push untuk perangkat ini. */
     public function subscribe(Request $request)
     {

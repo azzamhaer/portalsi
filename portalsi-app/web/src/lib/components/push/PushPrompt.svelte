@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { Bell, X, LoaderCircle } from '@lucide/svelte';
 	import { portal } from '$lib/actions/portal';
-	import { pushSupported, pushPermission, isPushSubscribed, enablePush } from '$lib/push';
+	import { pushSupported, pushPermission, enablePush } from '$lib/push';
 
 	const DISMISS_KEY = 'portalsi-push-prompt-v1';
 
@@ -10,15 +10,16 @@
 	let busy = $state(false);
 	let done = $state<'' | 'granted' | 'denied'>('');
 
-	onMount(async () => {
+	onMount(() => {
 		if (!pushSupported()) return;
-		if (pushPermission() !== 'default') return; // sudah granted/denied → jangan ganggu
+		// Hanya saat izin masih 'default' (belum granted/denied). Kalau default, user pasti
+		// belum berlangganan, jadi tak perlu cek langganan (yang bisa menggantung di SW).
+		if (pushPermission() !== 'default') return;
 		try {
 			if (localStorage.getItem(DISMISS_KEY)) return;
 		} catch {
 			/* localStorage bisa diblokir; lanjut saja */
 		}
-		if (await isPushSubscribed()) return;
 		// Muncul halus beberapa saat setelah masuk.
 		setTimeout(() => (open = true), 1400);
 	});

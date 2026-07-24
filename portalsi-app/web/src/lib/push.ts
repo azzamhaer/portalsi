@@ -3,6 +3,21 @@ import { clientRequest } from '$lib/api/client';
 
 const VAPID_PUBLIC_KEY = (env.PUBLIC_VAPID_PUBLIC_KEY ?? '').trim();
 
+// Ambil public key: utamakan env web; bila kosong (adapter-node kadang tak memuat .env),
+// ambil dari API yang pasti punya kuncinya. Hasilnya di-cache.
+let cachedVapidKey: string | null = null;
+async function getVapidKey(): Promise<string> {
+	if (VAPID_PUBLIC_KEY) return VAPID_PUBLIC_KEY;
+	if (cachedVapidKey !== null) return cachedVapidKey;
+	try {
+		const res = (await clientRequest('push/public-key')) as { key?: string } | null;
+		cachedVapidKey = (res?.key ?? '').trim();
+	} catch {
+		cachedVapidKey = '';
+	}
+	return cachedVapidKey;
+}
+
 /** Web Push didukung di browser ini? */
 export function pushSupported(): boolean {
 	return (
@@ -48,7 +63,8 @@ export type EnableResult = 'granted' | 'denied' | 'unsupported' | 'no-key' | 'er
  */
 export async function enablePush(): Promise<EnableResult> {
 	if (!pushSupported()) return 'unsupported';
-	if (!VAPID_PUBLIC_KEY) return 'no-key';
+	const vapidKey = await getVapidKey();
+	if (!vapidKey) return 'no-key';
 	try {
 		const permission = await Notification.requestPermission();
 		if (permission !== 'granted') return 'denied';
@@ -58,7 +74,7 @@ export async function enablePush(): Promise<EnableResult> {
 		if (!sub) {
 			sub = await reg.pushManager.subscribe({
 				userVisibleOnly: true,
-				applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+				applicationServerKey: urlBase64ToUint8Array(vapidKey)
 			});
 		}
 
