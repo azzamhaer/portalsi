@@ -335,9 +335,36 @@ class MediaVariantService
                 'bytes' => $origBytes,
             ], fn ($v) => $v !== null);
 
-            // Thumbnail square (video: frame detik-1; foto: crop tengah).
+            // Thumbnail square. Bila user MEMILIH thumbnail sendiri (has_custom_thumbnail),
+            // JANGAN ekstrak frame video (yang menghasilkan "detik awal") dan JANGAN timpa
+            // thumbnail_url. Buat versi square dari gambar pilihan user saja.
+            $hasCustom = (bool) ($post->has_custom_thumbnail ?? false) && ! empty($post->thumbnail_url);
             $thumbKey = $this->thumbKey($key);
-            if ($force || ! isset($variants['thumbnail']) || ! $this->exists($thumbKey)) {
+            if ($hasCustom) {
+                // Turunkan square dari thumbnail pilihan user (crop tengah), tanpa menyentuh
+                // thumbnail_url. Kalau gagal, biarkan tanpa varian → fallback ke thumbnail_url.
+                if ($force || ! isset($variants['thumbnail']) || ! $this->exists($thumbKey)) {
+                    $customKey = $this->relativePath($post->thumbnail_url);
+                    $srcThumb = $customKey ? $this->downloadToTemp($customKey, '.jpg') : null;
+                    if ($srcThumb) {
+                        $tmpFiles[] = $srcThumb;
+                        $tThumb = tempnam(sys_get_temp_dir(), 'psi_thumb_').'.jpg';
+                        $tmpFiles[] = $tThumb;
+                        if ($this->makeThumbnail($srcThumb, $tThumb, false) && $this->upload($tThumb, $thumbKey)) {
+                            $b = @filesize($tThumb) ?: null;
+                            $added += (int) $b;
+                            $variants['thumbnail'] = array_filter([
+                                'url' => $this->publicUrl($thumbKey),
+                                'key' => $thumbKey,
+                                'w' => self::THUMB,
+                                'h' => self::THUMB,
+                                'bytes' => $b,
+                            ], fn ($v) => $v !== null);
+                        }
+                    }
+                }
+            } elseif ($force || ! isset($variants['thumbnail']) || ! $this->exists($thumbKey)) {
+                // Tanpa thumbnail pilihan user: ekstrak frame (video) / crop tengah (foto).
                 $tThumb = tempnam(sys_get_temp_dir(), 'psi_thumb_').'.jpg';
                 $tmpFiles[] = $tThumb;
                 if ($this->makeThumbnail($src, $tThumb, $isVideo) && $this->upload($tThumb, $thumbKey)) {

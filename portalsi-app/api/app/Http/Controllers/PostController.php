@@ -783,6 +783,8 @@ class PostController extends Controller
             'media_url' => $mediaUrl,
             'media_urls' => count($mediaUrls) > 1 ? $mediaUrls : null,
             'thumbnail_url' => $thumbnailUrl,
+            // Thumbnail dipilih user (frame khusus) → pipeline TIDAK boleh menimpanya.
+            'has_custom_thumbnail' => $thumbnailUrl !== null,
             // Tandai untuk pipeline varian (rendition + thumbnail square) via cron media:process-pending.
             'media_status' => 'pending',
             'location' => $request->location,
@@ -945,6 +947,11 @@ class PostController extends Controller
             $disk = $this->mediaDisk();
             $thumbPathNew = $request->file('thumbnail')->store('uploads/posts/thumbnails', $disk);
             $post->thumbnail_url = Storage::disk($disk)->url($thumbPathNew);
+            // Thumbnail baru = pilihan user; bersihkan varian lama & lindungi dari pipeline.
+            $post->has_custom_thumbnail = true;
+            $variants = is_array($post->media_variants) ? $post->media_variants : [];
+            unset($variants['thumbnail']);
+            $post->media_variants = $variants;
         }
 
         // Update fields — pakai has() agar caption/lokasi bisa DIKOSONGKAN.

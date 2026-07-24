@@ -18,6 +18,7 @@ class Post extends Model
         'media_url',
         'media_urls',
         'thumbnail_url',
+        'has_custom_thumbnail',
         'media_variants',
         'media_status',
         'location',
@@ -47,6 +48,7 @@ class Post extends Model
         'pinned_at' => 'datetime',
         'is_video' => 'boolean',
         'video_muted' => 'boolean',
+        'has_custom_thumbnail' => 'boolean',
         'media_urls' => 'array',
         'media_variants' => 'array',
     ];
