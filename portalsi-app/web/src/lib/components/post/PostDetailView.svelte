@@ -858,7 +858,7 @@
 					{#if data.post.isVideo}
 						<div class="thumb-manage">
 							<strong><ImageIcon size={15} /> Thumbnail video</strong>
-							<p>Putar / geser video ke frame yang diinginkan, lalu tekan "Gunakan frame ini".</p>
+							<p>Putar / geser video ke frame yang diinginkan, lalu tekan "Simpan thumbnail".</p>
 							{#if thumbEditOpen}
 								<div class="thumb-stage">
 									<!-- svelte-ignore a11y_media_has_caption -->
