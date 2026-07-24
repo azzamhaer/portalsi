@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
 	import { z } from 'zod';
-	import { ShieldAlert, X, LoaderCircle } from '@lucide/svelte';
+	import { ShieldAlert, X, LoaderCircle, Trash2, Eye } from '@lucide/svelte';
 	import { clientRequest } from '$lib/api/client';
+	import { confirmAction } from '$lib/ui/confirm';
 	import { portal } from '$lib/actions/portal';
 
 	const noticesSchema = z.object({
@@ -34,19 +36,54 @@
 		}
 	});
 
-	// Tutup = akui pemberitahuan agar tidak muncul lagi, lalu tampilkan berikutnya (bila ada).
-	async function acknowledge() {
+	// Akui pemberitahuan (tidak muncul lagi), lalu tampilkan berikutnya bila ada.
+	async function ack(postId: number) {
+		try {
+			await clientRequest(`moderation/notices/${postId}/ack`, { method: 'POST' });
+		} catch {
+			/* biarkan; akan muncul lagi nanti, lebih baik daripada hilang diam-diam */
+		}
+	}
+
+	async function viewPost() {
 		const item = current;
 		if (!item || busy) return;
 		busy = true;
+		await ack(item.post_id);
+		busy = false;
+		queue = queue.slice(1);
+		await goto(`/posts/${item.post_id}`);
+	}
+
+	async function deletePost() {
+		const item = current;
+		if (!item || busy) return;
+		const ok = await confirmAction({
+			title: 'Hapus postingan ini?',
+			description: 'Postingan yang dimoderasi akan dihapus permanen dan tidak dapat dipulihkan.',
+			confirmLabel: 'Hapus permanen',
+			tone: 'danger'
+		});
+		if (!ok) return;
+		busy = true;
 		try {
-			await clientRequest(`moderation/notices/${item.post_id}/ack`, { method: 'POST' });
+			await clientRequest(`posts/${item.post_id}`, { method: 'DELETE' });
+			await ack(item.post_id);
+			queue = queue.slice(1);
 		} catch {
-			/* biarkan; akan muncul lagi nanti, itu lebih baik daripada hilang diam-diam */
+			/* biarkan modal terbuka bila gagal */
 		} finally {
 			busy = false;
-			queue = queue.slice(1);
 		}
+	}
+
+	async function dismiss() {
+		const item = current;
+		if (!item || busy) return;
+		busy = true;
+		await ack(item.post_id);
+		busy = false;
+		queue = queue.slice(1);
 	}
 </script>
 
@@ -76,16 +113,16 @@
 			</p>
 
 			<div class="mn-actions">
-				<a class="mn-open" href={`/posts/${current.post_id}`} onclick={acknowledge}
-					>Lihat & kelola</a
-				>
-				<button class="mn-ack" onclick={acknowledge} disabled={busy}>
-					{#if busy}<LoaderCircle size={15} class="mn-spin" />{/if} Mengerti
+				<button class="mn-open" onclick={viewPost} disabled={busy}>
+					<Eye size={16} /> Lihat post
+				</button>
+				<button class="mn-del" onclick={deletePost} disabled={busy}>
+					{#if busy}<LoaderCircle size={15} class="mn-spin" />{:else}<Trash2 size={16} />{/if} Hapus
 				</button>
 			</div>
 
 			{#if queue.length > 1}<small class="mn-more">+{queue.length - 1} pemberitahuan lain</small>{/if}
-			<button class="mn-x" onclick={acknowledge} aria-label="Tutup"><X size={18} /></button>
+			<button class="mn-x" onclick={dismiss} aria-label="Tutup"><X size={18} /></button>
 		</div>
 	</div>
 {/if}
@@ -157,6 +194,7 @@
 		margin: 3px 0 0;
 		font-size: 0.82rem;
 		line-height: 1.45;
+		white-space: pre-line;
 	}
 	.mn-policy {
 		margin: 0 0 4px;
@@ -184,11 +222,16 @@
 	.mn-open {
 		background: var(--color-primary);
 		color: #fff;
+		border: 0;
 	}
-	.mn-ack {
+	.mn-del {
 		background: transparent;
-		border: 1px solid var(--color-border);
-		color: var(--color-text);
+		border: 1px solid rgb(192 57 43 / 40%);
+		color: #c0392b;
+	}
+	.mn-actions button:disabled {
+		opacity: 0.6;
+		cursor: default;
 	}
 	.mn-more {
 		display: block;

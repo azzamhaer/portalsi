@@ -21,7 +21,10 @@ class ModerationController extends Controller
     public function moderate(Request $request, $id)
     {
         $request->validate([
-            'reason' => 'required|string|max:1000',
+            // `reason` = gabungan alasan template (tanpa catatan bebas).
+            'reason' => 'required|string|max:2000',
+            // `note` = catatan bebas opsional; HANYA tampil di detail post, bukan notifikasi.
+            'note' => 'nullable|string|max:1000',
         ]);
 
         $post = Post::findOrFail($id);
@@ -32,11 +35,13 @@ class ModerationController extends Controller
 
         $post->moderated_at = now();
         $post->moderation_reason = trim($request->input('reason'));
+        $post->moderation_note = trim((string) $request->input('note')) ?: null;
         $post->moderated_by = Auth::id();
         $post->moderation_ack_at = null; // reset agar pemilik melihat modal lagi
         $post->save();
 
         // Beri tahu pemilik (kecuali moderator memoderasi postingannya sendiri).
+        // Pesan notifikasi HANYA alasan template — catatan bebas disimpan untuk detail.
         if ($post->user_id !== Auth::id()) {
             $notif = Notification::createFor($post->user_id, [
                 'type' => 'post_moderated',
@@ -67,6 +72,7 @@ class ModerationController extends Controller
 
         $post->moderated_at = null;
         $post->moderation_reason = null;
+        $post->moderation_note = null;
         $post->moderated_by = null;
         $post->moderation_ack_at = null;
         $post->save();
@@ -109,6 +115,7 @@ class ModerationController extends Controller
                 'is_video' => (bool) $post->is_video,
                 'moderated_at' => $moderatedAt?->toIso8601String(),
                 'reason' => $post->moderation_reason,
+                'note' => $post->moderation_note,
                 'retention_ends_at' => $retentionEndsAt?->toIso8601String(),
                 'days_left' => $retentionEndsAt ? max(0, (int) now()->diffInDays($retentionEndsAt, false)) : null,
                 'moderated_by' => $post->moderated_by ? [

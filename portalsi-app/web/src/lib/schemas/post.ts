@@ -61,6 +61,8 @@ export const postSchema = z
 		is_pinned: booleanish.optional().catch(false),
 		is_draft: booleanish.optional().catch(false),
 		is_moderated: booleanish.optional().catch(false),
+		moderation_reason: z.string().nullish(),
+		moderation_note: z.string().nullish(),
 		music_track_name: z.string().nullish(),
 		music_artist_name: z.string().nullish(),
 		music_preview_url: z.string().nullish(),

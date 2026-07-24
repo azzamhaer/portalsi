@@ -38,6 +38,7 @@
 	import MentionTextarea from '$lib/components/ui/MentionTextarea.svelte';
 	import GifPicker from '$lib/components/comment/GifPicker.svelte';
 	import { portal } from '$lib/actions/portal';
+	import { page } from '$app/state';
 	import { env } from '$env/dynamic/public';
 	import { normalizeMediaUrl } from '$lib/utils/media';
 	import { postCollaboratorsSchema } from '$lib/schemas/collab';
@@ -292,6 +293,31 @@
 	let isModerated = $state(untrack(() => data.post.isModerated ?? false));
 	let moderationOpen = $state(false);
 	let modBusy = $state(false);
+	// Popup untuk pemilik saat datang dari notifikasi (?moderation=1).
+	let modPopupOpen = $state(
+		untrack(
+			() =>
+				isPostOwner &&
+				(data.post.isModerated ?? false) &&
+				page.url.searchParams.get('moderation') === '1'
+		)
+	);
+	async function deleteFromPopup() {
+		const ok = await confirmAction({
+			title: 'Hapus postingan ini?',
+			description: 'Postingan yang dimoderasi akan dihapus permanen dan tidak dapat dipulihkan.',
+			confirmLabel: 'Hapus permanen',
+			tone: 'danger'
+		});
+		if (!ok) return;
+		try {
+			await clientRequest(`posts/${data.post.id}`, { method: 'DELETE' });
+			modPopupOpen = false;
+			window.history.back();
+		} catch {
+			formMessage = 'Gagal menghapus postingan. Coba lagi.';
+		}
+	}
 	async function cancelModeration() {
 		if (modBusy) return;
 		modBusy = true;
@@ -949,6 +975,12 @@
 							>Postingan ini telah diturunkan dan tidak tampil ke publik. Silakan hapus sesuai
 							kebijakan. Akan dihapus permanen setelah 30 hari.</small
 						>
+						{#if data.post.moderationReason}
+							<p class="mod-banner-reason">{data.post.moderationReason}</p>
+						{/if}
+						{#if data.post.moderationNote}
+							<p class="mod-banner-note"><span>Catatan moderator:</span> {data.post.moderationNote}</p>
+						{/if}
 					</div>
 				</div>
 			{/if}
@@ -1267,6 +1299,40 @@
 	/>
 {/if}
 
+{#if modPopupOpen}
+	<div
+		class="modpop-scrim"
+		use:portal
+		role="dialog"
+		aria-modal="true"
+		aria-label="Pemberitahuan moderasi"
+	>
+		<div class="modpop-card">
+			<span class="modpop-ico"><ShieldAlert size={26} /></span>
+			<strong>Postingan Anda dimoderasi</strong>
+			<p class="modpop-lead">
+				Postingan ini telah diturunkan oleh tim Portal SI karena melanggar kebijakan platform dan
+				tidak lagi tampil di aplikasi.
+			</p>
+			<div class="modpop-reason">
+				<small>Alasan moderasi</small>
+				<p>{data.post.moderationReason || 'Melanggar kebijakan platform.'}</p>
+				{#if data.post.moderationNote}
+					<p class="modpop-note"><span>Catatan moderator:</span> {data.post.moderationNote}</p>
+				{/if}
+			</div>
+			<p class="modpop-policy">
+				Harap perbaiki atau hapus postingan sesuai kebijakan. Setelah masa retensi (sekitar 30 hari),
+				postingan akan dihapus permanen.
+			</p>
+			<div class="modpop-actions">
+				<button class="modpop-close" onclick={() => (modPopupOpen = false)}>Tutup</button>
+				<button class="modpop-del" onclick={deleteFromPopup}><Trash2 size={16} /> Hapus</button>
+			</div>
+		</div>
+	</div>
+{/if}
+
 {#if lightboxOpen}
 	<MediaLightbox
 		open={lightboxOpen}
@@ -1572,6 +1638,124 @@
 		color: var(--color-muted);
 		font-size: 0.74rem;
 		line-height: 1.45;
+	}
+	.mod-banner-reason {
+		margin: 8px 0 0;
+		padding: 8px 10px;
+		background: rgb(192 57 43 / 8%);
+		border-radius: 8px;
+		color: var(--color-text);
+		font-size: 0.78rem;
+		line-height: 1.5;
+		white-space: pre-line;
+	}
+	.mod-banner-note {
+		margin: 6px 0 0;
+		color: var(--color-text);
+		font-size: 0.76rem;
+		line-height: 1.5;
+		white-space: pre-line;
+	}
+	.mod-banner-note span {
+		font-weight: 700;
+		color: var(--color-muted);
+	}
+	.modpop-scrim {
+		position: fixed;
+		inset: 0;
+		z-index: 3200;
+		display: grid;
+		place-items: center;
+		padding: 16px;
+		background: rgb(15 12 9 / 58%);
+		backdrop-filter: blur(3px);
+	}
+	.modpop-card {
+		width: min(100%, 420px);
+		padding: 22px;
+		background: var(--color-surface, #fff);
+		border-radius: 20px;
+		box-shadow: 0 26px 64px rgb(0 0 0 / 40%);
+		text-align: center;
+	}
+	.modpop-ico {
+		display: inline-grid;
+		width: 54px;
+		height: 54px;
+		place-items: center;
+		background: rgb(192 57 43 / 12%);
+		border-radius: 16px;
+		color: #c0392b;
+	}
+	.modpop-card > strong {
+		display: block;
+		margin: 12px 0 6px;
+		font-size: 1.12rem;
+	}
+	.modpop-lead {
+		margin: 0;
+		color: var(--color-muted);
+		font-size: 0.85rem;
+		line-height: 1.5;
+	}
+	.modpop-reason {
+		margin: 16px 0;
+		padding: 12px;
+		background: var(--color-canvas-deep, #f6f1e8);
+		border-radius: 13px;
+		text-align: left;
+	}
+	.modpop-reason small {
+		color: var(--color-muted);
+		font-size: 0.66rem;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+	}
+	.modpop-reason p {
+		margin: 3px 0 0;
+		font-size: 0.82rem;
+		line-height: 1.5;
+		white-space: pre-line;
+	}
+	.modpop-note {
+		margin-top: 8px !important;
+	}
+	.modpop-note span {
+		font-weight: 700;
+		color: var(--color-muted);
+	}
+	.modpop-policy {
+		margin: 0 0 4px;
+		color: var(--color-muted);
+		font-size: 0.76rem;
+		line-height: 1.5;
+	}
+	.modpop-actions {
+		display: flex;
+		gap: 8px;
+		margin-top: 16px;
+	}
+	.modpop-actions button {
+		flex: 1;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 6px;
+		min-height: 42px;
+		border-radius: 12px;
+		font-size: 0.84rem;
+		font-weight: 720;
+		cursor: pointer;
+	}
+	.modpop-close {
+		background: var(--color-canvas-deep, #f1f2f4);
+		border: 0;
+		color: var(--color-text);
+	}
+	.modpop-del {
+		background: transparent;
+		border: 1px solid rgb(192 57 43 / 40%);
+		color: #c0392b;
 	}
 	.draft-banner {
 		display: flex;
@@ -2050,6 +2234,7 @@
 	.ds-names {
 		display: grid;
 		min-width: 0;
+		flex: 1;
 	}
 	.ds-names strong {
 		display: inline-flex;
@@ -2627,7 +2812,8 @@
 			/* Cukup tinggi untuk menampung frame portrait 4:5 tanpa terpotong.
 			   Video tetap dibatasi 56vh lewat aturan di bawah. */
 			max-height: 78vh;
-			border-radius: 16px 16px 0 0;
+			/* Mobile: media rata tepi (tanpa sudut membulat). */
+			border-radius: 0;
 		}
 		.detail-media {
 			height: auto;

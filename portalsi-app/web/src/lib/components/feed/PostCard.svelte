@@ -82,6 +82,21 @@
 		lightboxIndex = index;
 		lightboxOpen = true;
 	}
+	// Klik gambar: sekali = buka fullscreen (ditunda sedikit), dua kali = like tanpa buka fullscreen.
+	let clickTimer: ReturnType<typeof setTimeout> | null = null;
+	function mediaClick(index: number) {
+		if (clickTimer) {
+			// Klik kedua → batalkan buka fullscreen, jadikan like.
+			clearTimeout(clickTimer);
+			clickTimer = null;
+			doubleTapLike();
+			return;
+		}
+		clickTimer = setTimeout(() => {
+			clickTimer = null;
+			openLightbox(index);
+		}, 260);
+	}
 	function initialInteractionState() {
 		return {
 			liked: post.isLiked,
@@ -216,23 +231,25 @@
 				<small>{post.createdLabel}</small>
 			</div>
 		</div>
-		{#if canShowFollow}
-			<button
-				class="follow-btn"
-				class:following
-				onclick={toggleFollow}
-				disabled={followBusy}
-				aria-pressed={following}
-				>{following ? 'Mengikuti' : post.user.followsYou ? 'Ikuti balik' : 'Ikuti'}</button
-			>
-		{/if}
-		{#if $isModerator}
-			<button
-				class="mod-btn"
-				onclick={() => (moderationOpen = true)}
-				aria-label="Moderasi postingan"><ShieldAlert size={17} /></button
-			>
-		{/if}
+		<div class="header-actions">
+			{#if canShowFollow}
+				<button
+					class="follow-btn"
+					class:following
+					onclick={toggleFollow}
+					disabled={followBusy}
+					aria-pressed={following}
+					>{following ? 'Mengikuti' : post.user.followsYou ? 'Ikuti balik' : 'Ikuti'}</button
+				>
+			{/if}
+			{#if $isModerator}
+				<button
+					class="mod-btn"
+					onclick={() => (moderationOpen = true)}
+					aria-label="Moderasi postingan"><ShieldAlert size={17} /></button
+				>
+			{/if}
+		</div>
 	</header>
 
 	{#if post.location || post.music}
@@ -269,7 +286,7 @@
 		</div>{:else if isGallery}<div class="media gallery">
 			<div class="gallery-track" class:opening={openingPost} bind:this={trackEl} onscroll={onTrackScroll}>
 				{#each gallery as src, index (index)}
-					{#if zoomable}<button class="slide" onclick={() => openLightbox(index)}
+					{#if zoomable}<button class="slide" onclick={() => mediaClick(index)}
 							><img src={src} alt={`${post.mediaAlt} (${index + 1})`} /></button
 						>{:else}<a class="slide" href={`/posts/${post.id}`}
 							><img src={src} alt={`${post.mediaAlt} (${index + 1})`} /></a
@@ -291,10 +308,10 @@
 			<div class="dots">
 				{#each gallery as _, index (index)}<span class:on={index === slide}></span>{/each}
 			</div>
+			{#if likeBurst}<span class="like-burst"><Heart size={96} fill="currentColor" /></span>{/if}
 		</div>{:else if zoomable}<button
 			class="media zoomable"
-			onclick={() => openLightbox(0)}
-			ondblclick={doubleTapLike}
+			onclick={() => mediaClick(0)}
 			aria-label={`Perbesar postingan ${post.user.fullName}`}
 			><img src={post.mediaUrl} alt={post.mediaAlt} /><span class="zoom-cue"
 				><Maximize2 size={20} /> Perbesar</span
@@ -431,8 +448,15 @@
 	.author {
 		display: flex;
 		min-width: 0;
+		flex: 1;
 		align-items: center;
 		gap: 10px;
+	}
+	.header-actions {
+		display: flex;
+		flex: none;
+		align-items: center;
+		gap: 8px;
 	}
 
 	.author-copy {

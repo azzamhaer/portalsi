@@ -88,6 +88,8 @@
 	});
 
 	function destination(item: (typeof items)[number]) {
+		// Notifikasi moderasi → buka detail post + tampilkan popup moderasi (param `moderation`).
+		if (item.type === 'post_moderated' && item.postId) return `/posts/${item.postId}?moderation=1`;
 		if (item.postId) return `/posts/${item.postId}`;
 		if (item.storyId && item.user) return `/stories/${item.user.id}`;
 		if (item.user) return `/u/${item.user.username}`;
@@ -220,7 +222,7 @@
 				{@const Icon = icons[item.type as keyof typeof icons] || Bell}
 				<article class:unread={!item.read}>
 					<div class="avatar-wrap">
-						{#if item.user}<StoryAvatarLink
+						{#if item.type === 'post_moderated'}<span class="system-avatar"><ShieldAlert size={20} /></span>{:else if item.user}<StoryAvatarLink
 								userId={item.user.id}
 								username={item.user.username}
 								name={item.user.fullName}
@@ -234,7 +236,7 @@
 					</div>
 					<a href={destination(item)} onclick={(event) => openNotification(event, item)}
 						><p>
-							{item.message}{#if item.user}<UserBadges
+							{#if item.type === 'post_moderated'}<strong class="system-name">Sistem AI</strong> {/if}{item.message}{#if item.user && item.type !== 'post_moderated'}<UserBadges
 									verified={item.user.badgeVerified}
 									role={item.user.role}
 								/>{/if}<small>{item.time}</small>
@@ -450,6 +452,21 @@
 	.notification-list p {
 		margin: 0;
 		font-size: 0.83rem;
+		/* Alasan moderasi bisa berisi baris baru (beberapa poin) → hormati enter. */
+		white-space: pre-line;
+	}
+	.system-avatar {
+		display: grid;
+		width: 44px;
+		height: 44px;
+		place-items: center;
+		background: rgb(192 57 43 / 12%);
+		border-radius: 50%;
+		color: #c0392b;
+	}
+	.system-name {
+		color: #c0392b;
+		font-weight: 800;
 	}
 	.notification-list article > a p :global(.user-badges) {
 		margin-left: 5px;

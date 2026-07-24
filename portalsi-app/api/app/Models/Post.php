@@ -25,6 +25,7 @@ class Post extends Model
         'is_draft',
         'moderated_at',
         'moderation_reason',
+        'moderation_note',
         'moderated_by',
         'moderation_ack_at',
         'pinned_at',

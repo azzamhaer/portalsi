@@ -510,7 +510,10 @@ class PostController extends Controller
         $post->is_pinned = $post->pinned_at !== null;
         $post->is_draft = (bool) $post->is_draft;
         // Status moderasi untuk banner pemilik / kontrol moderator di halaman detail.
+        // Detail menampilkan alasan LENGKAP (template + catatan bebas).
         $post->is_moderated = $post->moderated_at !== null;
+        $post->moderation_reason = $post->moderated_at !== null ? $post->moderation_reason : null;
+        $post->moderation_note = $post->moderated_at !== null ? $post->moderation_note : null;
 
         if ($authUser) {
             if ($authUser->user_id === $owner->user_id) {

@@ -51,6 +51,8 @@ export interface PostPreview {
 	isPinned?: boolean;
 	isDraft?: boolean;
 	isModerated?: boolean;
+	moderationReason?: string | null;
+	moderationNote?: string | null;
 	music?: {
 		title: string;
 		artist: string;

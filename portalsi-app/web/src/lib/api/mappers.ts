@@ -101,6 +101,8 @@ export function mapPost(post: BackendPost, mediaBaseUrl: string): PostPreview {
 		isPinned: post.is_pinned ?? false,
 		isDraft: post.is_draft ?? false,
 		isModerated: post.is_moderated ?? false,
+		moderationReason: post.moderation_reason ?? null,
+		moderationNote: post.moderation_note ?? null,
 		music: post.music_track_name
 			? {
 					title: post.music_track_name,

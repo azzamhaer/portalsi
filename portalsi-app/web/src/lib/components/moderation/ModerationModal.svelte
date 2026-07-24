@@ -58,13 +58,14 @@
 		selected = next;
 	}
 
-	// Alasan akhir = gabungan teks template terpilih + catatan bebas.
-	const composedReason = $derived.by(() => {
-		const parts = MODERATION_REASONS.filter((r) => selected.has(r.id)).map((r) => r.text);
-		if (note.trim()) parts.push(note.trim());
-		return parts.join('\n');
-	});
-	const canSubmit = $derived(composedReason.trim().length > 0 && !submitting);
+	// Alasan template (tanpa catatan) — dipisah dengan baris kosong bila lebih dari satu.
+	// Ini yang dikirim ke notifikasi; catatan bebas dikirim terpisah (hanya tampil di detail).
+	const reasonText = $derived(
+		MODERATION_REASONS.filter((r) => selected.has(r.id))
+			.map((r) => `• ${r.text}`)
+			.join('\n\n')
+	);
+	const canSubmit = $derived(reasonText.trim().length > 0 && !submitting);
 
 	async function submit() {
 		if (!canSubmit) return;
@@ -72,7 +73,8 @@
 		error = '';
 		try {
 			const body = new FormData();
-			body.set('reason', composedReason);
+			body.set('reason', reasonText);
+			if (note.trim()) body.set('note', note.trim());
 			await clientRequest(`posts/${postId}/moderate`, { method: 'POST', body });
 			onDone?.();
 			onClose();
