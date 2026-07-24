@@ -4,6 +4,7 @@ namespace App\Console;
 
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
+use Illuminate\Support\Facades\DB;
 
 class Kernel extends ConsoleKernel
 {
@@ -23,6 +24,14 @@ class Kernel extends ConsoleKernel
             ->dailyAt('03:00')
             ->withoutOverlapping()
             ->runInBackground();
+
+        // Bersihkan jejak tayang beranda yang lebih tua dari 14 hari (algoritma hanya
+        // memakai jendela 7 hari; sisanya cukup dibuang agar tabel tetap ramping).
+        $schedule->call(function () {
+            DB::table('post_impressions')
+                ->where('last_seen_at', '<', now()->subDays(14))
+                ->delete();
+        })->dailyAt('03:30');
     }
 
     /**

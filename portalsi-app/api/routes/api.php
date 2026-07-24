@@ -533,6 +533,14 @@ Route::middleware(['auth:sanctum', 'admin.panel'])->prefix('admin-panel')->group
     Route::get('/groups', [AdminPanelController::class, 'groups']);
     Route::patch('/groups/{group}', [AdminPanelController::class, 'updateGroup'])->whereNumber('group');
     Route::delete('/groups/{group}', [AdminPanelController::class, 'deleteGroup'])->whereNumber('group');
+
+    // Manajemen Popup Kebijakan (CRUD + riwayat persetujuan).
+    Route::get('/policies', [\App\Http\Controllers\PolicyController::class, 'index']);
+    Route::post('/policies', [\App\Http\Controllers\PolicyController::class, 'store']);
+    Route::put('/policies/{id}', [\App\Http\Controllers\PolicyController::class, 'update'])->whereNumber('id');
+    Route::delete('/policies/{id}', [\App\Http\Controllers\PolicyController::class, 'destroy'])->whereNumber('id');
+    Route::post('/policies/{id}/toggle', [\App\Http\Controllers\PolicyController::class, 'toggle'])->whereNumber('id');
+    Route::get('/policies/{id}/acceptances', [\App\Http\Controllers\PolicyController::class, 'acceptances'])->whereNumber('id');
 });
 
 // ═══════════════════════════════════════════
@@ -622,6 +630,11 @@ Route::middleware(['auth:sanctum', 'notBanned'])->group(function () {
         Route::post('/posts/{id}/moderation/cancel', [\App\Http\Controllers\ModerationController::class, 'cancel'])->whereNumber('id');
         Route::get('/moderation/posts', [\App\Http\Controllers\ModerationController::class, 'index']);
     });
+
+    // ── POPUP KEBIJAKAN (sisi pengguna) ──
+    // Kebijakan aktif yang belum disetujui + pencatatan persetujuan saat login.
+    Route::get('/policies/active', [\App\Http\Controllers\PolicyController::class, 'active']);
+    Route::post('/policies/{id}/accept', [\App\Http\Controllers\PolicyController::class, 'accept'])->whereNumber('id');
     Route::get('/clips/{id}', [PostController::class, 'clips']);
     Route::get('/reels', [PostController::class, 'reels']);
 

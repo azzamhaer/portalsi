@@ -187,7 +187,7 @@
 
 {#if moderatedHidden}
 	<article class="post-card moderated-note" aria-label="Postingan dimoderasi">
-		<ShieldAlert size={16} /> Postingan telah dimoderasi & diturunkan.
+		<ShieldAlert size={16} /> Postingan telah dimoderasi & disembunyikan.
 	</article>
 {:else}
 <article class="post-card" aria-labelledby={`post-${post.id}-author`}>

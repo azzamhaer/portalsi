@@ -40,7 +40,7 @@
 <style>
 	.backdrop {
 		position: fixed;
-		z-index: 2000;
+		z-index: 4000;
 		inset: 0;
 		display: grid;
 		place-items: center;

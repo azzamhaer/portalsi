@@ -66,6 +66,13 @@ class PostController extends Controller
             ->wherePivot('status', 'accepted')
             ->pluck('users.user_id');
 
+        // Jejak tayang: post yang sudah pernah dilihat pengguna dalam 7 hari terakhir,
+        // beserta kapan terakhir dilihat. Dipakai untuk menurunkan peluang muncul lagi.
+        $seenMap = DB::table('post_impressions')
+            ->where('user_id', $authUser->user_id)
+            ->where('last_seen_at', '>=', Carbon::now()->subDays(7))
+            ->pluck('last_seen_at', 'post_id');
+
         // ========== MAIN POSTS ==========
         $mainPosts = collect();
 
@@ -234,6 +241,44 @@ class PostController extends Controller
                 ->values();
         }
 
+        // ===== Skoring "kesegaran" feed =====
+        // Prioritaskan post yang BELUM pernah dilihat & konten baru. Post yang sudah dilihat
+        // diberi penalti sesuai seberapa baru terlihat — makin baru dilihat, makin kecil
+        // peluang muncul lagi. Tetap ada komponen acak sehingga post lama masih bisa muncul
+        // sesekali (tidak dihilangkan sepenuhnya).
+        $now = Carbon::now();
+        $scores = [];
+        foreach ($mainPosts as $post) {
+            $score = mt_rand(0, 1000) / 1000; // dasar acak 0..1 → variasi urutan
+
+            $seenAt = $seenMap[$post->post_id] ?? null;
+            if ($seenAt === null) {
+                $score += 1.3; // belum pernah dilihat → paling diprioritaskan
+            } else {
+                $hours = Carbon::parse($seenAt)->diffInHours($now);
+                if ($hours < 6) {
+                    $score -= 0.9;
+                } elseif ($hours < 24) {
+                    $score -= 0.6;
+                } elseif ($hours < 72) {
+                    $score -= 0.35;
+                } else {
+                    $score -= 0.15; // sudah lama dilihat → boleh muncul lagi lebih cepat
+                }
+            }
+
+            // Dorongan untuk konten baru (24 jam terakhir).
+            if ($post->created_at && Carbon::parse($post->created_at)->gte($now->copy()->subDay())) {
+                $score += 0.35;
+            }
+
+            $scores[$post->post_id] = $score;
+        }
+        // Urutkan dari skor tertinggi tanpa menyematkan atribut ke model (agar tak bocor ke JSON).
+        $mainPosts = $mainPosts
+            ->sortByDesc(fn ($post) => $scores[$post->post_id] ?? 0)
+            ->values();
+
         // Kurangi monoton ("akun itu-itu saja"): batasi maksimal 3 post per akun,
         // dan selang-seling agar tidak beruntun dari akun yang sama.
         $perAuthor = [];
@@ -351,6 +396,35 @@ class PostController extends Controller
         $feedSlice = $feedWithSuggestions
             ->slice(($page - 1) * $perPage, $perPage)
             ->values();
+
+        // Catat jejak tayang untuk post yang benar-benar tampil di halaman ini, agar
+        // permintaan berikutnya bisa memprioritaskan konten yang belum dilihat.
+        $shownPostIds = $feedSlice
+            ->filter(fn ($item) => ($item->type ?? null) === 'post' && isset($item->post_id))
+            ->pluck('post_id')
+            ->unique()
+            ->values();
+        if ($shownPostIds->isNotEmpty()) {
+            $nowTs = Carbon::now();
+            $rows = $shownPostIds->map(fn ($pid) => [
+                'user_id' => $authUser->user_id,
+                'post_id' => $pid,
+                'last_seen_at' => $nowTs,
+                'seen_count' => 1,
+                'created_at' => $nowTs,
+                'updated_at' => $nowTs,
+            ])->all();
+            try {
+                // last_seen_at diperbarui ke waktu kini bila baris sudah ada.
+                DB::table('post_impressions')->upsert(
+                    $rows,
+                    ['user_id', 'post_id'],
+                    ['last_seen_at', 'updated_at']
+                );
+            } catch (\Throwable $e) {
+                // Jejak tayang bersifat pelengkap — jangan pernah menjatuhkan feed karenanya.
+            }
+        }
 
         $paginator = new LengthAwarePaginator(
             $feedSlice,

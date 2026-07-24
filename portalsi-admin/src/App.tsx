@@ -15,6 +15,11 @@ import {
   Menu,
   MessageSquare,
   Pencil,
+  Plus,
+  Power,
+  ListChecks,
+  ScrollText,
+  Image as ImageIcon,
   Radio,
   RefreshCw,
   RotateCcw,
@@ -36,7 +41,7 @@ const PORTAL_API = (import.meta.env.VITE_PORTALSI_API_URL || 'https://api..porta
 const MEET_API = (import.meta.env.VITE_MEET_API_URL || 'https://meet.portalsi.com/api').replace(/\/+$/, '');
 const STORAGE_KEY = 'portalsi-admin-session';
 
-type Tab = 'dashboard' | 'users' | 'admins' | 'chats' | 'content' | 'moderation' | 'meet' | 'appeals' | 'security' | 'audit';
+type Tab = 'dashboard' | 'users' | 'admins' | 'chats' | 'content' | 'moderation' | 'policies' | 'meet' | 'appeals' | 'security' | 'audit';
 
 interface DialogOpts {
   title: string;
@@ -103,6 +108,10 @@ const navGroups: Array<{ heading: string; items: NavItem[] }> = [
     ],
   },
   { heading: 'Meeting', items: [{ id: 'meet', label: 'Meet Rooms', icon: Video }] },
+  {
+    heading: 'Kebijakan',
+    items: [{ id: 'policies', label: 'Popup Kebijakan', icon: ScrollText }],
+  },
   {
     heading: 'Sistem',
     items: [
@@ -213,6 +222,10 @@ export function App() {
   const [contentRows, setContentRows] = useState<any[]>([]);
   const [contentSearch, setContentSearch] = useState('');
   const [moderationRows, setModerationRows] = useState<any[]>([]);
+  const [policiesRows, setPoliciesRows] = useState<any[]>([]);
+  const [editingPolicy, setEditingPolicy] = useState<any | 'new' | null>(null);
+  const [previewPolicy, setPreviewPolicy] = useState<any | null>(null);
+  const [acceptancePolicy, setAcceptancePolicy] = useState<any | null>(null);
   const [rooms, setRooms] = useState<any[]>([]);
   const [roomSearch, setRoomSearch] = useState('');
   const [selectedRoom, setSelectedRoom] = useState<any | null>(null);
@@ -309,6 +322,44 @@ export function App() {
     await run('Moderasi dibatalkan', async () => {
       await portal(`/posts/${postId}/moderation/cancel`, { method: 'POST' });
       await loadModeration();
+    });
+  }
+
+  async function loadPolicies() {
+    const res = await portal<{ policies: any[] }>(`/admin-panel/policies`);
+    setPoliciesRows(res.policies || []);
+  }
+
+  async function savePolicy(draft: any) {
+    await run(draft.id ? 'Kebijakan diperbarui' : 'Kebijakan dibuat', async () => {
+      if (draft.id) {
+        await portal(`/admin-panel/policies/${draft.id}`, { method: 'PUT', body: JSON.stringify(draft) });
+      } else {
+        await portal(`/admin-panel/policies`, { method: 'POST', body: JSON.stringify(draft) });
+      }
+      setEditingPolicy(null);
+      await loadPolicies();
+    });
+  }
+
+  async function deletePolicy(id: number) {
+    const ok = await askDialog({
+      title: 'Hapus kebijakan?',
+      message: 'Kebijakan dan seluruh riwayat persetujuannya akan dihapus permanen.',
+      confirmLabel: 'Hapus',
+      danger: true,
+    });
+    if (ok === null) return;
+    await run('Kebijakan dihapus', async () => {
+      await portal(`/admin-panel/policies/${id}`, { method: 'DELETE' });
+      await loadPolicies();
+    });
+  }
+
+  async function togglePolicy(id: number) {
+    await run('', async () => {
+      await portal(`/admin-panel/policies/${id}/toggle`, { method: 'POST' });
+      await loadPolicies();
     });
   }
 
@@ -412,6 +463,7 @@ export function App() {
       if (tab === 'chats') await loadChats();
       if (tab === 'content') await loadContent();
       if (tab === 'moderation') await loadModeration();
+      if (tab === 'policies') await loadPolicies();
       if (tab === 'meet') await loadRooms();
       if (tab === 'appeals') await loadAppeals();
       if (tab === 'security') await loadSecurity();
@@ -866,6 +918,18 @@ export function App() {
             onCancel={cancelModeration}
           />
         )}
+        {tab === 'policies' && (
+          <PoliciesPanel
+            rows={policiesRows}
+            reload={() => run('', loadPolicies)}
+            onNew={() => setEditingPolicy('new')}
+            onEdit={(p) => setEditingPolicy(p)}
+            onDelete={deletePolicy}
+            onToggle={togglePolicy}
+            onPreview={(p) => setPreviewPolicy(p)}
+            onAcceptances={(p) => setAcceptancePolicy(p)}
+          />
+        )}
         {tab === 'meet' && (
           <MeetPanel
             rooms={rooms}
@@ -920,6 +984,24 @@ export function App() {
           user={editingUser}
           onClose={() => setEditingUser(null)}
           onSave={updateUser}
+        />
+      )}
+      {editingPolicy && (
+        <PolicyEditorModal
+          policy={editingPolicy === 'new' ? null : editingPolicy}
+          onClose={() => setEditingPolicy(null)}
+          onSave={savePolicy}
+          onPreview={(draft) => setPreviewPolicy(draft)}
+        />
+      )}
+      {previewPolicy && (
+        <PolicyPreviewModal policy={previewPolicy} onClose={() => setPreviewPolicy(null)} />
+      )}
+      {acceptancePolicy && (
+        <PolicyAcceptancesModal
+          policy={acceptancePolicy}
+          fetcher={portal}
+          onClose={() => setAcceptancePolicy(null)}
         />
       )}
       {detailUser && (
@@ -1874,4 +1956,295 @@ function IconAction({ icon: Icon, title, onClick, danger }: { icon: ElementType;
 
 function Toggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (value: boolean) => void }) {
   return <label className="toggle"><input type="checkbox" checked={checked} onChange={event => onChange(event.target.checked)} /><span>{label}</span></label>;
+}
+
+// ══════════════════════════════════════════════════════════
+// POPUP KEBIJAKAN
+// ══════════════════════════════════════════════════════════
+
+type PolicySlide = { title: string; body: string; image_url: string };
+
+function emptyPolicyDraft() {
+  return {
+    id: null as number | null,
+    title: '',
+    description: '',
+    slides: [{ title: '', body: '', image_url: '' }] as PolicySlide[],
+    read_seconds: 5,
+    require_agreement: true,
+    agreement_text: '',
+    is_active: false,
+  };
+}
+
+function PoliciesPanel(props: {
+  rows: any[];
+  reload: () => void;
+  onNew: () => void;
+  onEdit: (p: any) => void;
+  onDelete: (id: number) => void;
+  onToggle: (id: number) => void;
+  onPreview: (p: any) => void;
+  onAcceptances: (p: any) => void;
+}) {
+  return (
+    <section className="panel">
+      <Header
+        title="Manajemen Popup Kebijakan"
+        subtitle="Buat kebijakan dinamis yang muncul saat pengguna login. Atur slide, gambar, durasi wajib-baca, dan pantau siapa yang sudah menyetujui."
+        action={
+          <div className="header-actions">
+            <button className="secondary-button" onClick={props.reload}><RefreshCw size={16} /> Muat ulang</button>
+            <button className="primary-button" onClick={props.onNew}><Plus size={16} /> Buat kebijakan</button>
+          </div>
+        }
+      />
+      <Table>
+        <thead>
+          <tr>
+            <th>Kebijakan</th>
+            <th>Status</th>
+            <th>Halaman</th>
+            <th>Wajib baca</th>
+            <th>Persetujuan</th>
+            <th>Versi</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody>
+          {props.rows.map((p) => (
+            <tr key={p.id}>
+              <td><div className="user-cell"><strong>{p.title}</strong><span>{short(p.description, 60)}</span></div></td>
+              <td>{p.is_active ? <Badge ok>Aktif</Badge> : <Badge>Nonaktif</Badge>}</td>
+              <td>{(p.slides?.length ?? 0)} halaman</td>
+              <td>{p.read_seconds}s</td>
+              <td>
+                <button className="link-button" onClick={() => props.onAcceptances(p)}>
+                  {p.accepted_count ?? 0}/{p.total_users ?? 0} setuju
+                </button>
+              </td>
+              <td>v{p.version}</td>
+              <td>
+                <ActionBar>
+                  <IconAction title="Preview" icon={Eye} onClick={() => props.onPreview(p)} />
+                  <IconAction title="Riwayat persetujuan" icon={ListChecks} onClick={() => props.onAcceptances(p)} />
+                  <IconAction title="Edit" icon={Pencil} onClick={() => props.onEdit(p)} />
+                  <IconAction title={p.is_active ? 'Nonaktifkan' : 'Aktifkan'} icon={Power} onClick={() => props.onToggle(p.id)} />
+                  <IconAction title="Hapus" icon={Trash2} danger onClick={() => props.onDelete(p.id)} />
+                </ActionBar>
+              </td>
+            </tr>
+          ))}
+          {props.rows.length === 0 && (
+            <tr><td colSpan={7} className="empty-cell">Belum ada kebijakan. Klik "Buat kebijakan" untuk memulai.</td></tr>
+          )}
+        </tbody>
+      </Table>
+    </section>
+  );
+}
+
+function PolicyEditorModal(props: {
+  policy: any | null;
+  onClose: () => void;
+  onSave: (draft: any) => void;
+  onPreview: (draft: any) => void;
+}) {
+  const [draft, setDraft] = useState<any>(() => {
+    if (!props.policy) return emptyPolicyDraft();
+    return {
+      id: props.policy.id,
+      title: props.policy.title || '',
+      description: props.policy.description || '',
+      slides: (props.policy.slides?.length ? props.policy.slides : [{ title: '', body: '', image_url: '' }]).map((s: any) => ({
+        title: s.title || '', body: s.body || '', image_url: s.image_url || '',
+      })),
+      read_seconds: props.policy.read_seconds ?? 5,
+      require_agreement: props.policy.require_agreement ?? true,
+      agreement_text: props.policy.agreement_text || '',
+      is_active: props.policy.is_active ?? false,
+    };
+  });
+
+  function updateSlide(i: number, patch: Partial<PolicySlide>) {
+    setDraft({ ...draft, slides: draft.slides.map((s: PolicySlide, idx: number) => idx === i ? { ...s, ...patch } : s) });
+  }
+  function addSlide() {
+    setDraft({ ...draft, slides: [...draft.slides, { title: '', body: '', image_url: '' }] });
+  }
+  function removeSlide(i: number) {
+    if (draft.slides.length <= 1) return;
+    setDraft({ ...draft, slides: draft.slides.filter((_: PolicySlide, idx: number) => idx !== i) });
+  }
+  function moveSlide(i: number, dir: -1 | 1) {
+    const j = i + dir;
+    if (j < 0 || j >= draft.slides.length) return;
+    const next = [...draft.slides];
+    [next[i], next[j]] = [next[j], next[i]];
+    setDraft({ ...draft, slides: next });
+  }
+
+  function submit(e: FormEvent) {
+    e.preventDefault();
+    props.onSave(draft);
+  }
+
+  return (
+    <div className="modal-backdrop">
+      <form className="modal policy-editor" onSubmit={submit}>
+        <Header title={draft.id ? 'Edit kebijakan' : 'Buat kebijakan'} subtitle="Konten disimpan sebagai slide. Ubah, tambah, atau hapus tanpa mengubah kode." />
+        <div className="form-grid">
+          <label className="span-2">Judul kebijakan<input value={draft.title} onChange={e => setDraft({ ...draft, title: e.target.value })} placeholder="mis. Kebijakan Komunitas 2026" required /></label>
+          <label className="span-2">Deskripsi singkat<textarea value={draft.description} onChange={e => setDraft({ ...draft, description: e.target.value })} placeholder="Ringkasan opsional" /></label>
+          <label>Wajib baca (detik)<input type="number" min={0} max={120} value={draft.read_seconds} onChange={e => setDraft({ ...draft, read_seconds: Number(e.target.value) })} /></label>
+          <label className="check"><input type="checkbox" checked={Boolean(draft.require_agreement)} onChange={e => setDraft({ ...draft, require_agreement: e.target.checked })} /> Wajib centang persetujuan</label>
+          <label className="check"><input type="checkbox" checked={Boolean(draft.is_active)} onChange={e => setDraft({ ...draft, is_active: e.target.checked })} /> Aktifkan sekarang</label>
+          <label className="span-2">Teks pernyataan persetujuan<textarea value={draft.agreement_text} onChange={e => setDraft({ ...draft, agreement_text: e.target.value })} placeholder="Saya telah membaca dan memahami kebijakan platform…" /></label>
+        </div>
+
+        <div className="policy-slides">
+          <div className="policy-slides-head"><h3>Halaman / Slide</h3><button type="button" className="secondary-button" onClick={addSlide}><Plus size={15} /> Tambah halaman</button></div>
+          {draft.slides.map((s: PolicySlide, i: number) => (
+            <div className="policy-slide-card" key={i}>
+              <div className="policy-slide-top">
+                <strong>Halaman {i + 1}</strong>
+                <div className="policy-slide-tools">
+                  <button type="button" className="icon-action" title="Naik" onClick={() => moveSlide(i, -1)}><ChevronsLeft size={15} style={{ transform: 'rotate(90deg)' }} /></button>
+                  <button type="button" className="icon-action" title="Turun" onClick={() => moveSlide(i, 1)}><ChevronsRight size={15} style={{ transform: 'rotate(90deg)' }} /></button>
+                  <button type="button" className="icon-action danger" title="Hapus halaman" onClick={() => removeSlide(i)}><Trash2 size={15} /></button>
+                </div>
+              </div>
+              <label>Judul halaman<input value={s.title} onChange={e => updateSlide(i, { title: e.target.value })} placeholder="Judul slide" /></label>
+              <label>Isi<textarea value={s.body} onChange={e => updateSlide(i, { body: e.target.value })} placeholder="Isi teks (baris baru didukung)" /></label>
+              <label><ImageIcon size={13} /> URL gambar / banner<input value={s.image_url} onChange={e => updateSlide(i, { image_url: e.target.value })} placeholder="https://…" /></label>
+              {s.image_url ? <img className="policy-slide-thumb" src={s.image_url} alt="" /> : null}
+            </div>
+          ))}
+        </div>
+
+        <div className="modal-actions">
+          <button type="button" className="ghost-button" onClick={props.onClose}><X size={16} /> Batal</button>
+          <button type="button" className="secondary-button" onClick={() => props.onPreview(draft)}><Eye size={16} /> Preview</button>
+          <button className="primary-button"><Save size={16} /> Simpan</button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+// Tampilan modal SAMA PERSIS dengan yang diterima pengguna (untuk preview admin).
+function PolicyModalView({ policy }: { policy: any }) {
+  const slides: PolicySlide[] = (policy.slides?.length ? policy.slides : [{ title: policy.title, body: policy.description, image_url: '' }]);
+  const [slide, setSlide] = useState(0);
+  const [secondsLeft, setSecondsLeft] = useState(policy.read_seconds ?? 0);
+  const [agreed, setAgreed] = useState(false);
+  const isLast = slide >= slides.length - 1;
+
+  useEffect(() => {
+    setSecondsLeft(policy.read_seconds ?? 0);
+    const id = setInterval(() => setSecondsLeft((s: number) => Math.max(0, s - 1)), 1000);
+    return () => clearInterval(id);
+  }, [policy.read_seconds]);
+
+  const s = slides[slide] || { title: '', body: '', image_url: '' };
+  const canContinue = isLast && secondsLeft <= 0 && (!policy.require_agreement || agreed);
+
+  return (
+    <div className="pgv-card" onClick={e => e.stopPropagation()}>
+      {s.image_url
+        ? <div className="pgv-hero"><img src={s.image_url} alt="" /></div>
+        : <div className="pgv-hero pgv-hero-fallback"><ShieldCheck size={44} /></div>}
+      <div className="pgv-body">
+        {slides.length > 1 && (
+          <div className="pgv-dots">{slides.map((_, i) => <span key={i} className={i === slide ? 'on' : ''} />)}</div>
+        )}
+        {s.title && <h2>{s.title}</h2>}
+        {s.body && <p className="pgv-text">{s.body}</p>}
+      </div>
+      <div className="pgv-foot">
+        {!isLast ? (
+          <div className="pgv-nav">
+            <button className="ghost-button" disabled={slide === 0} onClick={() => setSlide(slide - 1)}>Kembali</button>
+            <button className="primary-button" onClick={() => setSlide(slide + 1)}>Lanjut</button>
+          </div>
+        ) : (
+          <>
+            {policy.require_agreement && (
+              <label className="pgv-agree">
+                <input type="checkbox" checked={agreed} onChange={e => setAgreed(e.target.checked)} />
+                <span>{policy.agreement_text || 'Saya telah membaca dan memahami kebijakan platform, serta siap menerima konsekuensi berupa moderasi konten maupun pembatasan/pemblokiran akun apabila melanggar syarat dan ketentuan yang berlaku.'}</span>
+              </label>
+            )}
+            <div className="pgv-nav">
+              {slides.length > 1 && <button className="ghost-button" onClick={() => setSlide(slide - 1)}>Kembali</button>}
+              <button className="primary-button" disabled={!canContinue}>
+                {secondsLeft > 0 ? `Baca dulu (${secondsLeft}s)` : 'Setuju & lanjutkan'}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PolicyPreviewModal({ policy, onClose }: { policy: any; onClose: () => void }) {
+  return (
+    <div className="modal-backdrop pgv-backdrop" onClick={onClose}>
+      <div className="pgv-preview-wrap" onClick={e => e.stopPropagation()}>
+        <div className="pgv-preview-label"><Eye size={14} /> Preview — persis seperti yang dilihat pengguna</div>
+        <PolicyModalView policy={policy} />
+        <button className="secondary-button pgv-close" onClick={onClose}><X size={15} /> Tutup preview</button>
+      </div>
+    </div>
+  );
+}
+
+function PolicyAcceptancesModal(props: {
+  policy: any;
+  fetcher: <T,>(path: string, init?: RequestInit) => Promise<T>;
+  onClose: () => void;
+}) {
+  const [status, setStatus] = useState<'accepted' | 'pending'>('accepted');
+  const [rows, setRows] = useState<any[]>([]);
+  const [meta, setMeta] = useState<{ total: number }>({ total: 0 });
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    setBusy(true);
+    props.fetcher<any>(`/admin-panel/policies/${props.policy.id}/acceptances?status=${status}&per_page=50`)
+      .then((res) => { if (alive) { setRows(res.data || []); setMeta({ total: res.total || 0 }); } })
+      .catch(() => { if (alive) { setRows([]); setMeta({ total: 0 }); } })
+      .finally(() => { if (alive) setBusy(false); });
+    return () => { alive = false; };
+  }, [status, props.policy.id]);
+
+  return (
+    <div className="modal-backdrop" onClick={props.onClose}>
+      <div className="modal detail-modal" onClick={e => e.stopPropagation()}>
+        <Header title={`Persetujuan — ${props.policy.title}`} subtitle={`Versi v${props.policy.version}. Total ${meta.total} pengguna ${status === 'accepted' ? 'sudah menyetujui' : 'belum menyetujui'}.`} />
+        <div className="seg-tabs">
+          <button className={status === 'accepted' ? 'on' : ''} onClick={() => setStatus('accepted')}>Sudah setuju</button>
+          <button className={status === 'pending' ? 'on' : ''} onClick={() => setStatus('pending')}>Belum setuju</button>
+        </div>
+        <Table>
+          <thead><tr><th>Pengguna</th><th>{status === 'accepted' ? 'Disetujui' : 'Status'}</th></tr></thead>
+          <tbody>
+            {rows.map((u) => (
+              <tr key={u.user_id}>
+                <td><div className="user-cell"><strong>{u.full_name || u.username}</strong><span>@{u.username}</span></div></td>
+                <td>{status === 'accepted' ? fmt(u.accepted_at) : <Badge danger>Belum</Badge>}</td>
+              </tr>
+            ))}
+            {!busy && rows.length === 0 && <tr><td colSpan={2} className="empty-cell">Tidak ada data.</td></tr>}
+            {busy && <tr><td colSpan={2} className="empty-cell">Memuat…</td></tr>}
+          </tbody>
+        </Table>
+        <div className="modal-actions">
+          <button className="secondary-button" onClick={props.onClose}><X size={16} /> Tutup</button>
+        </div>
+      </div>
+    </div>
+  );
 }

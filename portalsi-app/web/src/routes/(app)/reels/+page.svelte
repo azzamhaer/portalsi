@@ -381,6 +381,7 @@
 										{#if $isModerator}
 											<small>Moderasi</small>
 											<button
+												class="reel-mod-item"
 												onclick={(event) => {
 													event.stopPropagation();
 													moderationFor = reel.id;
@@ -537,6 +538,10 @@
 {/if}
 
 <style>
+	/* Item moderasi di dalam menu titik tiga SmartVideo — dibedakan warna merah. */
+	:global(.reel-mod-item) {
+		color: #ff6b5e !important;
+	}
 	.reels-page {
 		position: fixed;
 		inset: 0;

@@ -62,7 +62,7 @@
 	// Ini yang dikirim ke notifikasi; catatan bebas dikirim terpisah (hanya tampil di detail).
 	const reasonText = $derived(
 		MODERATION_REASONS.filter((r) => selected.has(r.id))
-			.map((r) => `• ${r.text}`)
+			.map((r) => r.text)
 			.join('\n\n')
 	);
 	const canSubmit = $derived(reasonText.trim().length > 0 && !submitting);
@@ -99,7 +99,7 @@
 			<span class="mod-ico"><ShieldAlert size={20} /></span>
 			<div>
 				<strong>Moderasi postingan</strong>
-				<small>Pilih alasan. Postingan akan diturunkan (soft take-down, retensi 30 hari).</small>
+				<small>Pilih alasan. Postingan akan dimoderasi & disembunyikan (retensi 30 hari).</small>
 			</div>
 			<button class="mod-close" onclick={onClose} aria-label="Tutup"><X size={18} /></button>
 		</header>
@@ -134,7 +134,7 @@
 			<button class="ghost" type="button" onclick={onClose}>Batal</button>
 			<button class="danger" type="button" disabled={!canSubmit} onclick={submit}>
 				{#if submitting}<LoaderCircle size={16} class="mod-spin" /> Memproses…{:else}Moderasi &
-					turunkan{/if}
+					sembunyikan{/if}
 			</button>
 		</div>
 	</div>

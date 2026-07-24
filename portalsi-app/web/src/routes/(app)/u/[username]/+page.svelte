@@ -10,6 +10,7 @@
 		MessageCircle,
 		Share2,
 		Play,
+		ShieldAlert,
 		UserCheck,
 		UserPlus
 	} from '@lucide/svelte';
@@ -72,7 +73,8 @@
 			mediaUrl: normalizeMediaUrl(post.media_url, mediaBaseUrl) || '/assets/logo.png',
 			thumbnailUrl: normalizeMediaUrl(post.thumbnail_url, mediaBaseUrl),
 			isVideo: post.is_video,
-			isMultiple: post.is_multiple
+			isMultiple: post.is_multiple,
+			isModerated: post.is_moderated ?? false
 		}));
 	}
 
@@ -257,7 +259,7 @@
 								if (!post.isVideo && img.src !== post.mediaUrl) img.src = post.mediaUrl;
 								else if (!img.src.endsWith('/assets/logo.png')) img.src = '/assets/logo.png';
 							}}
-						/>{/if}{#if post.isVideo}<span aria-label="Video"><Play size={16} fill="currentColor" /></span>{:else if post.isMultiple}<span aria-label="Beberapa foto"><Copy size={14} /></span>{/if}</a
+						/>{/if}{#if post.isVideo}<span aria-label="Video"><Play size={16} fill="currentColor" /></span>{:else if post.isMultiple}<span aria-label="Beberapa foto"><Copy size={14} /></span>{/if}{#if post.isModerated}<span class="mod-badge"><ShieldAlert size={12} /> Dimoderasi</span>{/if}</a
 				>{/each}
 		</section>
 		<InfiniteScrollTrigger
@@ -533,6 +535,22 @@
 		right: 8px;
 		color: white;
 		filter: drop-shadow(0 1px 2px #000);
+	}
+	.grid a .mod-badge {
+		top: auto;
+		right: auto;
+		bottom: 8px;
+		left: 8px;
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		padding: 3px 7px;
+		background: rgb(192 57 43 / 92%);
+		border-radius: 7px;
+		color: #fff;
+		font-size: 0.66rem;
+		font-weight: 700;
+		filter: none;
 	}
 	.portfolio-grid {
 		display: grid;

@@ -75,7 +75,8 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 			mediaUrl: normalizeMediaUrl(post.media_url, mediaBaseUrl) || '/assets/logo.png',
 			thumbnailUrl: normalizeMediaUrl(post.thumbnail_url, mediaBaseUrl),
 			isVideo: post.is_video,
-			isMultiple: post.is_multiple
+			isMultiple: post.is_multiple,
+			isModerated: post.is_moderated ?? false
 		})),
 		portfolio:
 			portfolioResult.status === 'fulfilled'

@@ -972,14 +972,14 @@
 					<div>
 						<strong><ShieldAlert size={14} /> Postingan dimoderasi</strong>
 						<small
-							>Postingan ini telah diturunkan dan tidak tampil ke publik. Silakan hapus sesuai
-							kebijakan. Akan dihapus permanen setelah 30 hari.</small
+							>Postingan ini telah dimoderasi oleh sistem AI dan tidak tampil ke publik. Silakan hapus
+							sesuai kebijakan. Akan dihapus permanen setelah 30 hari.</small
 						>
 						{#if data.post.moderationReason}
 							<p class="mod-banner-reason">{data.post.moderationReason}</p>
 						{/if}
 						{#if data.post.moderationNote}
-							<p class="mod-banner-note"><span>Catatan moderator:</span> {data.post.moderationNote}</p>
+							<div class="mod-banner-note"><span>Catatan moderator</span><p>{data.post.moderationNote}</p></div>
 						{/if}
 					</div>
 				</div>
@@ -1311,14 +1311,14 @@
 			<span class="modpop-ico"><ShieldAlert size={26} /></span>
 			<strong>Postingan Anda dimoderasi</strong>
 			<p class="modpop-lead">
-				Postingan ini telah diturunkan oleh tim Portal SI karena melanggar kebijakan platform dan
-				tidak lagi tampil di aplikasi.
+				Postingan ini telah dimoderasi oleh sistem AI yang mendeteksi pelanggaran kebijakan
+				platform, sehingga tidak lagi tampil di aplikasi.
 			</p>
 			<div class="modpop-reason">
 				<small>Alasan moderasi</small>
 				<p>{data.post.moderationReason || 'Melanggar kebijakan platform.'}</p>
 				{#if data.post.moderationNote}
-					<p class="modpop-note"><span>Catatan moderator:</span> {data.post.moderationNote}</p>
+					<div class="modpop-note"><span>Catatan moderator</span><p>{data.post.moderationNote}</p></div>
 				{/if}
 			</div>
 			<p class="modpop-policy">
@@ -1650,15 +1650,21 @@
 		white-space: pre-line;
 	}
 	.mod-banner-note {
-		margin: 6px 0 0;
+		margin: 8px 0 0;
+	}
+	.mod-banner-note span {
+		display: block;
+		margin-bottom: 2px;
+		font-weight: 700;
+		font-size: 0.72rem;
+		color: var(--color-muted);
+	}
+	.mod-banner-note p {
+		margin: 0;
 		color: var(--color-text);
 		font-size: 0.76rem;
 		line-height: 1.5;
 		white-space: pre-line;
-	}
-	.mod-banner-note span {
-		font-weight: 700;
-		color: var(--color-muted);
 	}
 	.modpop-scrim {
 		position: fixed;
@@ -1718,11 +1724,21 @@
 		white-space: pre-line;
 	}
 	.modpop-note {
-		margin-top: 8px !important;
+		margin-top: 10px;
 	}
 	.modpop-note span {
+		display: block;
+		margin-bottom: 2px;
 		font-weight: 700;
+		font-size: 0.72rem;
 		color: var(--color-muted);
+	}
+	.modpop-note p {
+		margin: 0 !important;
+		color: var(--color-text);
+		font-size: 0.8rem;
+		line-height: 1.5;
+		white-space: pre-line;
 	}
 	.modpop-policy {
 		margin: 0 0 4px;
