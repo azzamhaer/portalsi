@@ -635,6 +635,10 @@ Route::middleware(['auth:sanctum', 'notBanned'])->group(function () {
     // Kebijakan aktif yang belum disetujui + pencatatan persetujuan saat login.
     Route::get('/policies/active', [\App\Http\Controllers\PolicyController::class, 'active']);
     Route::post('/policies/{id}/accept', [\App\Http\Controllers\PolicyController::class, 'accept'])->whereNumber('id');
+
+    // ── WEB PUSH (notifikasi perangkat) ──
+    Route::post('/push/subscribe', [\App\Http\Controllers\PushController::class, 'subscribe']);
+    Route::post('/push/unsubscribe', [\App\Http\Controllers\PushController::class, 'unsubscribe']);
     Route::get('/clips/{id}', [PostController::class, 'clips']);
     Route::get('/reels', [PostController::class, 'reels']);
 

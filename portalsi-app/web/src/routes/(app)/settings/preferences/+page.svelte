@@ -1,13 +1,66 @@
 <script lang="ts">
-	import { untrack } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { clientRequest } from '$lib/api/client';
 	import {
 		notificationPreferencesResponseSchema,
 		type NotificationPreferences
 	} from '$lib/schemas/notification';
+	import {
+		pushSupported,
+		pushPermission,
+		isPushSubscribed,
+		enablePush,
+		disablePush
+	} from '$lib/push';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
+
+	// ── Notifikasi perangkat (Web Push) ──
+	let pushReady = $state(false);
+	let pushOn = $state(false);
+	let pushBusy = $state(false);
+	let pushBlocked = $state(false);
+	let pushMsg = $state('');
+
+	onMount(async () => {
+		pushReady = pushSupported();
+		if (!pushReady) return;
+		pushBlocked = pushPermission() === 'denied';
+		pushOn = await isPushSubscribed();
+	});
+
+	async function togglePush() {
+		if (pushBusy || !pushReady) return;
+		pushBusy = true;
+		pushMsg = '';
+		try {
+			if (pushOn) {
+				await disablePush();
+				pushOn = false;
+				pushMsg = 'Notifikasi perangkat dimatikan.';
+			} else {
+				const res = await enablePush();
+				if (res === 'granted') {
+					pushOn = true;
+					pushMsg = 'Notifikasi perangkat aktif.';
+				} else if (res === 'denied') {
+					pushBlocked = pushPermission() === 'denied';
+					pushMsg = pushBlocked
+						? 'Izin diblokir di browser. Aktifkan lewat pengaturan situs.'
+						: 'Izin belum diberikan.';
+				} else if (res === 'no-key') {
+					pushMsg = 'Notifikasi belum dikonfigurasi di server.';
+				} else if (res === 'unsupported') {
+					pushMsg = 'Perangkat/browser ini belum mendukung notifikasi.';
+				} else {
+					pushMsg = 'Gagal mengaktifkan. Coba lagi.';
+				}
+			}
+		} finally {
+			pushBusy = false;
+		}
+	}
 
 	let newPostReminders = $state<NotificationPreferences['new_post_reminders']>(
 		untrack(() => data.preferences.new_post_reminders)
@@ -78,6 +131,31 @@
 	{#if !data.available}<p class="warn" aria-live="polite">
 			Preferensi tersimpan mungkin belum termuat. Menyimpan akan tetap memperbaruinya.
 		</p>{/if}
+
+	{#if pushReady}
+		<div class="push-card">
+			<div class="push-text">
+				<strong>Notifikasi perangkat ini</strong>
+				<small>
+					Terima notifikasi walau aplikasi ditutup. Berlaku hanya di perangkat & browser ini.
+					{#if pushBlocked}<span class="push-warn"
+							>Izin diblokir — aktifkan lewat pengaturan situs di browser.</span
+						>{/if}
+				</small>
+			</div>
+			<button
+				type="button"
+				class="push-switch"
+				class:on={pushOn}
+				disabled={pushBusy || pushBlocked}
+				aria-pressed={pushOn}
+				onclick={togglePush}
+			>
+				<span class="knob"></span>
+			</button>
+		</div>
+		{#if pushMsg}<p class="push-msg" aria-live="polite">{pushMsg}</p>{/if}
+	{/if}
 
 	<form
 		onsubmit={(event) => {
@@ -167,6 +245,74 @@
 		border-radius: 10px;
 		color: var(--color-primary-strong);
 		font-size: 0.76rem;
+	}
+	.push-card {
+		display: flex;
+		align-items: center;
+		gap: 14px;
+		margin: 14px 0 4px;
+		padding: 14px 16px;
+		background: var(--color-canvas-deep, #f6f1e8);
+		border-radius: 14px;
+	}
+	.push-text {
+		flex: 1;
+		min-width: 0;
+	}
+	.push-text strong {
+		display: block;
+		font-size: 0.92rem;
+	}
+	.push-text small {
+		display: block;
+		margin-top: 2px;
+		color: var(--color-muted);
+		font-size: 0.76rem;
+		line-height: 1.45;
+	}
+	.push-warn {
+		display: block;
+		margin-top: 3px;
+		color: #c0392b;
+		font-weight: 600;
+	}
+	.push-switch {
+		position: relative;
+		flex: none;
+		width: 48px;
+		height: 28px;
+		padding: 0;
+		background: var(--color-border, #cbd0d6);
+		border: 0;
+		border-radius: 999px;
+		cursor: pointer;
+		transition: background 0.2s ease;
+	}
+	.push-switch.on {
+		background: var(--color-primary);
+	}
+	.push-switch:disabled {
+		opacity: 0.55;
+		cursor: default;
+	}
+	.push-switch .knob {
+		position: absolute;
+		top: 3px;
+		left: 3px;
+		width: 22px;
+		height: 22px;
+		background: #fff;
+		border-radius: 50%;
+		box-shadow: 0 1px 3px rgb(0 0 0 / 25%);
+		transition: transform 0.2s ease;
+	}
+	.push-switch.on .knob {
+		transform: translateX(20px);
+	}
+	.push-msg {
+		margin: 0 0 4px;
+		color: var(--color-muted);
+		font-size: 0.78rem;
 	}
 	form {
 		display: grid;

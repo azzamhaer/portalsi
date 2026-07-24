@@ -48,3 +48,40 @@ worker.addEventListener('fetch', (event) => {
 		event.respondWith(caches.match(request).then((cached) => cached ?? fetch(request)));
 	}
 });
+
+// ── Web Push ──
+worker.addEventListener('push', (event) => {
+	let data: { title?: string; body?: string; url?: string; icon?: string; badge?: string; tag?: string } = {};
+	try {
+		data = event.data ? event.data.json() : {};
+	} catch {
+		data = { body: event.data?.text() };
+	}
+	const title = data.title || 'Portal SI';
+	const options: NotificationOptions = {
+		body: data.body || '',
+		icon: data.icon || '/assets/logo-mark.png',
+		badge: data.badge || '/assets/logo-mark.png',
+		tag: data.tag,
+		data: { url: data.url || '/notifications' }
+	};
+	event.waitUntil(worker.registration.showNotification(title, options));
+});
+
+worker.addEventListener('notificationclick', (event) => {
+	event.notification.close();
+	const target = (event.notification.data && event.notification.data.url) || '/notifications';
+	event.waitUntil(
+		worker.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+			// Fokuskan tab yang sudah terbuka bila ada; jika tidak, buka tab baru.
+			for (const client of clients) {
+				if ('focus' in client) {
+					void client.focus();
+					if ('navigate' in client) void (client as WindowClient).navigate(target);
+					return;
+				}
+			}
+			return worker.clients.openWindow(target);
+		})
+	);
+});

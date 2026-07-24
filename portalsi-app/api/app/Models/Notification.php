@@ -48,6 +48,21 @@ class Notification extends Model
     ];
 
     /**
+     * Tiap notifikasi yang dibuat (via createFor MAUPUN create langsung) otomatis
+     * dikirim sebagai Web Push ke perangkat penerima — dikerjakan di queue worker.
+     */
+    protected static function booted(): void
+    {
+        static::created(function (self $notification) {
+            try {
+                \App\Jobs\SendWebPush::dispatch($notification->notification_id);
+            } catch (\Throwable $e) {
+                // Push bersifat pelengkap; jangan pernah menggagalkan pembuatan notifikasi.
+            }
+        });
+    }
+
+    /**
      * Buat notifikasi HANYA bila penerima mengizinkan tipe tsb (preferensi in-app).
      * Mengembalikan model, atau null bila ditekan oleh preferensi / penerima tak ada.
      * Pemanggil harus cek null sebelum broadcast.
