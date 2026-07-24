@@ -96,6 +96,10 @@
 			min-height: 100dvh;
 			border-radius: 0;
 		}
+		/* Mobile: media rata tepi — tanpa sudut membulat di sisi mana pun. */
+		.detail-page-card :global(.post-column) {
+			border-radius: 0;
+		}
 	}
 	.public-post {
 		display: grid;

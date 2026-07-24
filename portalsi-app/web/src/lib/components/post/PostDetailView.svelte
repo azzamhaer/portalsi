@@ -328,9 +328,14 @@
 			})) as { processing?: boolean } | null;
 			thumbChanged = false;
 			if (res && res.processing) {
-				// Diproses di latar belakang (queue). Muat ulang beberapa detik lagi.
+				// Diproses di latar belakang (queue). Muat ulang beberapa detik lagi,
+				// lalu bersihkan pesan & tutup editor.
 				thumbMsg = 'Thumbnail sedang diproses, akan muncul beberapa detik lagi…';
-				setTimeout(() => void invalidateAll(), 6000);
+				setTimeout(async () => {
+					await invalidateAll();
+					thumbMsg = '';
+					thumbEditOpen = false;
+				}, 6000);
 			} else {
 				thumbMsg = 'Thumbnail tersimpan.';
 				thumbEditOpen = false;
@@ -2679,6 +2684,7 @@
 	}
 	.edit-modal-card form,
 	.edit-modal-card .draft-music,
+	.edit-modal-card .thumb-manage,
 	.edit-modal-card .pin-manage {
 		padding: 16px 18px 0;
 		border-top: 0;
