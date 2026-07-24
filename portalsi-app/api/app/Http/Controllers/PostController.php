@@ -458,6 +458,22 @@ class PostController extends Controller
         ]);
     }
 
+    /**
+     * Thumbnail terbaik untuk grid: utamakan varian terkompres (media_variants.thumbnail),
+     * baru fallback ke kolom thumbnail_url. Ini menutup kasus foto/video yang varian
+     * thumbnail-nya sudah ada (sehingga backfill menganggap selesai) tapi kolom
+     * thumbnail_url-nya kosong — yang bikin grid menarik file media penuh (lambat).
+     */
+    private function bestThumbUrl($post): ?string
+    {
+        $variants = is_array($post->media_variants ?? null) ? $post->media_variants : [];
+        if (! empty($variants['thumbnail']['url']) && is_string($variants['thumbnail']['url'])) {
+            return $variants['thumbnail']['url'];
+        }
+
+        return $post->thumbnail_url ?: null;
+    }
+
     public function explore(Request $request)
     {
         $authUser = Auth::user();
@@ -513,8 +529,8 @@ class PostController extends Controller
                 $post->music_start_position_ms = $post->music_start_position_ms ?? null;
                 $post->music_clip_duration_ms = $post->music_clip_duration_ms ?? null;
 
-                // thumbnail
-                $post->thumbnail_url = $post->thumbnail_url ?? null;
+                // thumbnail grid: pakai varian terkompres bila ada (bukan file media penuh)
+                $post->thumbnail_url = $this->bestThumbUrl($post);
 
                 return $post;
             });

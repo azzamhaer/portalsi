@@ -39,7 +39,15 @@ class MediaBackfill extends Command
 
         $query = Post::whereNotNull('media_url')->where('media_url', '!=', '');
         if (! $force) {
-            $query->where(fn ($q) => $q->whereNull('media_status')->orWhere('media_status', '!=', 'done'));
+            // Belum 'done' ATAU thumbnail_url masih kosong (post lama yang thumbnailnya
+            // tak pernah terisi). processPost idempotent → rendition yang sudah ada dilewati,
+            // jadi ini tetap ringan; hanya menutup lubang thumbnail.
+            $query->where(function ($q) {
+                $q->whereNull('media_status')
+                    ->orWhere('media_status', '!=', 'done')
+                    ->orWhereNull('thumbnail_url')
+                    ->orWhere('thumbnail_url', '');
+            });
         }
         $total = (clone $query)->count();
 

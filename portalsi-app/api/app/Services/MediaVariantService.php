@@ -483,6 +483,15 @@ class MediaVariantService
                 }
             }
 
+            // Backfill kolom thumbnail_url dari varian bila kosong — menutup post lama
+            // yang varian thumbnail-nya ada tapi kolomnya tak pernah terisi (bikin grid
+            // feed/explore jatuh ke media penuh). Jangan timpa thumbnail pilihan user.
+            if (empty($post->thumbnail_url)
+                && ! ($post->has_custom_thumbnail ?? false)
+                && ! empty($variants['thumbnail']['url'])) {
+                $post->thumbnail_url = $variants['thumbnail']['url'];
+            }
+
             $post->media_variants = $variants;
             $post->media_status = 'done';
             $post->save();
