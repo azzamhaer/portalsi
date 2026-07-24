@@ -273,27 +273,38 @@ class MediaVariantService
     {
         // Ekstraksi 1 frame hanya butuh ffmpeg (tidak perlu ffprobe).
         if (! self::shellAvailable() || $this->ffmpeg === '' || ! @is_executable($this->ffmpeg)) {
+            \Log::warning('extractVideoFrameThumbnail: ffmpeg tak tersedia', [
+                'shell' => self::shellAvailable(),
+                'ffmpeg' => $this->ffmpeg,
+            ]);
+
             return null;
         }
         $key = $this->relativePath($post->media_url);
         if (! $key) {
+            \Log::warning('extractVideoFrameThumbnail: key tak dikenali', ['media_url' => $post->media_url]);
+
             return null;
         }
         $ext = pathinfo($key, PATHINFO_EXTENSION) ?: 'mp4';
         $src = $this->downloadToTemp($key, '.'.$ext);
         if (! $src) {
+            \Log::warning('extractVideoFrameThumbnail: gagal download video', ['key' => $key, 'disk' => $this->disk]);
+
             return null;
         }
         $tmp = tempnam(sys_get_temp_dir(), 'psi_frame_').'.jpg';
         try {
             $second = max(0, $second);
-            // Frame penuh (jaga rasio), lebar maksimum 1280px.
+            // Frame penuh (jaga rasio), lebar 720px. Pakai sintaks scale sederhana yang
+            // terbukti jalan (sama seperti generator thumbnail otomatis) — ekspresi seperti
+            // scale='min(1280,iw)' bisa gagal di sebagian build ffmpeg.
             $cmd = sprintf(
                 '%s -y -ss %s -i %s -frames:v 1 -vf %s -q:v 3 %s 2>/dev/null',
                 escapeshellarg($this->ffmpeg),
                 escapeshellarg((string) $second),
                 escapeshellarg($src),
-                escapeshellarg("scale='min(1280,iw)':-2"),
+                escapeshellarg('scale=720:-2'),
                 escapeshellarg($tmp)
             );
             $this->sh($cmd);
@@ -303,12 +314,18 @@ class MediaVariantService
                     '%s -y -i %s -frames:v 1 -vf %s -q:v 3 %s 2>/dev/null',
                     escapeshellarg($this->ffmpeg),
                     escapeshellarg($src),
-                    escapeshellarg("scale='min(1280,iw)':-2"),
+                    escapeshellarg('scale=720:-2'),
                     escapeshellarg($tmp)
                 );
                 $this->sh($cmd0);
             }
             if (! file_exists($tmp) || filesize($tmp) < 100) {
+                \Log::warning('extractVideoFrameThumbnail: ffmpeg tak menghasilkan frame', [
+                    'key' => $key,
+                    'second' => $second,
+                    'ffmpeg' => $this->ffmpeg,
+                ]);
+
                 return null;
             }
             $name = pathinfo($key, PATHINFO_FILENAME);

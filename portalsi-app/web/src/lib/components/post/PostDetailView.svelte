@@ -296,15 +296,23 @@
 	// lalu ambil currentTime saat user menekan "Gunakan frame ini".
 	let thumbEditOpen = $state(false);
 	let thumbVideoEl = $state<HTMLVideoElement | null>(null);
+	let thumbDuration = $state(0);
 	let thumbSecond = $state(0);
 	let thumbChanged = $state(false);
 	let thumbSaving = $state(false);
 	let thumbMsg = $state('');
-	function pickCurrentFrame() {
-		if (!thumbVideoEl) return;
-		thumbSecond = Math.max(0, thumbVideoEl.currentTime || 0);
+	// Scrubber kustom: geser = seek + tampilkan frame. Tanpa play.
+	function onThumbScrub(sec: number) {
+		thumbSecond = sec;
 		thumbChanged = true;
 		thumbMsg = '';
+		if (thumbVideoEl) {
+			try {
+				thumbVideoEl.currentTime = Math.min(sec, Math.max(0, thumbDuration - 0.05));
+			} catch {
+				/* abaikan */
+			}
+		}
 	}
 	// Simpan thumbnail secara mandiri (dengan umpan balik jelas), lepas dari form caption.
 	async function saveThumbnail() {
@@ -843,17 +851,29 @@
 									<video
 										bind:this={thumbVideoEl}
 										src={normalizeMediaUrl(data.post.mediaUrl, detailMediaBase)}
-										preload="metadata"
-										controls
+										preload="auto"
 										muted
 										playsinline
+										onloadedmetadata={() => {
+											const d = thumbVideoEl?.duration;
+											thumbDuration = Number.isFinite(d) && d ? d : 0;
+										}}
 									></video>
 								</div>
-								<div class="thumb-actions">
-									<button type="button" class="thumb-btn ghost" onclick={pickCurrentFrame} disabled={thumbSaving}>Gunakan frame ini</button>
-									<button type="button" class="thumb-btn" onclick={saveThumbnail} disabled={!thumbChanged || thumbSaving}>{thumbSaving ? 'Menyimpan…' : 'Simpan thumbnail'}</button>
+								<input
+									class="thumb-range"
+									type="range"
+									min="0"
+									max={Math.max(0.1, thumbDuration)}
+									step="0.05"
+									value={thumbSecond}
+									oninput={(e) => onThumbScrub(Number((e.currentTarget as HTMLInputElement).value))}
+								/>
+								<div class="thumb-scrub-meta">
+									<span>{thumbSecond.toFixed(1)} dtk{thumbDuration ? ` / ${thumbDuration.toFixed(1)} dtk` : ''}</span>
+									{#if thumbChanged}<span class="thumb-chip">Frame dipilih</span>{/if}
 								</div>
-								{#if thumbChanged && !thumbSaving}<p class="thumb-hint">Frame pada {thumbSecond.toFixed(1)} dtk dipilih.</p>{/if}
+								<button type="button" class="thumb-btn" onclick={saveThumbnail} disabled={!thumbChanged || thumbSaving}>{thumbSaving ? 'Menyimpan…' : 'Simpan thumbnail'}</button>
 								{#if thumbMsg}<p class="thumb-hint">{thumbMsg}</p>{/if}
 							{:else}
 								<button type="button" class="thumb-btn" onclick={() => (thumbEditOpen = true)}>Ganti thumbnail</button>
@@ -1935,35 +1955,47 @@
 	}
 	/* Selektor 2-kelas agar menang dari aturan global `.edit-modal-card button`
 	   (yang jika tidak, memaksa semua tombol jadi primary & padding tak konsisten). */
-	.thumb-actions {
-		display: flex;
-		gap: 8px;
-	}
-	/* Selektor 2-kelas agar menang dari aturan global `.edit-modal-card button`. */
+	/* Selektor 2-kelas agar menang dari aturan global `.edit-modal-card button`,
+	   dan disamakan persis dengan tombol lain di modal (mis. "Sematkan"). */
 	.thumb-manage .thumb-btn {
-		display: inline-flex;
+		display: flex;
 		align-items: center;
 		justify-content: center;
-		flex: 1;
 		width: 100%;
-		min-height: 42px;
-		padding: 0 16px;
+		min-height: 38px;
+		padding: 0 13px;
 		background: var(--color-primary);
-		border: 1px solid var(--color-primary);
-		border-radius: 11px;
+		border: 0;
+		border-radius: 9px;
 		color: #fff;
-		font-size: 0.82rem;
+		font-size: 0.72rem;
 		font-weight: 720;
 		cursor: pointer;
-	}
-	.thumb-manage .thumb-btn.ghost {
-		background: transparent;
-		border: 1px solid var(--color-border);
-		color: var(--color-text);
 	}
 	.thumb-manage .thumb-btn:disabled {
 		opacity: 0.55;
 		cursor: default;
+	}
+	.thumb-range {
+		width: 100%;
+		margin: 2px 0;
+		accent-color: var(--color-primary);
+		cursor: pointer;
+	}
+	.thumb-scrub-meta {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 10px;
+		font-size: 0.74rem;
+		color: var(--color-muted);
+	}
+	.thumb-chip {
+		padding: 2px 9px;
+		background: var(--color-primary-soft);
+		border-radius: 999px;
+		color: var(--color-primary-strong, var(--color-primary));
+		font-weight: 700;
 	}
 	.thumb-hint {
 		margin: 0;
