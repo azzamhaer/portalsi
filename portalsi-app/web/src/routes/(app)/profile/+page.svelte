@@ -150,7 +150,7 @@
 			{#each posts as post (post.id)}
 				<a href={`/posts/${post.id}`}>
 					{#if post.isVideo && !post.thumbnailUrl}<video
-							src={post.mediaUrl}
+							src={`${post.mediaUrl}#t=0.1`}
 							muted
 							playsinline
 							preload="metadata"

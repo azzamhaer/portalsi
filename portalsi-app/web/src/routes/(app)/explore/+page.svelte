@@ -380,7 +380,7 @@
 					></video>
 				{/if}
 				{#if post.isVideo && !post.thumbnailUrl}<video
-						src={post.mediaUrl}
+						src={`${post.mediaUrl}#t=0.1`}
 						muted
 						playsinline
 						preload="metadata"
