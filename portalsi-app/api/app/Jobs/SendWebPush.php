@@ -41,48 +41,7 @@ class SendWebPush implements ShouldQueue
             return;
         }
 
-        $subs = PushSubscription::where('user_id', $notif->recipient_id)->get();
-        if ($subs->isEmpty()) {
-            return;
-        }
-
-        $payload = json_encode($this->buildPayload($notif));
-
-        try {
-            $webPush = new WebPush([
-                'VAPID' => [
-                    'subject' => (string) config('webpush.vapid.subject'),
-                    'publicKey' => $publicKey,
-                    'privateKey' => $privateKey,
-                ],
-            ], [], 10);
-            $webPush->setDefaultOptions(['TTL' => (int) config('webpush.ttl', 43200)]);
-        } catch (\Throwable $e) {
-            Log::warning('SendWebPush: gagal inisialisasi WebPush', ['error' => $e->getMessage()]);
-
-            return;
-        }
-
-        foreach ($subs as $sub) {
-            $subscription = Subscription::create([
-                'endpoint' => $sub->endpoint,
-                'keys' => ['p256dh' => $sub->p256dh, 'auth' => $sub->auth],
-            ]);
-            $webPush->queueNotification($subscription, $payload);
-        }
-
-        foreach ($webPush->flush() as $report) {
-            if ($report->isSuccess()) {
-                continue;
-            }
-            // Endpoint kadaluarsa / tak dikenal → buang langganannya.
-            $status = method_exists($report, 'getResponse') && $report->getResponse()
-                ? $report->getResponse()->getStatusCode()
-                : null;
-            if (in_array($status, [404, 410], true) || $report->isSubscriptionExpired()) {
-                PushSubscription::where('endpoint_hash', hash('sha256', $report->getEndpoint()))->delete();
-            }
-        }
+        \App\Services\WebPushSender::sendToUser((int) $notif->recipient_id, $this->buildPayload($notif));
     }
 
     /**

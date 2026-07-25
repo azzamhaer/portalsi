@@ -61,8 +61,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 						storyViewed: item.conversation.story_viewed ?? false,
 						text: previewText(item.last_chat.content, Boolean(item.last_chat.media)),
 						time: item.last_chat.sent_at ? relativeTimeId(item.last_chat.sent_at) : '',
-						unread: !item.last_chat.is_read,
-						unreadCount: 0
+						unread: item.unread_count > 0 || !item.last_chat.is_read,
+						unreadCount: item.unread_count
 					}
 				: {
 						type: 'group' as const,

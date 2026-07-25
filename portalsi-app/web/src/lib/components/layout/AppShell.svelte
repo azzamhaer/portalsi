@@ -73,6 +73,7 @@
 		};
 		window.addEventListener('portal:notifications-read', updateUnread);
 		window.addEventListener('portal:messages-read', refreshCounts);
+		window.addEventListener('portal:open-post', onOpenPostEvent);
 		void refreshCounts();
 		const stopNotifications = subscribePrivate(
 			`user.${user.id}`,
@@ -92,6 +93,7 @@
 			stopMessages();
 			window.removeEventListener('portal:notifications-read', updateUnread);
 			window.removeEventListener('portal:messages-read', refreshCounts);
+			window.removeEventListener('portal:open-post', onOpenPostEvent);
 		};
 	});
 
@@ -121,6 +123,26 @@
 	// Buka detail postingan sebagai modal (shallow routing) alih-alih navigasi penuh,
 	// supaya posisi scroll & state halaman asal tetap terjaga (ala Instagram).
 	// Deep link / URL langsung / buka tab baru tetap membuka halaman detail penuh.
+	// Buka post sebagai modal (shallow routing) untuk sebuah pathname /posts/{id}.
+	async function openPostModal(pathname: string) {
+		if (page.url.pathname === pathname) return;
+		postOpening = true;
+		window.dispatchEvent(new CustomEvent('portal:post-opening', { detail: { href: pathname } }));
+		try {
+			const result = await preloadData(pathname);
+			if (result.type === 'loaded' && result.status === 200) {
+				pushState(pathname, { postDetail: result.data as App.PageState['postDetail'] });
+			} else {
+				await goto(pathname);
+			}
+		} catch {
+			await goto(pathname);
+		} finally {
+			postOpening = false;
+			window.dispatchEvent(new CustomEvent('portal:post-opened', { detail: { href: pathname } }));
+		}
+	}
+
 	async function handleContentClick(event: MouseEvent) {
 		if (event.defaultPrevented || event.button !== 0) return;
 		if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
@@ -140,21 +162,13 @@
 		// Sudah di halaman/URL post yang sama → biarkan default.
 		if (page.url.pathname === url.pathname) return;
 		event.preventDefault();
-		postOpening = true;
-		window.dispatchEvent(new CustomEvent('portal:post-opening', { detail: { href: url.pathname } }));
-		try {
-			const result = await preloadData(url.pathname);
-			if (result.type === 'loaded' && result.status === 200) {
-				pushState(url.pathname, { postDetail: result.data as App.PageState['postDetail'] });
-			} else {
-				await goto(url.pathname);
-			}
-		} catch {
-			await goto(url.pathname);
-		} finally {
-			postOpening = false;
-			window.dispatchEvent(new CustomEvent('portal:post-opened', { detail: { href: url.pathname } }));
-		}
+		void openPostModal(url.pathname);
+	}
+
+	// Dipicu oleh kartu feed saat SATU tap foto (setelah debounce double-tap-to-like).
+	function onOpenPostEvent(event: Event) {
+		const detail = (event as CustomEvent<{ id?: number | string }>).detail;
+		if (detail?.id != null) void openPostModal(`/posts/${detail.id}`);
 	}
 
 	function closePostModal() {

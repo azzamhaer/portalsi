@@ -97,6 +97,25 @@
 			openLightbox(index);
 		}, 260);
 	}
+
+	// Foto feed (bukan zoomable) = link ke detail. Tunda navigasinya agar dua-tap bisa
+	// like tanpa membuka detail. Satu tap → buka modal detail lewat AppShell.
+	function mediaLinkTap(event: MouseEvent) {
+		// Biarkan buka tab baru / modifier / klik kanan berjalan normal.
+		if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
+			return;
+		event.preventDefault();
+		if (clickTimer) {
+			clearTimeout(clickTimer);
+			clickTimer = null;
+			doubleTapLike();
+			return;
+		}
+		clickTimer = setTimeout(() => {
+			clickTimer = null;
+			window.dispatchEvent(new CustomEvent('portal:open-post', { detail: { id: post.id } }));
+		}, 260);
+	}
 	function initialInteractionState() {
 		return {
 			liked: post.isLiked,
@@ -288,7 +307,7 @@
 				{#each gallery as src, index (index)}
 					{#if zoomable}<button class="slide" onclick={() => mediaClick(index)}
 							><img src={src} alt={`${post.mediaAlt} (${index + 1})`} /></button
-						>{:else}<a class="slide" href={`/posts/${post.id}`}
+						>{:else}<a class="slide" href={`/posts/${post.id}`} onclick={mediaLinkTap}
 							><img src={src} alt={`${post.mediaAlt} (${index + 1})`} /></a
 						>{/if}
 				{/each}
@@ -320,8 +339,9 @@
 			class="media"
 			class:opening={openingPost}
 			href={`/posts/${post.id}`}
+			onclick={mediaLinkTap}
 			aria-label={`Buka postingan ${post.user.fullName}`}
-			><img src={post.mediaUrl} alt={post.mediaAlt} />{#if openingPost}<span class="post-opening"><LoaderCircle size={28} /></span>{/if}</a
+			><img src={post.mediaUrl} alt={post.mediaAlt} />{#if likeBurst}<span class="like-burst"><Heart size={96} fill="currentColor" /></span>{/if}{#if openingPost}<span class="post-opening"><LoaderCircle size={28} /></span>{/if}</a
 		>{/if}
 
 	<div class="actions">

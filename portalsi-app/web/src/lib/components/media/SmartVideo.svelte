@@ -215,6 +215,14 @@
 	let controlsVisible = $state(true);
 	let hoveringPointer = $state(false);
 	let controlsTimer: ReturnType<typeof setTimeout> | null = null;
+	// Perangkat sentuh (pointer kasar). Sebagian browser mobile salah melaporkan sentuhan
+	// sebagai pointerType 'mouse' → logika hover mengunci kontrol dan tak pernah hilang.
+	// Dengan flag ini, logika hover DINONAKTIFKAN di perangkat sentuh (auto-hide bekerja).
+	let coarsePointer = $state(false);
+	$effect(() => {
+		coarsePointer =
+			typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: coarse)')?.matches;
+	});
 
 	function clearControlsTimer() {
 		if (controlsTimer) {
@@ -547,26 +555,30 @@
 	class:controls-visible={controlsVisible}
 	style:aspect-ratio={fill ? undefined : mediaAspect}
 	onpointerenter={(event) => {
-		// Hanya pointer presisi (mouse/trackpad) yang dianggap "hover".
-		if (minimal || event.pointerType !== 'mouse') return;
+		// Hanya pointer presisi (mouse/trackpad) yang dianggap "hover". Di perangkat sentuh
+		// (coarse) logika hover dimatikan agar kontrol bisa auto-hide.
+		if (minimal || coarsePointer || event.pointerType !== 'mouse') return;
 		hoveringPointer = true;
 		revealControls(false);
 	}}
 	onpointermove={(event) => {
-		if (minimal || event.pointerType !== 'mouse' || (hoveringPointer && controlsVisible)) return;
+		if (minimal || coarsePointer || event.pointerType !== 'mouse' || (hoveringPointer && controlsVisible))
+			return;
 		hoveringPointer = true;
 		revealControls(false);
 	}}
 	onpointerleave={(event) => {
-		if (minimal || event.pointerType !== 'mouse') return;
+		if (minimal || coarsePointer || event.pointerType !== 'mouse') return;
 		hoveringPointer = false;
 		// Keluar hover: sembunyikan bila sedang diputar, jeda tetap tampil sebentar.
 		if (playing) hideControlsNow();
 		else revealControls();
 	}}
 	onpointerdown={(event) => {
-		// Sentuhan di mana pun pada video memunculkan kembali kontrol.
-		if (minimal || event.pointerType === 'mouse') return;
+		// Sentuhan di mana pun pada video memunculkan kembali kontrol (lalu auto-hide).
+		if (minimal) return;
+		if (! coarsePointer && event.pointerType === 'mouse') return;
+		hoveringPointer = false; // pastikan tak terkunci di perangkat sentuh
 		revealControls();
 	}}
 >

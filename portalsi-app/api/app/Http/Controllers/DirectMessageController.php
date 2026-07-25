@@ -73,6 +73,9 @@ class DirectMessageController extends Controller
 
         broadcast(new NewDirectMessage($message))->toOthers();
 
+        // Web Push ke penerima (dikerjakan di queue; tak memblokir pengiriman).
+        \App\Jobs\SendChatPush::dispatch((int) $message->getKey());
+
         $sender = Auth::user();
         $receiver = User::findOrFail($request->receiver_id);
 
@@ -282,7 +285,15 @@ class DirectMessageController extends Controller
             ->get()
             ->keyBy('user_id');
 
-        $chatUsers = $lastChats->map(function ($chat) use ($users, $auth_id) {
+        // Jumlah pesan belum dibaca per lawan bicara (yang mereka kirim ke saya).
+        $unreadCounts = DirectMessage::select('sender_id', DB::raw('COUNT(*) as cnt'))
+            ->where('receiver_id', $auth_id)
+            ->where('is_read', false)
+            ->whereIn('sender_id', $userIds)
+            ->groupBy('sender_id')
+            ->pluck('cnt', 'sender_id');
+
+        $chatUsers = $lastChats->map(function ($chat) use ($users, $auth_id, $unreadCounts) {
             $user = $users[$chat->user_id] ?? null;
 
             return [
@@ -304,6 +315,7 @@ class DirectMessageController extends Controller
                     'sent_at' => $chat->sent_at,
                     'is_read' => ($chat->sender_id == $auth_id) ? true : $chat->is_read,
                 ],
+                'unread_count' => (int) ($unreadCounts[$chat->user_id] ?? 0),
             ];
         });
 

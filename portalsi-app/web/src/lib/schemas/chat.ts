@@ -31,7 +31,8 @@ export const directChatListItemSchema = z.object({
 		media: z.string().nullish(),
 		sent_at: z.string().nullish(),
 		is_read: booleanish.catch(false)
-	})
+	}),
+	unread_count: z.coerce.number().int().nonnegative().catch(0)
 });
 
 export const groupChatListItemSchema = z.object({

@@ -605,6 +605,21 @@
 		lightboxIndex = index;
 		lightboxOpen = true;
 	}
+	// Tap foto: satu tap = buka (ditunda) agar dua tap bisa like tanpa buka lightbox.
+	let tapTimer: ReturnType<typeof setTimeout> | null = null;
+	function mediaTap(index: number) {
+		if (dragMoved) return;
+		if (tapTimer) {
+			clearTimeout(tapTimer);
+			tapTimer = null;
+			doubleTapLike();
+			return;
+		}
+		tapTimer = setTimeout(() => {
+			tapTimer = null;
+			openMobileLightbox(index);
+		}, 260);
+	}
 
 	// Banner undangan kolaborasi untuk viewer (bila diundang & belum menjawab).
 	let inviteStatus = $state<'pending' | 'done' | 'hidden'>(
@@ -1025,12 +1040,7 @@
 									alt={`${data.post.mediaAlt} (${i + 1})`}
 									draggable="false"
 									use:frameProbe={i}
-									ondblclick={doubleTapLike}
-									onclick={() => {
-										// Setelah menggeser, jangan ikut membuka lightbox.
-										if (dragMoved) return;
-										openMobileLightbox(i);
-									}}
+									onclick={() => mediaTap(i)}
 								/>
 							{/each}
 						</div>
@@ -1045,8 +1055,7 @@
 						src={data.post.mediaUrl}
 						alt={data.post.mediaAlt}
 						use:frameProbe
-						ondblclick={doubleTapLike}
-						onclick={() => openMobileLightbox(0)}
+						onclick={() => mediaTap(0)}
 					/>
 				{/if}
 				{#if likeBurst}<span class="dm-burst"><Heart size={100} fill="currentColor" /></span>{/if}
