@@ -1,8 +1,18 @@
 import { env } from '$env/dynamic/public';
 import { backendRequest } from '$lib/server/api';
 import { normalizeMediaUrl } from '$lib/utils/media';
+import { ApiError } from '$lib/api/errors';
+import { fail } from '@sveltejs/kit';
 import { z } from 'zod';
-import type { PageServerLoad } from './$types';
+import type { Actions, PageServerLoad } from './$types';
+
+const captchaSchema = z.object({ token: z.string(), question: z.string() });
+
+async function freshCaptcha(requestId?: string) {
+	return backendRequest('public/contact/captcha', { requestId, schema: captchaSchema }).catch(
+		() => ({ token: '', question: '' })
+	);
+}
 
 const landingSchema = z
 	.object({
@@ -75,17 +85,21 @@ export const load: PageServerLoad = async ({ locals }) => {
 		env.PUBLIC_MARKETPLACE_URL?.trim() || 'https://marketplace.portalsi.com';
 	const appBase = env.PUBLIC_APP_URL?.trim() || 'https://app.portalsi.com';
 
-	const data = await backendRequest('public/landing', {
-		requestId: locals.requestId,
-		schema: landingSchema
-	}).catch(() => ({
-		stats: { members: 0, posts: 0, products: 0 },
-		posts: [],
-		announcements: [],
-		products: []
-	}));
+	const [data, captcha] = await Promise.all([
+		backendRequest('public/landing', {
+			requestId: locals.requestId,
+			schema: landingSchema
+		}).catch(() => ({
+			stats: { members: 0, posts: 0, products: 0 },
+			posts: [],
+			announcements: [],
+			products: []
+		})),
+		freshCaptcha(locals.requestId)
+	]);
 
 	return {
+		captcha,
 		stats: data.stats,
 		posts: data.posts.map((p) => ({
 			id: p.id,
@@ -128,4 +142,44 @@ export const load: PageServerLoad = async ({ locals }) => {
 			url: `${marketplaceBase}/products/${p.slug ?? p.id}`
 		}))
 	};
+};
+
+export const actions: Actions = {
+	contact: async ({ request, locals }) => {
+		const form = await request.formData();
+		const payload = {
+			name: String(form.get('name') ?? '').trim(),
+			email: String(form.get('email') ?? '').trim(),
+			phone: String(form.get('phone') ?? '').trim(),
+			message: String(form.get('message') ?? '').trim(),
+			captcha_token: String(form.get('captcha_token') ?? ''),
+			captcha_answer: String(form.get('captcha_answer') ?? '').trim()
+		};
+
+		if (!payload.name || !payload.email || !payload.message) {
+			return fail(422, {
+				message: 'Nama, email, dan pesan wajib diisi.',
+				captcha: await freshCaptcha(locals.requestId)
+			});
+		}
+
+		try {
+			const res = await backendRequest<{ message: string }>('public/contact', {
+				method: 'POST',
+				requestId: locals.requestId,
+				// Teruskan IP klien yang andal (mekanisme sama dengan throttle register).
+				headers: { 'X-Real-Client-Ip': locals.clientIp || '' },
+				body: payload
+			});
+			return { success: true, message: res.message };
+		} catch (cause) {
+			const message =
+				cause instanceof ApiError ? cause.message : 'Gagal mengirim. Coba lagi.';
+			// Selalu beri captcha baru agar percobaan berikutnya valid.
+			return fail(cause instanceof ApiError ? cause.status : 500, {
+				message,
+				captcha: await freshCaptcha(locals.requestId)
+			});
+		}
+	}
 };

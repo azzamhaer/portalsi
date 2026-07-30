@@ -10,8 +10,12 @@
 		Play,
 		BadgeCheck,
 		HelpCircle,
-		Star
+		MessageSquarePlus,
+		Star,
+		X,
+		LoaderCircle
 	} from '@lucide/svelte';
+	import { enhance } from '$app/forms';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -26,7 +30,6 @@
 	const apps = [
 		{
 			name: 'Portal SI App',
-			tag: 'Sosial media Islami',
 			long: 'Media sosial Islami yang menghubungkan silaturahmi, berbagi inspirasi, dan bertumbuh dalam kebaikan.',
 			href: 'https://app.portalsi.com/',
 			domain: 'app.portalsi.com',
@@ -37,8 +40,7 @@
 		},
 		{
 			name: 'Portal SI Meet',
-			tag: 'Video meeting gratis',
-			long: 'Video meeting open source, instan dan gratis. Host login pakai akun Portal SI, peserta bisa gabung cukup dengan nama.',
+			long: 'Video meeting instan & gratis. Host login pakai akun Portal SI, peserta cukup dengan nama.',
 			href: 'https://meet.portalsi.com/',
 			domain: 'meet.portalsi.com',
 			icon: Video,
@@ -48,8 +50,7 @@
 		},
 		{
 			name: 'Marketplace',
-			tag: 'Belanja kebutuhan',
-			long: 'Marketplace terpercaya untuk menemukan produk, jasa, dan kebutuhan komunitas dalam satu tempat.',
+			long: 'Temukan produk, jasa, dan kebutuhan komunitas dari penjual tepercaya dalam satu tempat.',
 			href: 'https://marketplace.portalsi.com/',
 			domain: 'marketplace.portalsi.com',
 			icon: Store,
@@ -63,7 +64,6 @@
 	const rowA = $derived([...data.posts.slice(0, half), ...data.posts.slice(0, half)]);
 	const rowB = $derived([...data.posts.slice(half), ...data.posts.slice(half)]);
 
-	// Pengumuman: accordion di kartu hero (bisa di-expand; tampilkan sebagian dulu bila banyak).
 	let expandedId = $state<number | null>(null);
 	let showAll = $state(false);
 	const visibleAnns = $derived(showAll ? data.announcements : data.announcements.slice(0, 3));
@@ -71,7 +71,20 @@
 		expandedId = expandedId === id ? null : id;
 	}
 	function roleLabel(role: string) {
-		return { dev: 'Dev', teacher: 'Ustadz', parent: 'Wali', student: '' }[role] ?? '';
+		return { dev: 'Dev', teacher: 'Ustadz', parent: 'Wali' }[role] ?? '';
+	}
+
+	// ── Contact Us modal ──
+	let contactOpen = $state(false);
+	let captcha = $state(data.captcha);
+	let captchaAnswer = $state('');
+	let submitting = $state(false);
+	let feedback = $state<{ ok: boolean; text: string } | null>(null);
+	let sent = $state(false);
+	function openContact() {
+		contactOpen = true;
+		feedback = null;
+		sent = false;
 	}
 
 	// Transisi lingkaran melebar saat memilih layanan.
@@ -114,7 +127,6 @@
 		<a class="help" href="https://wa.me/6281350880733"><HelpCircle size={15} /> Bantuan</a>
 	</header>
 
-	<!-- ===== BENTO ===== -->
 	<section class="bento">
 		<div class="hero-tile">
 			<p class="salam">Assalamu'alaikum 👋</p>
@@ -127,21 +139,19 @@
 					<div class="ann-items">
 						{#each visibleAnns as a (a.id)}
 							<article class="pa" class:open={expandedId === a.id}>
-								<div class="pa-row">
-									{#if a.author}
-										<a class="pa-author" href={a.author.url} title={a.author.fullName}>
-											{#if a.author.avatarUrl}<img src={a.author.avatarUrl} alt="" />{/if}
-											<span>@{a.author.username}</span>
-											{#if a.author.verified}<BadgeCheck size={13} class="v" />{/if}
-											{#if roleLabel(a.author.role)}<i class="role">{roleLabel(a.author.role)}</i>{/if}
-										</a>
-									{/if}
-									<button class="pa-toggle" onclick={() => toggle(a.id)}>
-										{#if a.pinned}<span class="pin">📌</span>{/if}
-										<span class="pa-title">{a.title}</span>
-										<ChevronDown size={16} class="chev" />
-									</button>
-								</div>
+								<button class="pa-toggle" onclick={() => toggle(a.id)}>
+									{#if a.pinned}<span class="pin">📌</span>{/if}
+									<span class="pa-title">{a.title}</span>
+									<ChevronDown size={16} class="chev" />
+								</button>
+								{#if a.author}
+									<a class="pa-author" href={a.author.url} title={a.author.fullName}>
+										{#if a.author.avatarUrl}<img src={a.author.avatarUrl} alt="" />{/if}
+										<span>@{a.author.username}</span>
+										{#if a.author.verified}<BadgeCheck size={12} class="v" />{/if}
+										{#if roleLabel(a.author.role)}<i class="role">{roleLabel(a.author.role)}</i>{/if}
+									</a>
+								{/if}
 								{#if expandedId === a.id}
 									<div class="pa-body">
 										{#if a.content}<p>{a.content}</p>{/if}
@@ -158,8 +168,6 @@
 					{/if}
 				</div>
 			{/if}
-
-			<a class="cta" href="https://app.portalsi.com/">Masuk ke Portal SI <ArrowRight size={17} /></a>
 		</div>
 
 		{#each apps as app (app.href)}
@@ -167,21 +175,30 @@
 			<a
 				class="svc {app.theme}"
 				href={app.href}
-				style={`background-image:linear-gradient(135deg,var(--g1),var(--g2)),url('${app.bg}')`}
+				style={`background-image:linear-gradient(140deg,var(--g1),var(--g2)),url('${app.bg}')`}
 				onclick={(e) => launch(e, app)}
 			>
-				<span class="svc-ico"><Icon size={22} /></span>
-				<span class="svc-body">
-					<b>{app.name}</b>
-					<small>{app.tag}</small>
+				<span class="svc-top">
+					<span class="svc-ico"><Icon size={20} /></span>
+					<span class="svc-go"><ArrowUpRight size={18} /></span>
 				</span>
-				<span class="svc-go"><ArrowUpRight size={20} /></span>
+				<b class="svc-name">{app.name}</b>
+				<p class="svc-desc">{app.long}</p>
 				<span class="svc-domain">{app.domain}</span>
 			</a>
 		{/each}
+
+		<button class="svc contact" onclick={openContact}>
+			<span class="svc-top">
+				<span class="svc-ico"><MessageSquarePlus size={20} /></span>
+				<span class="svc-go"><ArrowUpRight size={18} /></span>
+			</span>
+			<b class="svc-name">Contact Us</b>
+			<p class="svc-desc">Punya saran, kritik, atau pertanyaan? Kirim langsung ke tim kami.</p>
+			<span class="svc-domain">Buka formulir saran</span>
+		</button>
 	</section>
 
-	<!-- ===== LIVE MARQUEE ===== -->
 	{#if data.posts.length}
 		<section class="live">
 			<div class="sec-head">
@@ -211,23 +228,6 @@
 		</section>
 	{/if}
 
-	<!-- ===== PENJELASAN LAYANAN ===== -->
-	<section class="about">
-		<div class="sec-head"><h2>Kenapa Portal SI?</h2></div>
-		<div class="about-grid">
-			{#each apps as app (app.href)}
-				{@const Icon = app.icon}
-				<div class="ab {app.theme}">
-					<span class="ab-ico"><Icon size={20} /></span>
-					<b>{app.name}</b>
-					<p>{app.long}</p>
-					<a class="ab-link" href={app.href}>{app.domain} <ArrowUpRight size={14} /></a>
-				</div>
-			{/each}
-		</div>
-	</section>
-
-	<!-- ===== PRODUCTS ===== -->
 	{#if data.products.length}
 		<section class="mkt">
 			<div class="sec-head">
@@ -249,6 +249,75 @@
 
 	<footer class="foot">© {new Date().getFullYear()} Portal SI · Satu Portal, All In One.</footer>
 </div>
+
+<!-- ===== CONTACT MODAL ===== -->
+{#if contactOpen}
+	<div class="cm-scrim" role="presentation" onclick={() => (contactOpen = false)}>
+		<form
+			class="cm-card"
+			method="POST"
+			action="?/contact"
+			onclick={(e) => e.stopPropagation()}
+			use:enhance={() => {
+				submitting = true;
+				feedback = null;
+				return async ({ result }) => {
+					submitting = false;
+					if (result.type === 'success' && (result.data as any)?.success) {
+						sent = true;
+						feedback = { ok: true, text: String((result.data as any).message ?? 'Terkirim!') };
+					} else if (result.type === 'failure') {
+						const d = result.data as any;
+						feedback = { ok: false, text: String(d?.message ?? 'Gagal mengirim.') };
+						if (d?.captcha) captcha = d.captcha;
+						captchaAnswer = '';
+					} else {
+						feedback = { ok: false, text: 'Gagal mengirim. Coba lagi.' };
+					}
+				};
+			}}
+		>
+			<header class="cm-head">
+				<div><strong>Contact Us</strong><small>Kirim saran atau pertanyaan ke tim Portal SI.</small></div>
+				<button type="button" class="cm-x" onclick={() => (contactOpen = false)} aria-label="Tutup"><X size={18} /></button>
+			</header>
+
+			{#if sent}
+				<div class="cm-done">
+					<span class="cm-check"><BadgeCheck size={30} /></span>
+					<p>{feedback?.text}</p>
+					<button type="button" class="cm-submit" onclick={() => (contactOpen = false)}>Tutup</button>
+				</div>
+			{:else}
+				<label class="cm-field">Nama<input name="name" maxlength="120" required placeholder="Nama Anda" /></label>
+				<label class="cm-field">Email<input name="email" type="email" maxlength="190" required placeholder="email@contoh.com" /></label>
+				<label class="cm-field">No. telepon <em>(opsional)</em><input name="phone" maxlength="40" placeholder="08xxxxxxxxxx" /></label>
+				<label class="cm-field">Pesan / saran<textarea name="message" rows="3" maxlength="2000" required placeholder="Tulis pesan Anda…"></textarea></label>
+
+				<div class="cm-captcha">
+					<span class="cm-q">Berapa hasil <b>{captcha.question || '…'}</b>?</span>
+					<input
+						class="cm-ans"
+						name="captcha_answer"
+						inputmode="numeric"
+						autocomplete="off"
+						required
+						bind:value={captchaAnswer}
+						placeholder="?"
+					/>
+					<input type="hidden" name="captcha_token" value={captcha.token} />
+				</div>
+
+				{#if feedback && !feedback.ok}<p class="cm-err">{feedback.text}</p>{/if}
+
+				<button class="cm-submit" type="submit" disabled={submitting}>
+					{#if submitting}<LoaderCircle size={16} class="cm-spin" /> Mengirim…{:else}Kirim saran{/if}
+				</button>
+				<p class="cm-note">Maksimal 3 pesan per hari.</p>
+			{/if}
+		</form>
+	</div>
+{/if}
 
 {#if overlay}
 	<div
@@ -340,9 +409,9 @@
 		display: grid;
 		grid-template-columns: repeat(4, 1fr);
 		grid-template-areas:
-			'hero hero app  app'
-			'hero hero meet mkt';
-		grid-auto-rows: minmax(172px, 1fr);
+			'hero hero app  meet'
+			'hero hero mkt  contact';
+		grid-auto-rows: minmax(196px, 1fr);
 		gap: 14px;
 		margin-top: 6px;
 	}
@@ -405,7 +474,7 @@
 		display: flex;
 		flex-direction: column;
 		min-height: 0;
-		margin: 16px 0;
+		margin-top: 16px;
 		padding-top: 14px;
 		border-top: 1px solid var(--border);
 	}
@@ -423,81 +492,27 @@
 	.ann-items {
 		display: flex;
 		flex-direction: column;
-		gap: 6px;
+		gap: 7px;
 		overflow-y: auto;
-		max-height: 240px;
+		max-height: 260px;
 	}
 	.pa {
+		padding: 9px 11px;
 		background: rgb(255 255 255 / 60%);
 		border: 1px solid var(--border);
 		border-radius: 13px;
 	}
-	.pa-row {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		padding: 8px 10px;
-	}
-	.pa-author {
-		display: inline-flex;
-		align-items: center;
-		gap: 5px;
-		flex: none;
-		max-width: 42%;
-		padding: 3px 8px 3px 3px;
-		background: var(--cream);
-		border-radius: 999px;
-		color: var(--ink);
-		font-size: 0.76rem;
-		font-weight: 600;
-		text-decoration: none;
-	}
-	.pa-author:hover {
-		background: var(--orange);
-		color: #fff;
-	}
-	.pa-author img {
-		width: 20px;
-		height: 20px;
-		border-radius: 50%;
-		object-fit: cover;
-	}
-	.pa-author span {
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-	.pa-author :global(.v) {
-		color: var(--orange);
-	}
-	.pa-author:hover :global(.v) {
-		color: #fff;
-	}
-	.role {
-		padding: 1px 6px;
-		background: rgb(42 94 58 / 12%);
-		border-radius: 999px;
-		color: var(--green);
-		font-size: 0.62rem;
-		font-style: normal;
-		font-weight: 700;
-	}
-	.pa-author:hover .role {
-		background: rgb(255 255 255 / 25%);
-		color: #fff;
-	}
 	.pa-toggle {
 		display: flex;
 		align-items: center;
-		gap: 6px;
-		flex: 1;
-		min-width: 0;
+		gap: 7px;
+		width: 100%;
 		padding: 0;
 		background: none;
 		border: 0;
 		color: var(--ink);
-		font-size: 0.84rem;
-		font-weight: 600;
+		font-size: 0.86rem;
+		font-weight: 700;
 		text-align: left;
 		cursor: pointer;
 	}
@@ -518,8 +533,58 @@
 	.pa.open .pa-toggle :global(.chev) {
 		transform: rotate(180deg);
 	}
+	.pa-author {
+		display: inline-flex;
+		align-items: center;
+		gap: 5px;
+		max-width: 100%;
+		margin-top: 7px;
+		padding: 3px 9px 3px 3px;
+		background: var(--cream);
+		border-radius: 999px;
+		color: var(--ink);
+		font-size: 0.74rem;
+		font-weight: 600;
+		text-decoration: none;
+	}
+	.pa-author:hover {
+		background: var(--orange);
+		color: #fff;
+	}
+	.pa-author img {
+		width: 19px;
+		height: 19px;
+		border-radius: 50%;
+		object-fit: cover;
+	}
+	.pa-author span {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.pa-author :global(.v) {
+		flex: none;
+		color: var(--orange);
+	}
+	.pa-author:hover :global(.v) {
+		color: #fff;
+	}
+	.role {
+		flex: none;
+		padding: 1px 6px;
+		background: rgb(42 94 58 / 12%);
+		border-radius: 999px;
+		color: var(--green);
+		font-size: 0.6rem;
+		font-style: normal;
+		font-weight: 700;
+	}
+	.pa-author:hover .role {
+		background: rgb(255 255 255 / 25%);
+		color: #fff;
+	}
 	.pa-body {
-		padding: 0 12px 12px;
+		margin-top: 8px;
 		color: var(--ink-soft);
 		font-size: 0.84rem;
 		line-height: 1.55;
@@ -545,98 +610,75 @@
 		font-weight: 700;
 		cursor: pointer;
 	}
-	.cta {
-		display: inline-flex;
-		align-items: center;
-		gap: 8px;
-		align-self: flex-start;
-		margin-top: auto;
-		padding: 12px 20px;
-		background: var(--ink);
-		border-radius: 14px;
-		color: #fff;
-		font-weight: 700;
-		font-size: 0.9rem;
-		text-decoration: none;
-		transition: transform 0.2s ease, background 0.2s ease;
-	}
-	.cta:hover {
-		transform: translateY(-2px);
-		background: #000;
-	}
 
-	/* service tiles */
+	/* ===== service + contact tiles ===== */
 	.svc {
 		position: relative;
 		display: flex;
-		flex-wrap: wrap;
-		align-content: flex-start;
-		gap: 12px;
-		padding: 20px;
+		flex-direction: column;
+		padding: 18px;
 		overflow: hidden;
 		border-radius: 22px;
 		background-size: cover !important;
 		background-position: center !important;
 		color: #fff;
+		text-align: left;
 		text-decoration: none;
 		box-shadow: 0 16px 34px -22px rgb(26 23 20 / 60%);
 		animation: rise 0.5s ease both;
 		transition: transform 0.22s ease, box-shadow 0.22s ease;
+		cursor: pointer;
 	}
 	.svc.app {
 		grid-area: app;
 		--g1: rgb(232 106 23 / 92%);
-		--g2: rgb(155 66 8 / 88%);
+		--g2: rgb(155 66 8 / 9%);
 	}
 	.svc.meet {
 		grid-area: meet;
 		--g1: rgb(42 94 58 / 93%);
-		--g2: rgb(18 56 33 / 90%);
+		--g2: rgb(18 56 33 / 9%);
 	}
 	.svc.mkt {
 		grid-area: mkt;
 		--g1: rgb(201 122 46 / 93%);
-		--g2: rgb(42 94 58 / 88%);
+		--g2: rgb(42 94 58 / 9%);
 	}
-	.svc:nth-of-type(2) {
-		animation-delay: 0.06s;
+	.svc.contact {
+		grid-area: contact;
+		border: 0;
+		background: linear-gradient(140deg, #2b2621, #4a4038);
 	}
 	.svc:nth-of-type(3) {
+		animation-delay: 0.06s;
+	}
+	.svc:nth-of-type(4) {
 		animation-delay: 0.12s;
 	}
 	.svc:hover {
 		transform: translateY(-4px);
 		box-shadow: 0 24px 44px -22px rgb(26 23 20 / 70%);
 	}
+	.svc-top {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin-bottom: 14px;
+	}
 	.svc-ico {
 		display: grid;
-		width: 42px;
-		height: 42px;
+		width: 40px;
+		height: 40px;
 		place-items: center;
 		background: rgb(255 255 255 / 22%);
 		border: 1px solid rgb(255 255 255 / 30%);
-		border-radius: 13px;
+		border-radius: 12px;
 		backdrop-filter: blur(4px);
-	}
-	.svc-body {
-		flex: 1;
-		min-width: 0;
-		align-self: center;
-	}
-	.svc-body b {
-		display: block;
-		font-family: 'Plus Jakarta Sans', sans-serif;
-		font-size: 1.08rem;
-		line-height: 1.1;
-	}
-	.svc-body small {
-		opacity: 0.85;
-		font-size: 0.78rem;
 	}
 	.svc-go {
 		display: grid;
-		width: 34px;
-		height: 34px;
+		width: 32px;
+		height: 32px;
 		place-items: center;
 		background: rgb(255 255 255 / 20%);
 		border-radius: 50%;
@@ -647,20 +689,26 @@
 		color: var(--ink);
 		transform: rotate(45deg);
 	}
+	.svc-name {
+		font-family: 'Plus Jakarta Sans', sans-serif;
+		font-size: 1.12rem;
+		line-height: 1.1;
+	}
+	.svc-desc {
+		margin: 7px 0 0;
+		color: rgb(255 255 255 / 88%);
+		font-size: 0.82rem;
+		line-height: 1.45;
+	}
 	.svc-domain {
-		width: 100%;
 		margin-top: auto;
-		padding-top: 6px;
+		padding-top: 12px;
 		opacity: 0.85;
 		font-size: 0.74rem;
-	}
-	.svc.app .svc-domain {
-		margin-top: 30px;
 	}
 
 	/* ===== section heads ===== */
 	.live,
-	.about,
 	.mkt {
 		margin-top: 30px;
 	}
@@ -769,16 +817,16 @@
 	}
 	.mp-tag {
 		position: absolute;
-		inset: auto 6px 6px;
+		inset: auto 8px 8px;
 		display: flex;
 		align-items: center;
 		gap: 5px;
-		padding: 5px 8px;
+		padding: 5px 9px 5px 5px;
 		border-radius: 999px;
 		background: linear-gradient(transparent, rgb(0 0 0 / 62%));
 		color: #fff;
 		text-decoration: none;
-		transition: background 0.2s ease, transform 0.2s ease;
+		transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 	}
 	.mp-av {
 		width: 20px !important;
@@ -794,72 +842,12 @@
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
-	/* Desktop: hover username → chip solid berwarna, rounded, jelas bisa diklik. */
 	@media (hover: hover) {
-		.mp-tag {
-			inset: auto 8px 8px;
-		}
 		.mp-tag:hover {
 			background: var(--orange);
 			transform: translateY(-2px);
 			box-shadow: 0 8px 18px -8px rgb(232 106 23 / 80%);
 		}
-	}
-
-	/* ===== about ===== */
-	.about-grid {
-		display: grid;
-		grid-template-columns: repeat(3, 1fr);
-		gap: 14px;
-	}
-	.ab {
-		display: flex;
-		flex-direction: column;
-		padding: 20px;
-		background: var(--card);
-		border: 1px solid var(--border);
-		border-top: 3px solid var(--orange);
-		border-radius: 20px;
-		box-shadow: 0 14px 34px -26px rgb(26 23 20 / 50%);
-	}
-	.ab.meet {
-		border-top-color: var(--green);
-	}
-	.ab.mkt {
-		border-top-color: var(--gold);
-	}
-	.ab-ico {
-		display: grid;
-		width: 40px;
-		height: 40px;
-		place-items: center;
-		margin-bottom: 12px;
-		background: var(--cream);
-		border-radius: 12px;
-		color: var(--orange-dark);
-	}
-	.ab.meet .ab-ico {
-		color: var(--green);
-	}
-	.ab b {
-		font-family: 'Plus Jakarta Sans', sans-serif;
-		font-size: 1.08rem;
-	}
-	.ab p {
-		flex: 1;
-		margin: 6px 0 14px;
-		color: var(--ink-soft);
-		font-size: 0.9rem;
-		line-height: 1.55;
-	}
-	.ab-link {
-		display: inline-flex;
-		align-items: center;
-		gap: 4px;
-		color: var(--orange-dark);
-		font-size: 0.8rem;
-		font-weight: 700;
-		text-decoration: none;
 	}
 
 	/* ===== products ===== */
@@ -944,7 +932,182 @@
 		}
 	}
 
-	/* ===== overlay ===== */
+	/* ===== contact modal ===== */
+	.cm-scrim {
+		position: fixed;
+		inset: 0;
+		z-index: 900;
+		display: grid;
+		place-items: center;
+		padding: 16px;
+		background: rgb(15 12 9 / 60%);
+		backdrop-filter: blur(4px);
+		animation: fade 0.2s ease;
+	}
+	.cm-card {
+		width: min(100%, 440px);
+		max-height: 92vh;
+		overflow-y: auto;
+		padding: 20px;
+		background: #fff;
+		border-radius: 22px;
+		box-shadow: 0 30px 70px rgb(0 0 0 / 45%);
+		animation: pop 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+	}
+	.cm-head {
+		display: flex;
+		align-items: flex-start;
+		gap: 10px;
+		margin-bottom: 14px;
+	}
+	.cm-head strong {
+		display: block;
+		font-family: 'Plus Jakarta Sans', sans-serif;
+		font-size: 1.1rem;
+	}
+	.cm-head small {
+		color: var(--ink-soft);
+		font-size: 0.8rem;
+	}
+	.cm-x {
+		display: grid;
+		width: 32px;
+		height: 32px;
+		flex: none;
+		margin-left: auto;
+		place-items: center;
+		padding: 0;
+		background: var(--cream);
+		border: 0;
+		border-radius: 50%;
+		color: var(--ink-soft);
+		cursor: pointer;
+	}
+	.cm-field {
+		display: block;
+		margin-bottom: 10px;
+		color: var(--ink);
+		font-size: 0.8rem;
+		font-weight: 600;
+	}
+	.cm-field em {
+		color: var(--ink-soft);
+		font-weight: 400;
+	}
+	.cm-field input,
+	.cm-field textarea {
+		width: 100%;
+		margin-top: 4px;
+		padding: 10px 12px;
+		background: var(--cream);
+		border: 1px solid var(--border);
+		border-radius: 11px;
+		font: inherit;
+		font-weight: 400;
+		resize: vertical;
+	}
+	.cm-field input:focus,
+	.cm-field textarea:focus,
+	.cm-ans:focus {
+		outline: 2px solid var(--orange);
+		outline-offset: 0;
+	}
+	.cm-captcha {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		margin: 4px 0 12px;
+		padding: 10px 12px;
+		background: var(--cream);
+		border: 1px solid var(--border);
+		border-radius: 12px;
+	}
+	.cm-q {
+		flex: 1;
+		font-size: 0.86rem;
+		font-weight: 600;
+	}
+	.cm-q b {
+		color: var(--orange-dark);
+	}
+	.cm-ans {
+		width: 74px;
+		padding: 8px 10px;
+		background: #fff;
+		border: 1px solid var(--border);
+		border-radius: 10px;
+		font: inherit;
+		text-align: center;
+	}
+	.cm-err {
+		margin: 0 0 10px;
+		color: #c0392b;
+		font-size: 0.82rem;
+		font-weight: 600;
+	}
+	.cm-submit {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 7px;
+		width: 100%;
+		min-height: 46px;
+		background: var(--ink);
+		border: 0;
+		border-radius: 13px;
+		color: #fff;
+		font-size: 0.9rem;
+		font-weight: 700;
+		cursor: pointer;
+	}
+	.cm-submit:disabled {
+		opacity: 0.6;
+		cursor: default;
+	}
+	.cm-note {
+		margin: 8px 0 0;
+		text-align: center;
+		color: var(--ink-soft);
+		font-size: 0.72rem;
+	}
+	.cm-done {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 10px;
+		padding: 14px 0 4px;
+		text-align: center;
+	}
+	.cm-check {
+		display: grid;
+		width: 58px;
+		height: 58px;
+		place-items: center;
+		background: var(--green-soft, #e1efe2);
+		border-radius: 50%;
+		color: var(--green);
+	}
+	.cm-done p {
+		margin: 0;
+		color: var(--ink-soft);
+		font-size: 0.9rem;
+	}
+	:global(.cm-spin) {
+		animation: spin 0.8s linear infinite;
+	}
+	@keyframes fade {
+		from {
+			opacity: 0;
+		}
+	}
+	@keyframes pop {
+		from {
+			opacity: 0;
+			transform: translateY(14px) scale(0.97);
+		}
+	}
+
+	/* ===== overlay transisi ===== */
 	.overlay {
 		position: fixed;
 		inset: 0;
@@ -995,12 +1158,9 @@
 			grid-template-columns: 1fr 1fr;
 			grid-template-areas:
 				'hero hero'
-				'app  app'
-				'meet mkt';
-			grid-auto-rows: minmax(150px, auto);
-		}
-		.about-grid {
-			grid-template-columns: 1fr;
+				'app  meet'
+				'mkt  contact';
+			grid-auto-rows: minmax(168px, auto);
 		}
 	}
 	@media (max-width: 520px) {
@@ -1010,14 +1170,12 @@
 				'hero'
 				'app'
 				'meet'
-				'mkt';
+				'mkt'
+				'contact';
 		}
 		.mp {
 			width: 132px;
 			height: 132px;
-		}
-		.pa-author {
-			max-width: 46%;
 		}
 	}
 	@media (prefers-reduced-motion: reduce) {
