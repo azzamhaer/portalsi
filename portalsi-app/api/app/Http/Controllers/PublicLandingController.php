@@ -83,19 +83,27 @@ class PublicLandingController extends Controller
 
     private function recentAnnouncements()
     {
-        return Announcement::with(['creator:user_id,full_name,username'])
+        return Announcement::with([
+            'creator:user_id,full_name,username,profile_picture_url,profile_picture_thumb_url,is_verified,role',
+        ])
             ->orderByDesc('pinned')
             ->latest()
-            ->take(4)
+            ->take(6)
             ->get()
             ->map(fn ($a) => [
                 'id' => (int) $a->id,
                 'title' => $a->title,
-                'excerpt' => $a->content ? mb_strimwidth(strip_tags($a->content), 0, 160, '…') : '',
+                'content' => $a->content ? mb_strimwidth(strip_tags($a->content), 0, 1500, '…') : '',
                 'image_url' => $a->image_url,
                 'pinned' => (bool) $a->pinned,
                 'created_at' => optional($a->created_at)->toIso8601String(),
-                'author' => $a->creator->full_name ?? $a->creator->username ?? 'Portal SI',
+                'author' => $a->creator ? [
+                    'username' => $a->creator->username,
+                    'full_name' => $a->creator->full_name ?? $a->creator->username,
+                    'avatar_url' => $a->creator->profile_picture_thumb_url ?? $a->creator->profile_picture_url,
+                    'is_verified' => (bool) $a->creator->is_verified,
+                    'role' => $a->creator->role,
+                ] : null,
             ])
             ->values();
     }

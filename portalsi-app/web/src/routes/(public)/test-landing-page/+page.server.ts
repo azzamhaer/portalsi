@@ -37,11 +37,19 @@ const landingSchema = z
 				z.object({
 					id: z.coerce.number(),
 					title: z.string().nullish(),
-					excerpt: z.string().nullish(),
+					content: z.string().nullish(),
 					image_url: z.string().nullish(),
 					pinned: z.boolean().catch(false),
 					created_at: z.string().nullish(),
-					author: z.string().nullish()
+					author: z
+						.object({
+							username: z.string().nullish(),
+							full_name: z.string().nullish(),
+							avatar_url: z.string().nullish(),
+							is_verified: z.boolean().catch(false),
+							role: z.string().nullish()
+						})
+						.nullish()
 				})
 			)
 			.catch([]),
@@ -65,6 +73,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 	const base = env.PUBLIC_MEDIA_BASE_URL?.trim() || 'https://api.portalsi.com/storage';
 	const marketplaceBase =
 		env.PUBLIC_MARKETPLACE_URL?.trim() || 'https://marketplace.portalsi.com';
+	const appBase = env.PUBLIC_APP_URL?.trim() || 'https://app.portalsi.com';
 
 	const data = await backendRequest('public/landing', {
 		requestId: locals.requestId,
@@ -95,10 +104,19 @@ export const load: PageServerLoad = async ({ locals }) => {
 		announcements: data.announcements.map((a) => ({
 			id: a.id,
 			title: a.title ?? 'Pengumuman',
-			excerpt: a.excerpt ?? '',
+			content: a.content ?? '',
 			imageUrl: normalizeMediaUrl(a.image_url, base) ?? '',
 			pinned: a.pinned,
-			author: a.author ?? 'Portal SI'
+			author: a.author
+				? {
+						username: a.author.username ?? '',
+						fullName: a.author.full_name?.trim() || a.author.username || 'Portal SI',
+						avatarUrl: normalizeMediaUrl(a.author.avatar_url, base) ?? '',
+						verified: a.author.is_verified,
+						role: a.author.role ?? '',
+						url: a.author.username ? `${appBase}/u/${a.author.username}` : appBase
+					}
+				: null
 		})),
 		products: data.products.map((p) => ({
 			id: p.id,
