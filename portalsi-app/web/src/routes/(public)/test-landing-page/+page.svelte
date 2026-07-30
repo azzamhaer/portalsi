@@ -1,11 +1,25 @@
 <script lang="ts">
-	import { ArrowRight, LogIn, Video, Store, Megaphone, Play, BadgeCheck, HelpCircle } from '@lucide/svelte';
+	import {
+		ArrowRight,
+		LogIn,
+		Video,
+		Store,
+		Megaphone,
+		Play,
+		BadgeCheck,
+		HelpCircle,
+		Star
+	} from '@lucide/svelte';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
 
 	const rupiah = (n: number) =>
-		new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
+		new Intl.NumberFormat('id-ID', {
+			style: 'currency',
+			currency: 'IDR',
+			maximumFractionDigits: 0
+		}).format(n);
 
 	const apps = [
 		{
@@ -14,7 +28,9 @@
 			href: 'https://app.portalsi.com/',
 			domain: 'app.portalsi.com',
 			icon: LogIn,
-			accent: 'orange'
+			bg: 'https://portalsi.com/app.webp',
+			theme: 'orange',
+			label: 'Membuka Aplikasi'
 		},
 		{
 			name: 'Portal SI Meet',
@@ -22,7 +38,9 @@
 			href: 'https://meet.portalsi.com/',
 			domain: 'meet.portalsi.com',
 			icon: Video,
-			accent: 'green'
+			bg: 'https://portalsi.com/meet.webp',
+			theme: 'green',
+			label: 'Membuka Meet'
 		},
 		{
 			name: 'Marketplace',
@@ -30,14 +48,36 @@
 			href: 'https://marketplace.portalsi.com/',
 			domain: 'marketplace.portalsi.com',
 			icon: Store,
-			accent: 'orange'
+			bg: 'https://portalsi.com/marketplace.webp',
+			theme: 'duo',
+			label: 'Membuka Marketplace'
 		}
 	];
+
+	// ── Transisi ala index.html: lingkaran melebar dari kartu, lalu pindah halaman. ──
+	let overlay = $state<{ x: number; y: number; color: string; label: string } | null>(null);
+	let expanding = $state(false);
+
+	function launch(event: MouseEvent, app: (typeof apps)[number]) {
+		if (typeof window === 'undefined') return;
+		const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+		if (reduce) return; // biarkan navigasi <a> normal
+		event.preventDefault();
+		const el = (event.currentTarget as HTMLElement).getBoundingClientRect();
+		const color =
+			app.theme === 'green' ? '#2a5e3a' : app.theme === 'duo' ? '#1a1714' : '#e86a17';
+		overlay = { x: el.left + el.width / 2, y: el.top + el.height / 2, color, label: app.label };
+		requestAnimationFrame(() => requestAnimationFrame(() => (expanding = true)));
+		setTimeout(() => (window.location.href = app.href), 640);
+	}
 </script>
 
 <svelte:head>
 	<title>Portal SI — Satu Portal, All In One</title>
-	<meta name="description" content="Portal SI — media sosial Islami, video meeting, dan marketplace komunitas dalam satu tempat." />
+	<meta
+		name="description"
+		content="Portal SI — media sosial Islami, video meeting, dan marketplace komunitas dalam satu tempat."
+	/>
 	<link rel="preconnect" href="https://fonts.googleapis.com" />
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
 	<link
@@ -47,34 +87,46 @@
 </svelte:head>
 
 <div class="land">
-	<div class="bg-glow glow-1"></div>
-	<div class="bg-glow glow-2"></div>
+	<div class="dots"></div>
+	<div class="glow glow-1"></div>
+	<div class="glow glow-2"></div>
 
-	<header class="land-top">
+	<header class="top">
 		<a class="brand" href="/test-landing-page">
 			<img src="https://portalsi.com/favicon.png" alt="" />
 			<span>Portal <b>SI</b></span>
 		</a>
-		<a class="help" href="https://app.portalsi.com/welcome"><HelpCircle size={16} /> Bantuan</a>
+		<a class="help" href="https://wa.me/6281350880733"><HelpCircle size={16} /> Bantuan</a>
 	</header>
 
 	<section class="hero">
 		<p class="salam">Assalamu'alaikum 👋</p>
-		<h1>Satu Portal,<br /><span class="grad">All In One.</span></h1>
-		<p class="lead">Pilih layanan yang Anda butuhkan, <span class="hl">semua dalam satu tempat.</span></p>
+		<h1 class="title">
+			Satu Portal,<br /><span class="accent">All In One.</span>
+			<span class="shine"></span>
+		</h1>
+		<p class="lead">
+			Pilih layanan yang Anda butuhkan, <span class="hl">semua dalam satu tempat.</span>
+		</p>
 	</section>
 
 	<section class="apps">
-		{#each apps as app (app.href)}
+		{#each apps as app, i (app.href)}
 			{@const Icon = app.icon}
-			<a class="app-card" class:green={app.accent === 'green'} href={app.href}>
-				<span class="app-ico"><Icon size={22} /></span>
-				<h3>{app.name}</h3>
+			<a
+				class="card {app.theme}"
+				href={app.href}
+				style={`animation-delay:${0.25 + i * 0.1}s`}
+				onclick={(e) => launch(e, app)}
+			>
+				<span class="card-media" style={`background-image:url('${app.bg}')`}></span>
+				<span class="arch"><Icon size={24} /></span>
+				<h2>{app.name}</h2>
 				<p>{app.desc}</p>
-				<div class="app-foot">
-					<span>{app.domain}</span>
-					<ArrowRight size={18} />
-				</div>
+				<span class="foot">
+					<span class="domain">{app.domain}</span>
+					<span class="go"><ArrowRight size={16} /></span>
+				</span>
 			</a>
 		{/each}
 	</section>
@@ -83,24 +135,18 @@
 		<section class="block">
 			<div class="block-head">
 				<h2>Yang sedang dibagikan</h2>
-				<a href="https://app.portalsi.com/explore">Jelajahi <ArrowRight size={15} /></a>
+				<a class="more" href="https://app.portalsi.com/explore">Jelajahi <ArrowRight size={15} /></a>
 			</div>
 			<div class="posts">
 				{#each data.posts as post (post.id)}
 					<a class="post" href={`/posts/${post.id}`} aria-label={post.caption || 'Postingan'}>
-						{#if post.imageUrl}
-							<img src={post.imageUrl} alt="" loading="lazy" />
-						{/if}
-						{#if post.isVideo}<span class="post-badge"><Play size={14} fill="currentColor" /></span>{/if}
-						<div class="post-over">
-							{#if post.user}
-								<span class="post-user">
-									{#if post.user.avatarUrl}<img class="pu-av" src={post.user.avatarUrl} alt="" />{/if}
-									<b>{post.user.username}</b>
-									{#if post.user.verified}<BadgeCheck size={13} />{/if}
-								</span>
-							{/if}
-						</div>
+						{#if post.imageUrl}<img class="post-img" src={post.imageUrl} alt="" loading="lazy" />{/if}
+						{#if post.isVideo}<span class="post-badge"><Play size={13} fill="currentColor" /></span>{/if}
+						<span class="post-over">
+							{#if post.user?.avatarUrl}<img class="pu-av" src={post.user.avatarUrl} alt="" />{/if}
+							<b>{post.user?.username}</b>
+							{#if post.user?.verified}<BadgeCheck size={13} />{/if}
+						</span>
 					</a>
 				{/each}
 			</div>
@@ -109,9 +155,7 @@
 
 	{#if data.announcements.length}
 		<section class="block">
-			<div class="block-head">
-				<h2><Megaphone size={18} /> Pengumuman</h2>
-			</div>
+			<div class="block-head"><h2><Megaphone size={18} /> Pengumuman</h2></div>
 			<div class="announcements">
 				{#each data.announcements as a (a.id)}
 					<article class="ann">
@@ -132,27 +176,38 @@
 		<section class="block">
 			<div class="block-head">
 				<h2><Store size={18} /> Dari Marketplace</h2>
-				<a href="https://marketplace.portalsi.com/">Lihat semua <ArrowRight size={15} /></a>
+				<a class="more" href="https://marketplace.portalsi.com/">Lihat semua <ArrowRight size={15} /></a>
 			</div>
 			<div class="products">
 				{#each data.products as p (p.id)}
 					<a class="product" href={p.url}>
-						<div class="prod-img">{#if p.imageUrl}<img src={p.imageUrl} alt="" loading="lazy" />{/if}</div>
-						<div class="prod-body">
+						<span class="prod-img">{#if p.imageUrl}<img src={p.imageUrl} alt="" loading="lazy" />{/if}</span>
+						<span class="prod-body">
 							<strong>{p.name}</strong>
-							<div class="prod-price">
+							{#if p.rating > 0}<span class="prod-rate"><Star size={12} fill="currentColor" /> {p.rating.toFixed(1)}</span>{/if}
+							<span class="prod-price">
 								<span>{rupiah(p.price)}</span>
 								{#if p.originalPrice > p.price}<del>{rupiah(p.originalPrice)}</del>{/if}
-							</div>
-						</div>
+							</span>
+						</span>
 					</a>
 				{/each}
 			</div>
 		</section>
 	{/if}
 
-	<footer class="land-foot">© {new Date().getFullYear()} Portal SI. All rights reserved.</footer>
+	<footer class="foot-note">© {new Date().getFullYear()} Portal SI. All rights reserved.</footer>
 </div>
+
+{#if overlay}
+	<div
+		class="overlay"
+		class:expand={expanding}
+		style={`--x:${overlay.x}px;--y:${overlay.y}px;--c:${overlay.color}`}
+	>
+		<div class="overlay-mark"><span class="spin"></span><span>{overlay.label}…</span></div>
+	</div>
+{/if}
 
 <style>
 	.land {
@@ -164,6 +219,7 @@
 		--orange-dark: #b8530e;
 		--orange-soft: #fde9d2;
 		--green: #2a5e3a;
+		--green-dark: #1a4028;
 		--green-soft: #e1efe2;
 		--border: rgb(26 23 20 / 8%);
 		position: relative;
@@ -174,7 +230,15 @@
 		color: var(--ink);
 		font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
 	}
-	.bg-glow {
+	.dots {
+		position: absolute;
+		inset: 0;
+		z-index: 0;
+		background-image: radial-gradient(circle at 1px 1px, rgb(26 23 20 / 4%) 1px, transparent 1px);
+		background-size: 32px 32px;
+		pointer-events: none;
+	}
+	.glow {
 		position: absolute;
 		border-radius: 50%;
 		filter: blur(30px);
@@ -187,6 +251,7 @@
 		width: 380px;
 		height: 380px;
 		background: radial-gradient(circle, rgb(232 106 23 / 22%), transparent 70%);
+		animation: drift1 14s ease-in-out infinite alternate;
 	}
 	.glow-2 {
 		bottom: -160px;
@@ -194,16 +259,27 @@
 		width: 440px;
 		height: 440px;
 		background: radial-gradient(circle, rgb(42 94 58 / 18%), transparent 70%);
+		animation: drift2 16s ease-in-out infinite alternate;
 	}
-	.land > :not(.bg-glow) {
+	@keyframes drift1 {
+		to {
+			transform: translate(40px, 30px);
+		}
+	}
+	@keyframes drift2 {
+		to {
+			transform: translate(-40px, -30px);
+		}
+	}
+	.land > :not(.dots):not(.glow) {
 		position: relative;
 		z-index: 1;
 	}
-	.land-top {
+	.top {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		max-width: 1080px;
+		max-width: 1100px;
 		margin: 0 auto;
 		padding: 22px 4px;
 	}
@@ -237,105 +313,257 @@
 		font-weight: 600;
 		text-decoration: none;
 		backdrop-filter: blur(8px);
+		transition: background 0.2s ease, transform 0.2s ease;
 	}
 	.help:hover {
 		background: var(--green-soft);
+		transform: translateY(-1px);
 	}
 	.hero {
 		max-width: 720px;
-		margin: 40px auto 8px;
+		margin: 44px auto 8px;
 		text-align: center;
 	}
 	.salam {
 		margin: 0 0 10px;
 		color: var(--ink-soft);
 		font-weight: 600;
+		opacity: 0;
+		animation: rise 0.6s ease 0.05s forwards;
 	}
-	.hero h1 {
+	.title {
+		position: relative;
+		display: inline-block;
 		margin: 0;
 		font-family: 'Plus Jakarta Sans', sans-serif;
 		font-weight: 800;
-		font-size: clamp(2.4rem, 7vw, 4rem);
+		font-size: clamp(2.4rem, 7vw, 4.1rem);
 		line-height: 1.02;
 		letter-spacing: -0.02em;
+		overflow: hidden;
+		opacity: 0;
+		animation: rise 0.6s ease 0.1s forwards;
 	}
-	.grad {
-		color: var(--orange);
+	.accent {
+		background: linear-gradient(135deg, #e86a17 0%, #f58a3e 30%, #2a5e3a 70%, #3d8b55 100%);
+		background-size: 300% 300%;
+		-webkit-background-clip: text;
+		background-clip: text;
+		color: transparent;
+		animation: grad 5s ease-in-out infinite;
+	}
+	.shine {
+		position: absolute;
+		inset: 0;
+		background: linear-gradient(
+			105deg,
+			transparent 30%,
+			rgb(255 255 255 / 18%) 48%,
+			rgb(255 255 255 / 28%) 50%,
+			rgb(255 255 255 / 18%) 52%,
+			transparent 70%
+		);
+		animation: shine 5s ease-in-out infinite;
+		pointer-events: none;
+	}
+	@keyframes grad {
+		0%,
+		100% {
+			background-position: 0% 50%;
+		}
+		50% {
+			background-position: 100% 50%;
+		}
+	}
+	@keyframes shine {
+		0% {
+			transform: translateX(-100%) skewX(-15deg);
+		}
+		30%,
+		100% {
+			transform: translateX(120%) skewX(-15deg);
+		}
 	}
 	.lead {
 		margin: 20px auto 0;
 		max-width: 460px;
 		color: var(--ink-soft);
 		font-size: 1.02rem;
+		opacity: 0;
+		animation: rise 0.6s ease 0.2s forwards;
 	}
 	.hl {
 		color: var(--orange-dark);
 		font-weight: 600;
 	}
+	@keyframes rise {
+		from {
+			opacity: 0;
+			transform: translateY(14px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
 	.apps {
 		display: grid;
 		grid-template-columns: repeat(3, 1fr);
-		gap: 18px;
-		max-width: 1080px;
-		margin: 40px auto 0;
+		gap: 22px;
+		max-width: 1100px;
+		margin: 44px auto 0;
 	}
-	.app-card {
+	.card {
 		position: relative;
 		display: flex;
 		flex-direction: column;
-		padding: 24px 22px;
-		background: var(--card);
-		border: 1px solid var(--border);
-		border-top: 4px solid var(--orange);
-		border-radius: 20px;
-		box-shadow: 0 12px 30px rgb(26 23 20 / 6%);
+		padding: 30px 26px;
+		overflow: hidden;
+		background: rgb(255 255 255 / 85%);
+		border: 1px solid rgb(255 255 255 / 40%);
+		border-radius: 24px;
+		box-shadow: 0 1px 3px rgb(26 23 20 / 4%), 0 16px 34px -20px rgb(26 23 20 / 30%);
 		color: var(--ink);
 		text-decoration: none;
-		transition: transform 0.18s ease, box-shadow 0.18s ease;
+		backdrop-filter: blur(12px);
+		opacity: 0;
+		animation: rise 0.6s ease forwards;
+		transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
 	}
-	.app-card.green {
-		border-top-color: var(--green);
+	.card::before {
+		content: '';
+		position: absolute;
+		inset: 0 0 auto;
+		height: 4px;
+		z-index: 2;
 	}
-	.app-card:hover {
-		transform: translateY(-4px);
-		box-shadow: 0 20px 44px rgb(26 23 20 / 12%);
+	.card.orange::before {
+		background: linear-gradient(90deg, var(--orange), var(--orange-dark));
 	}
-	.app-ico {
+	.card.green::before {
+		background: linear-gradient(90deg, var(--green), var(--green-dark));
+	}
+	.card.duo::before {
+		background: linear-gradient(90deg, var(--orange), var(--green));
+	}
+	.card:hover {
+		transform: translateY(-6px);
+		box-shadow: 0 26px 52px -20px rgb(26 23 20 / 28%);
+		background: rgb(255 255 255 / 95%);
+	}
+	.card-media {
+		position: absolute;
+		inset: 0;
+		z-index: 0;
+		background-size: cover;
+		background-position: center;
+		opacity: 0.14;
+		-webkit-mask-image: linear-gradient(135deg, transparent 12%, black 82%);
+		mask-image: linear-gradient(135deg, transparent 12%, black 82%);
+		transition: transform 0.6s ease, opacity 0.4s ease;
+	}
+	.card:hover .card-media {
+		transform: scale(1.08);
+		opacity: 0.2;
+	}
+	.card > :not(.card-media) {
+		position: relative;
+		z-index: 1;
+	}
+	.arch {
 		display: grid;
-		width: 46px;
-		height: 46px;
+		width: 60px;
+		height: 70px;
 		place-items: center;
-		background: var(--orange-soft);
-		border-radius: 14px;
+		margin-bottom: 20px;
+		border-radius: 50% 50% 16px 16px;
+		transition: transform 0.3s ease, box-shadow 0.3s ease;
+	}
+	.card.orange .arch {
+		background: rgb(232 106 23 / 10%);
 		color: var(--orange-dark);
 	}
-	.app-card.green .app-ico {
-		background: var(--green-soft);
-		color: var(--green);
+	.card.green .arch {
+		background: rgb(42 94 58 / 10%);
+		color: var(--green-dark);
 	}
-	.app-card h3 {
-		margin: 16px 0 8px;
+	.card.duo .arch {
+		background: rgb(232 106 23 / 8%);
+		color: var(--ink);
+	}
+	.card.orange:hover .arch {
+		box-shadow: 0 0 0 8px rgb(232 106 23 / 8%);
+		transform: scale(1.05);
+	}
+	.card.green:hover .arch {
+		box-shadow: 0 0 0 8px rgb(42 94 58 / 8%);
+		transform: scale(1.05);
+	}
+	.card.duo:hover .arch {
+		box-shadow: 0 0 0 8px rgb(26 23 20 / 6%);
+		transform: scale(1.05);
+	}
+	.card h2 {
+		margin: 0 0 8px;
 		font-family: 'Plus Jakarta Sans', sans-serif;
-		font-size: 1.2rem;
+		font-size: 1.28rem;
 	}
-	.app-card p {
-		margin: 0;
+	.card p {
+		flex-grow: 1;
+		margin: 0 0 22px;
 		color: var(--ink-soft);
-		font-size: 0.9rem;
-		line-height: 1.55;
+		font-size: 0.94rem;
+		line-height: 1.6;
 	}
-	.app-foot {
+	.foot {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		margin-top: 20px;
-		padding-top: 14px;
-		border-top: 1px solid var(--border);
+		padding-top: 16px;
+		border-top: 1px solid rgb(26 23 20 / 6%);
+	}
+	.domain {
 		color: var(--ink-soft);
-		font-size: 0.8rem;
+		font-size: 0.78rem;
+		font-weight: 500;
+	}
+	.go {
+		display: grid;
+		width: 34px;
+		height: 34px;
+		place-items: center;
+		border-radius: 50%;
+		transition: background 0.25s ease, color 0.25s ease, transform 0.25s ease;
+	}
+	.card.orange .go {
+		background: rgb(232 106 23 / 8%);
+		color: var(--orange-dark);
+	}
+	.card.green .go {
+		background: rgb(42 94 58 / 8%);
+		color: var(--green-dark);
+	}
+	.card.duo .go {
+		background: rgb(26 23 20 / 6%);
+		color: var(--ink);
+	}
+	.card.orange:hover .go {
+		background: var(--orange);
+		color: #fff;
+		transform: translateX(3px);
+	}
+	.card.green:hover .go {
+		background: var(--green);
+		color: #fff;
+		transform: translateX(3px);
+	}
+	.card.duo:hover .go {
+		background: var(--ink);
+		color: #fff;
+		transform: translateX(3px);
 	}
 	.block {
-		max-width: 1080px;
+		max-width: 1100px;
 		margin: 56px auto 0;
 	}
 	.block-head {
@@ -350,9 +578,9 @@
 		gap: 8px;
 		margin: 0;
 		font-family: 'Plus Jakarta Sans', sans-serif;
-		font-size: 1.4rem;
+		font-size: 1.42rem;
 	}
-	.block-head a {
+	.more {
 		display: inline-flex;
 		align-items: center;
 		gap: 4px;
@@ -360,6 +588,9 @@
 		font-size: 0.85rem;
 		font-weight: 600;
 		text-decoration: none;
+	}
+	.more:hover {
+		gap: 7px;
 	}
 	.posts {
 		display: grid;
@@ -370,43 +601,51 @@
 		position: relative;
 		aspect-ratio: 1;
 		overflow: hidden;
-		border-radius: 16px;
+		border-radius: 18px;
 		background: var(--cream);
+		box-shadow: 0 6px 18px -10px rgb(26 23 20 / 30%);
 	}
-	.post img {
+	.post-img {
 		width: 100%;
 		height: 100%;
 		object-fit: cover;
-		transition: transform 0.3s ease;
+		transition: transform 0.35s ease;
 	}
-	.post:hover img {
-		transform: scale(1.05);
+	.post:hover .post-img {
+		transform: scale(1.06);
 	}
 	.post-badge {
 		position: absolute;
-		top: 8px;
-		right: 8px;
+		top: 9px;
+		right: 9px;
 		color: #fff;
-		filter: drop-shadow(0 1px 2px rgb(0 0 0 / 50%));
+		filter: drop-shadow(0 1px 2px rgb(0 0 0 / 55%));
 	}
 	.post-over {
 		position: absolute;
 		inset: auto 0 0;
-		padding: 22px 10px 8px;
-		background: linear-gradient(transparent, rgb(0 0 0 / 55%));
-	}
-	.post-user {
-		display: inline-flex;
+		display: flex;
 		align-items: center;
-		gap: 5px;
+		gap: 6px;
+		padding: 26px 11px 10px;
+		background: linear-gradient(transparent, rgb(0 0 0 / 60%));
 		color: #fff;
-		font-size: 0.76rem;
 	}
+	/* Avatar chip kecil — dipaksa ukuran agar tak menutupi gambar. */
 	.pu-av {
-		width: 18px;
-		height: 18px;
-		border-radius: 50%;
+		width: 22px !important;
+		height: 22px !important;
+		flex: none;
 		object-fit: cover;
+		border: 1.5px solid rgb(255 255 255 / 80%);
+		border-radius: 50%;
+	}
+	.post-over b {
+		overflow: hidden;
+		font-size: 0.78rem;
+		font-weight: 700;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 	.announcements {
 		display: grid;
@@ -419,14 +658,19 @@
 		padding: 14px;
 		background: var(--card);
 		border: 1px solid var(--border);
-		border-radius: 16px;
+		border-radius: 18px;
+		transition: transform 0.18s ease, box-shadow 0.18s ease;
+	}
+	.ann:hover {
+		transform: translateY(-2px);
+		box-shadow: 0 14px 30px -16px rgb(26 23 20 / 30%);
 	}
 	.ann img {
-		width: 82px;
-		height: 82px;
+		width: 84px;
+		height: 84px;
 		flex: none;
 		object-fit: cover;
-		border-radius: 12px;
+		border-radius: 14px;
 	}
 	.ann-body {
 		min-width: 0;
@@ -462,19 +706,22 @@
 		gap: 14px;
 	}
 	.product {
+		display: flex;
+		flex-direction: column;
 		overflow: hidden;
 		background: var(--card);
 		border: 1px solid var(--border);
-		border-radius: 16px;
+		border-radius: 18px;
 		color: var(--ink);
 		text-decoration: none;
 		transition: transform 0.18s ease, box-shadow 0.18s ease;
 	}
 	.product:hover {
-		transform: translateY(-3px);
-		box-shadow: 0 14px 30px rgb(26 23 20 / 10%);
+		transform: translateY(-4px);
+		box-shadow: 0 16px 34px -18px rgb(26 23 20 / 32%);
 	}
 	.prod-img {
+		display: block;
 		aspect-ratio: 1;
 		background: var(--cream);
 	}
@@ -484,6 +731,7 @@
 		object-fit: cover;
 	}
 	.prod-body {
+		display: block;
 		padding: 11px 12px 13px;
 	}
 	.prod-body strong {
@@ -495,13 +743,22 @@
 		font-weight: 600;
 		line-height: 1.35;
 	}
+	.prod-rate {
+		display: inline-flex;
+		align-items: center;
+		gap: 3px;
+		margin-top: 5px;
+		color: var(--gold, #c99a2e);
+		font-size: 0.74rem;
+		font-weight: 700;
+	}
 	.prod-price {
 		display: flex;
 		align-items: baseline;
 		gap: 6px;
-		margin-top: 6px;
+		margin-top: 5px;
 	}
-	.prod-price span {
+	.prod-price > span {
 		color: var(--orange-dark);
 		font-weight: 800;
 		font-size: 0.9rem;
@@ -511,12 +768,56 @@
 		opacity: 0.6;
 		font-size: 0.74rem;
 	}
-	.land-foot {
-		max-width: 1080px;
+	.foot-note {
+		max-width: 1100px;
 		margin: 56px auto 0;
 		text-align: center;
 		color: var(--ink-soft);
 		font-size: 0.82rem;
+	}
+	/* ── Transition overlay ── */
+	.overlay {
+		position: fixed;
+		inset: 0;
+		z-index: 999;
+		pointer-events: none;
+		background: var(--c, #e86a17);
+		clip-path: circle(0 at var(--x, 50%) var(--y, 50%));
+		transition: clip-path 0.62s cubic-bezier(0.65, 0, 0.35, 1);
+	}
+	.overlay.expand {
+		clip-path: circle(150% at var(--x, 50%) var(--y, 50%));
+	}
+	.overlay-mark {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		display: flex;
+		align-items: center;
+		gap: 9px;
+		transform: translate(-50%, -50%) scale(0.6);
+		opacity: 0;
+		color: #fff;
+		font-family: 'Plus Jakarta Sans', sans-serif;
+		font-weight: 700;
+		transition: opacity 0.3s ease 0.25s, transform 0.4s ease 0.25s;
+	}
+	.overlay.expand .overlay-mark {
+		opacity: 1;
+		transform: translate(-50%, -50%) scale(1);
+	}
+	.spin {
+		width: 18px;
+		height: 18px;
+		border: 2.5px solid rgb(255 255 255 / 35%);
+		border-top-color: #fff;
+		border-radius: 50%;
+		animation: spin 0.7s linear infinite;
+	}
+	@keyframes spin {
+		to {
+			transform: rotate(360deg);
+		}
 	}
 	@media (max-width: 860px) {
 		.apps {
@@ -528,6 +829,17 @@
 		}
 		.announcements {
 			grid-template-columns: 1fr;
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.glow,
+		.accent,
+		.shine,
+		.card,
+		.salam,
+		.title,
+		.lead {
+			animation: none !important;
 		}
 	}
 </style>
