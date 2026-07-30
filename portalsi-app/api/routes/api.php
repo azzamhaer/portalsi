@@ -67,6 +67,9 @@ $sendVerificationEmail = function (User $user, string $context): array {
     }
 };
 
+// Data publik untuk landing page "super app" (tanpa auth).
+Route::get('/public/landing', [\App\Http\Controllers\PublicLandingController::class, 'index']);
+
 Route::post('/register', function (Request $request) use ($sendVerificationEmail) {
     // Batasi pendaftaran maksimal 3 akun/hari/IP.
     $throttle = app(\App\Services\SecurityThrottle::class);
