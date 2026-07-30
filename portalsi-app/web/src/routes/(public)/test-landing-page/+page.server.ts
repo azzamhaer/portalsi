@@ -6,6 +6,13 @@ import type { PageServerLoad } from './$types';
 
 const landingSchema = z
 	.object({
+		stats: z
+			.object({
+				members: z.coerce.number().catch(0),
+				posts: z.coerce.number().catch(0),
+				products: z.coerce.number().catch(0)
+			})
+			.catch({ members: 0, posts: 0, products: 0 }),
 		posts: z
 			.array(
 				z.object({
@@ -62,9 +69,15 @@ export const load: PageServerLoad = async ({ locals }) => {
 	const data = await backendRequest('public/landing', {
 		requestId: locals.requestId,
 		schema: landingSchema
-	}).catch(() => ({ posts: [], announcements: [], products: [] }));
+	}).catch(() => ({
+		stats: { members: 0, posts: 0, products: 0 },
+		posts: [],
+		announcements: [],
+		products: []
+	}));
 
 	return {
+		stats: data.stats,
 		posts: data.posts.map((p) => ({
 			id: p.id,
 			caption: p.caption ?? '',

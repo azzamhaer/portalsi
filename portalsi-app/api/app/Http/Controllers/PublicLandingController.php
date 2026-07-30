@@ -16,10 +16,32 @@ class PublicLandingController extends Controller
     public function index()
     {
         return response()->json([
+            'stats' => $this->stats(),
             'posts' => $this->recentPublicPosts(),
             'announcements' => $this->recentAnnouncements(),
             'products' => $this->recentProducts(),
         ]);
+    }
+
+    private function stats(): array
+    {
+        $members = \App\Models\User::whereNotNull('email_verified_at')->count();
+        $posts = Post::where('is_archived', false)
+            ->where('is_draft', false)
+            ->whereNull('moderated_at')
+            ->count();
+        $products = 0;
+        try {
+            $products = \App\Marketplace\Models\Product::where('is_active', true)->count();
+        } catch (\Throwable $e) {
+            $products = 0;
+        }
+
+        return [
+            'members' => (int) $members,
+            'posts' => (int) $posts,
+            'products' => (int) $products,
+        ];
     }
 
     private function bestThumb($post): ?string
@@ -39,8 +61,9 @@ class PublicLandingController extends Controller
             ->where('is_draft', false)
             ->whereNull('moderated_at')
             ->whereHas('user', fn ($q) => $q->where('is_private', false)->whereNotNull('email_verified_at'))
-            ->latest()
-            ->take(8)
+            ->whereNotNull('media_url')
+            ->inRandomOrder()
+            ->take(12)
             ->get()
             ->map(fn ($p) => [
                 'id' => (int) $p->post_id,

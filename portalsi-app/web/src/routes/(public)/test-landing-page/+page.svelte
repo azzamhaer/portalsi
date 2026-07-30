@@ -1,6 +1,7 @@
 <script lang="ts">
 	import {
 		ArrowRight,
+		ArrowUpRight,
 		LogIn,
 		Video,
 		Store,
@@ -8,6 +9,9 @@
 		Play,
 		BadgeCheck,
 		HelpCircle,
+		Users,
+		Images,
+		ShoppingBag,
 		Star
 	} from '@lucide/svelte';
 	import type { PageProps } from './$types';
@@ -20,52 +24,62 @@
 			currency: 'IDR',
 			maximumFractionDigits: 0
 		}).format(n);
+	const compact = (n: number) =>
+		n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}rb` : `${n}`;
 
 	const apps = [
 		{
 			name: 'Portal SI App',
-			desc: 'Media sosial Islami yang menghubungkan silaturahmi, berbagi inspirasi, dan bertumbuh dalam kebaikan.',
+			tag: 'Sosial media Islami',
 			href: 'https://app.portalsi.com/',
 			domain: 'app.portalsi.com',
 			icon: LogIn,
 			bg: 'https://portalsi.com/app.webp',
-			theme: 'orange',
+			theme: 'app',
 			label: 'Membuka Aplikasi'
 		},
 		{
 			name: 'Portal SI Meet',
-			desc: 'Video meeting open source, instan dan gratis. Host login pakai akun Portal SI, peserta cukup dengan nama.',
+			tag: 'Video meeting gratis',
 			href: 'https://meet.portalsi.com/',
 			domain: 'meet.portalsi.com',
 			icon: Video,
 			bg: 'https://portalsi.com/meet.webp',
-			theme: 'green',
+			theme: 'meet',
 			label: 'Membuka Meet'
 		},
 		{
 			name: 'Marketplace',
-			desc: 'Marketplace terpercaya untuk menemukan produk, jasa, dan kebutuhan komunitas dalam satu tempat.',
+			tag: 'Belanja kebutuhan',
 			href: 'https://marketplace.portalsi.com/',
 			domain: 'marketplace.portalsi.com',
 			icon: Store,
 			bg: 'https://portalsi.com/marketplace.webp',
-			theme: 'duo',
+			theme: 'mkt',
 			label: 'Membuka Marketplace'
 		}
 	];
 
-	// ── Transisi ala index.html: lingkaran melebar dari kartu, lalu pindah halaman. ──
+	// Dua baris marquee dari postingan acak (digandakan agar loop mulus).
+	const half = Math.ceil(data.posts.length / 2);
+	const rowA = $derived([...data.posts.slice(0, half), ...data.posts.slice(0, half)]);
+	const rowB = $derived([...data.posts.slice(half), ...data.posts.slice(half)]);
+
+	const stats = $derived([
+		{ icon: Users, label: 'Anggota', value: compact(data.stats.members) },
+		{ icon: Images, label: 'Postingan', value: compact(data.stats.posts) },
+		{ icon: ShoppingBag, label: 'Produk', value: compact(data.stats.products) }
+	]);
+
+	// Transisi lingkaran melebar saat memilih layanan.
 	let overlay = $state<{ x: number; y: number; color: string; label: string } | null>(null);
 	let expanding = $state(false);
-
 	function launch(event: MouseEvent, app: (typeof apps)[number]) {
 		if (typeof window === 'undefined') return;
-		const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-		if (reduce) return; // biarkan navigasi <a> normal
+		if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 		event.preventDefault();
 		const el = (event.currentTarget as HTMLElement).getBoundingClientRect();
-		const color =
-			app.theme === 'green' ? '#2a5e3a' : app.theme === 'duo' ? '#1a1714' : '#e86a17';
+		const color = app.theme === 'meet' ? '#1f7a45' : app.theme === 'mkt' ? '#8a4b16' : '#e86a17';
 		overlay = { x: el.left + el.width / 2, y: el.top + el.height / 2, color, label: app.label };
 		requestAnimationFrame(() => requestAnimationFrame(() => (expanding = true)));
 		setTimeout(() => (window.location.href = app.href), 640);
@@ -87,116 +101,130 @@
 </svelte:head>
 
 <div class="land">
-	<div class="dots"></div>
-	<div class="glow glow-1"></div>
-	<div class="glow glow-2"></div>
+	<div class="aura"></div>
 
 	<header class="top">
 		<a class="brand" href="/test-landing-page">
 			<img src="https://portalsi.com/favicon.png" alt="" />
 			<span>Portal <b>SI</b></span>
 		</a>
-		<a class="help" href="https://wa.me/6281350880733"><HelpCircle size={16} /> Bantuan</a>
+		<a class="help" href="https://wa.me/6281350880733"><HelpCircle size={15} /> Bantuan</a>
 	</header>
 
-	<section class="hero">
-		<p class="salam">Assalamu'alaikum 👋</p>
-		<h1 class="title">
-			Satu Portal,<br /><span class="accent">All In One.</span>
-			<span class="shine"></span>
-		</h1>
-		<p class="lead">
-			Pilih layanan yang Anda butuhkan, <span class="hl">semua dalam satu tempat.</span>
-		</p>
-	</section>
+	<!-- ===== BENTO ===== -->
+	<section class="bento">
+		<div class="hero-tile">
+			<p class="salam">Assalamu'alaikum 👋</p>
+			<h1>Satu Portal,<br /><span class="accent">All&nbsp;In&nbsp;One.</span></h1>
+			<p class="lead">Silaturahmi, belajar, meeting, dan belanja — <b>semua dalam satu tempat.</b></p>
+			<div class="stat-row">
+				{#each stats as s (s.label)}
+					{@const I = s.icon}
+					<div class="stat">
+						<I size={16} />
+						<span class="v">{s.value}</span>
+						<span class="l">{s.label}</span>
+					</div>
+				{/each}
+			</div>
+			<a class="cta" href="https://app.portalsi.com/">Masuk ke Portal SI <ArrowRight size={17} /></a>
+		</div>
 
-	<section class="apps">
-		{#each apps as app, i (app.href)}
+		{#each apps as app (app.href)}
 			{@const Icon = app.icon}
 			<a
-				class="card {app.theme}"
+				class="svc {app.theme}"
 				href={app.href}
-				style={`animation-delay:${0.25 + i * 0.1}s`}
+				style={`background-image:linear-gradient(135deg,var(--g1),var(--g2)),url('${app.bg}')`}
 				onclick={(e) => launch(e, app)}
 			>
-				<span class="card-media" style={`background-image:url('${app.bg}')`}></span>
-				<span class="arch"><Icon size={24} /></span>
-				<h2>{app.name}</h2>
-				<p>{app.desc}</p>
-				<span class="foot">
-					<span class="domain">{app.domain}</span>
-					<span class="go"><ArrowRight size={16} /></span>
+				<span class="svc-ico"><Icon size={22} /></span>
+				<span class="svc-body">
+					<b>{app.name}</b>
+					<small>{app.tag}</small>
 				</span>
+				<span class="svc-go"><ArrowUpRight size={20} /></span>
+				<span class="svc-domain">{app.domain}</span>
 			</a>
 		{/each}
 	</section>
 
+	<!-- ===== LIVE MARQUEE ===== -->
 	{#if data.posts.length}
-		<section class="block">
-			<div class="block-head">
-				<h2>Yang sedang dibagikan</h2>
-				<a class="more" href="https://app.portalsi.com/explore">Jelajahi <ArrowRight size={15} /></a>
+		<section class="live">
+			<div class="live-head">
+				<h2><span class="dot"></span> Denyut komunitas</h2>
+				<a class="more" href="https://app.portalsi.com/explore">Jelajahi <ArrowRight size={14} /></a>
 			</div>
-			<div class="posts">
-				{#each data.posts as post (post.id)}
-					<a class="post" href={`/posts/${post.id}`} aria-label={post.caption || 'Postingan'}>
-						{#if post.imageUrl}<img class="post-img" src={post.imageUrl} alt="" loading="lazy" />{/if}
-						{#if post.isVideo}<span class="post-badge"><Play size={13} fill="currentColor" /></span>{/if}
-						<span class="post-over">
-							{#if post.user?.avatarUrl}<img class="pu-av" src={post.user.avatarUrl} alt="" />{/if}
-							<b>{post.user?.username}</b>
-							{#if post.user?.verified}<BadgeCheck size={13} />{/if}
-						</span>
-					</a>
-				{/each}
-			</div>
-		</section>
-	{/if}
-
-	{#if data.announcements.length}
-		<section class="block">
-			<div class="block-head"><h2><Megaphone size={18} /> Pengumuman</h2></div>
-			<div class="announcements">
-				{#each data.announcements as a (a.id)}
-					<article class="ann">
-						{#if a.imageUrl}<img src={a.imageUrl} alt="" loading="lazy" />{/if}
-						<div class="ann-body">
-							{#if a.pinned}<span class="ann-pin">Disematkan</span>{/if}
-							<h3>{a.title}</h3>
-							<p>{a.excerpt}</p>
-							<small>{a.author}</small>
-						</div>
-					</article>
-				{/each}
-			</div>
-		</section>
-	{/if}
-
-	{#if data.products.length}
-		<section class="block">
-			<div class="block-head">
-				<h2><Store size={18} /> Dari Marketplace</h2>
-				<a class="more" href="https://marketplace.portalsi.com/">Lihat semua <ArrowRight size={15} /></a>
-			</div>
-			<div class="products">
-				{#each data.products as p (p.id)}
-					<a class="product" href={p.url}>
-						<span class="prod-img">{#if p.imageUrl}<img src={p.imageUrl} alt="" loading="lazy" />{/if}</span>
-						<span class="prod-body">
-							<strong>{p.name}</strong>
-							{#if p.rating > 0}<span class="prod-rate"><Star size={12} fill="currentColor" /> {p.rating.toFixed(1)}</span>{/if}
-							<span class="prod-price">
-								<span>{rupiah(p.price)}</span>
-								{#if p.originalPrice > p.price}<del>{rupiah(p.originalPrice)}</del>{/if}
+			<div class="marquee">
+				<div class="mrow">
+					{#each rowA as post, i (i)}
+						<a class="mp" href={`/posts/${post.id}`} aria-hidden={i >= half}>
+							{#if post.imageUrl}<img class="mp-img" src={post.imageUrl} alt="" loading="lazy" />{/if}
+							{#if post.isVideo}<span class="mp-play"><Play size={12} fill="currentColor" /></span>{/if}
+							<span class="mp-tag">
+								{#if post.user?.avatarUrl}<img class="mp-av" src={post.user.avatarUrl} alt="" />{/if}
+								<b>{post.user?.username}</b>{#if post.user?.verified}<BadgeCheck size={11} />{/if}
 							</span>
-						</span>
-					</a>
-				{/each}
+						</a>
+					{/each}
+				</div>
+				<div class="mrow rev">
+					{#each rowB as post, i (i)}
+						<a class="mp" href={`/posts/${post.id}`} aria-hidden={i >= rowB.length / 2}>
+							{#if post.imageUrl}<img class="mp-img" src={post.imageUrl} alt="" loading="lazy" />{/if}
+							{#if post.isVideo}<span class="mp-play"><Play size={12} fill="currentColor" /></span>{/if}
+							<span class="mp-tag">
+								{#if post.user?.avatarUrl}<img class="mp-av" src={post.user.avatarUrl} alt="" />{/if}
+								<b>{post.user?.username}</b>{#if post.user?.verified}<BadgeCheck size={11} />{/if}
+							</span>
+						</a>
+					{/each}
+				</div>
 			</div>
 		</section>
 	{/if}
 
-	<footer class="foot-note">© {new Date().getFullYear()} Portal SI. All rights reserved.</footer>
+	<!-- ===== ANNOUNCEMENTS + PRODUCTS ===== -->
+	<section class="duo">
+		{#if data.announcements.length}
+			<div class="panel">
+				<div class="panel-head"><h2><Megaphone size={17} /> Pengumuman</h2></div>
+				<div class="ann-list">
+					{#each data.announcements as a (a.id)}
+						<article class="ann">
+							{#if a.imageUrl}<img src={a.imageUrl} alt="" loading="lazy" />{:else}<span class="ann-ph"><Megaphone size={18} /></span>{/if}
+							<div>
+								<b>{#if a.pinned}<span class="pin">📌</span>{/if}{a.title}</b>
+								<p>{a.excerpt}</p>
+							</div>
+						</article>
+					{/each}
+				</div>
+			</div>
+		{/if}
+
+		{#if data.products.length}
+			<div class="panel">
+				<div class="panel-head">
+					<h2><Store size={17} /> Marketplace</h2>
+					<a class="more" href="https://marketplace.portalsi.com/">Semua <ArrowRight size={14} /></a>
+				</div>
+				<div class="prod-scroll">
+					{#each data.products as p (p.id)}
+						<a class="prod" href={p.url}>
+							<span class="prod-img">{#if p.imageUrl}<img src={p.imageUrl} alt="" loading="lazy" />{/if}</span>
+							<b>{p.name}</b>
+							<span class="prod-price">{rupiah(p.price)}</span>
+							{#if p.rating > 0}<span class="prod-rate"><Star size={11} fill="currentColor" /> {p.rating.toFixed(1)}</span>{/if}
+						</a>
+					{/each}
+				</div>
+			</div>
+		{/if}
+	</section>
+
+	<footer class="foot">© {new Date().getFullYear()} Portal SI · Satu Portal, All In One.</footer>
 </div>
 
 {#if overlay}
@@ -205,7 +233,7 @@
 		class:expand={expanding}
 		style={`--x:${overlay.x}px;--y:${overlay.y}px;--c:${overlay.color}`}
 	>
-		<div class="overlay-mark"><span class="spin"></span><span>{overlay.label}…</span></div>
+		<div class="ov-mark"><span class="spin"></span><span>{overlay.label}…</span></div>
 	</div>
 {/if}
 
@@ -214,88 +242,54 @@
 		--cream: #f5f0e8;
 		--card: #fff;
 		--ink: #1a1714;
-		--ink-soft: #5c5347;
+		--ink-soft: #6a6155;
 		--orange: #e86a17;
 		--orange-dark: #b8530e;
-		--orange-soft: #fde9d2;
 		--green: #2a5e3a;
-		--green-dark: #1a4028;
-		--green-soft: #e1efe2;
+		--gold: #c99a2e;
 		--border: rgb(26 23 20 / 8%);
 		position: relative;
 		min-height: 100vh;
-		padding: 0 20px 60px;
+		max-width: 1160px;
+		margin: 0 auto;
+		padding: 0 18px 40px;
 		overflow: hidden;
-		background: linear-gradient(180deg, #faf6ef 0%, var(--cream) 100%);
 		color: var(--ink);
 		font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
 	}
-	.dots {
-		position: absolute;
-		inset: 0;
-		z-index: 0;
-		background-image: radial-gradient(circle at 1px 1px, rgb(26 23 20 / 4%) 1px, transparent 1px);
-		background-size: 32px 32px;
+	:global(body) {
+		background: #f3ede3;
+	}
+	.aura {
+		position: fixed;
+		inset: -20% -10% auto;
+		height: 60vh;
+		z-index: -1;
+		background:
+			radial-gradient(60% 60% at 18% 20%, rgb(232 106 23 / 20%), transparent 70%),
+			radial-gradient(55% 55% at 85% 15%, rgb(42 94 58 / 18%), transparent 70%);
+		filter: blur(20px);
 		pointer-events: none;
-	}
-	.glow {
-		position: absolute;
-		border-radius: 50%;
-		filter: blur(30px);
-		pointer-events: none;
-		z-index: 0;
-	}
-	.glow-1 {
-		top: -120px;
-		left: -120px;
-		width: 380px;
-		height: 380px;
-		background: radial-gradient(circle, rgb(232 106 23 / 22%), transparent 70%);
-		animation: drift1 14s ease-in-out infinite alternate;
-	}
-	.glow-2 {
-		bottom: -160px;
-		right: -160px;
-		width: 440px;
-		height: 440px;
-		background: radial-gradient(circle, rgb(42 94 58 / 18%), transparent 70%);
-		animation: drift2 16s ease-in-out infinite alternate;
-	}
-	@keyframes drift1 {
-		to {
-			transform: translate(40px, 30px);
-		}
-	}
-	@keyframes drift2 {
-		to {
-			transform: translate(-40px, -30px);
-		}
-	}
-	.land > :not(.dots):not(.glow) {
-		position: relative;
-		z-index: 1;
 	}
 	.top {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		max-width: 1100px;
-		margin: 0 auto;
-		padding: 22px 4px;
+		padding: 18px 2px;
 	}
 	.brand {
 		display: inline-flex;
 		align-items: center;
-		gap: 9px;
+		gap: 8px;
 		color: var(--ink);
 		font-family: 'Plus Jakarta Sans', sans-serif;
 		font-weight: 800;
-		font-size: 1.2rem;
+		font-size: 1.15rem;
 		text-decoration: none;
 	}
 	.brand img {
-		width: 26px;
-		height: 26px;
+		width: 24px;
+		height: 24px;
 	}
 	.brand b {
 		color: var(--orange);
@@ -304,67 +298,63 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 6px;
-		padding: 8px 15px;
+		padding: 8px 14px;
 		background: rgb(255 255 255 / 70%);
 		border: 1px solid var(--border);
 		border-radius: 999px;
 		color: var(--ink-soft);
-		font-size: 0.85rem;
+		font-size: 0.82rem;
 		font-weight: 600;
 		text-decoration: none;
 		backdrop-filter: blur(8px);
-		transition: background 0.2s ease, transform 0.2s ease;
 	}
 	.help:hover {
-		background: var(--green-soft);
-		transform: translateY(-1px);
+		background: #fff;
 	}
-	.hero {
-		max-width: 720px;
-		margin: 44px auto 8px;
-		text-align: center;
+
+	/* ===== BENTO ===== */
+	.bento {
+		display: grid;
+		grid-template-columns: repeat(4, 1fr);
+		grid-template-areas:
+			'hero hero app  app'
+			'hero hero meet mkt';
+		grid-auto-rows: minmax(168px, 1fr);
+		gap: 14px;
+		margin-top: 6px;
+	}
+	.hero-tile {
+		grid-area: hero;
+		display: flex;
+		flex-direction: column;
+		padding: 30px 28px;
+		background: linear-gradient(150deg, #fffdf9, #f6efe3);
+		border: 1px solid var(--border);
+		border-radius: 26px;
+		box-shadow: 0 18px 40px -26px rgb(26 23 20 / 40%);
+		animation: rise 0.5s ease both;
 	}
 	.salam {
-		margin: 0 0 10px;
+		margin: 0 0 6px;
 		color: var(--ink-soft);
 		font-weight: 600;
-		opacity: 0;
-		animation: rise 0.6s ease 0.05s forwards;
+		font-size: 0.9rem;
 	}
-	.title {
-		position: relative;
-		display: inline-block;
+	.hero-tile h1 {
 		margin: 0;
 		font-family: 'Plus Jakarta Sans', sans-serif;
 		font-weight: 800;
-		font-size: clamp(2.4rem, 7vw, 4.1rem);
-		line-height: 1.02;
+		font-size: clamp(2.1rem, 4vw, 3.3rem);
+		line-height: 1.03;
 		letter-spacing: -0.02em;
-		overflow: hidden;
-		opacity: 0;
-		animation: rise 0.6s ease 0.1s forwards;
 	}
 	.accent {
-		background: linear-gradient(135deg, #e86a17 0%, #f58a3e 30%, #2a5e3a 70%, #3d8b55 100%);
-		background-size: 300% 300%;
+		background: linear-gradient(135deg, #e86a17, #f58a3e 35%, #2a5e3a 75%);
+		background-size: 220% 220%;
 		-webkit-background-clip: text;
 		background-clip: text;
 		color: transparent;
 		animation: grad 5s ease-in-out infinite;
-	}
-	.shine {
-		position: absolute;
-		inset: 0;
-		background: linear-gradient(
-			105deg,
-			transparent 30%,
-			rgb(255 255 255 / 18%) 48%,
-			rgb(255 255 255 / 28%) 50%,
-			rgb(255 255 255 / 18%) 52%,
-			transparent 70%
-		);
-		animation: shine 5s ease-in-out infinite;
-		pointer-events: none;
 	}
 	@keyframes grad {
 		0%,
@@ -375,26 +365,402 @@
 			background-position: 100% 50%;
 		}
 	}
-	@keyframes shine {
-		0% {
-			transform: translateX(-100%) skewX(-15deg);
-		}
-		30%,
-		100% {
-			transform: translateX(120%) skewX(-15deg);
-		}
-	}
 	.lead {
-		margin: 20px auto 0;
-		max-width: 460px;
+		margin: 14px 0 0;
+		max-width: 30ch;
 		color: var(--ink-soft);
-		font-size: 1.02rem;
-		opacity: 0;
-		animation: rise 0.6s ease 0.2s forwards;
+		font-size: 0.96rem;
+		line-height: 1.5;
 	}
-	.hl {
+	.lead b {
 		color: var(--orange-dark);
+	}
+	.stat-row {
+		display: flex;
+		gap: 10px;
+		margin: auto 0 16px;
+		padding-top: 18px;
+	}
+	.stat {
+		display: flex;
+		flex-direction: column;
+		gap: 1px;
+		padding: 10px 14px;
+		background: rgb(255 255 255 / 70%);
+		border: 1px solid var(--border);
+		border-radius: 14px;
+		color: var(--orange-dark);
+	}
+	.stat .v {
+		font-family: 'Plus Jakarta Sans', sans-serif;
+		font-weight: 800;
+		font-size: 1.1rem;
+		color: var(--ink);
+	}
+	.stat .l {
+		color: var(--ink-soft);
+		font-size: 0.72rem;
+	}
+	.cta {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		align-self: flex-start;
+		padding: 12px 20px;
+		background: var(--ink);
+		border-radius: 14px;
+		color: #fff;
+		font-weight: 700;
+		font-size: 0.9rem;
+		text-decoration: none;
+		transition: transform 0.2s ease, background 0.2s ease;
+	}
+	.cta:hover {
+		transform: translateY(-2px);
+		background: #000;
+	}
+
+	/* service tiles */
+	.svc {
+		position: relative;
+		display: flex;
+		flex-wrap: wrap;
+		align-content: flex-start;
+		gap: 12px;
+		padding: 20px;
+		overflow: hidden;
+		border-radius: 22px;
+		background-size: cover !important;
+		background-position: center !important;
+		color: #fff;
+		text-decoration: none;
+		box-shadow: 0 16px 34px -22px rgb(26 23 20 / 60%);
+		animation: rise 0.5s ease both;
+		transition: transform 0.22s ease, box-shadow 0.22s ease;
+	}
+	.svc.app {
+		grid-area: app;
+		--g1: rgb(232 106 23 / 92%);
+		--g2: rgb(155 66 8 / 88%);
+	}
+	.svc.meet {
+		grid-area: meet;
+		--g1: rgb(42 94 58 / 93%);
+		--g2: rgb(18 56 33 / 90%);
+	}
+	.svc.mkt {
+		grid-area: mkt;
+		--g1: rgb(201 122 46 / 93%);
+		--g2: rgb(42 94 58 / 88%);
+	}
+	.svc:nth-of-type(2) {
+		animation-delay: 0.06s;
+	}
+	.svc:nth-of-type(3) {
+		animation-delay: 0.12s;
+	}
+	.svc:hover {
+		transform: translateY(-4px);
+		box-shadow: 0 24px 44px -22px rgb(26 23 20 / 70%);
+	}
+	.svc-ico {
+		display: grid;
+		width: 42px;
+		height: 42px;
+		place-items: center;
+		background: rgb(255 255 255 / 22%);
+		border: 1px solid rgb(255 255 255 / 30%);
+		border-radius: 13px;
+		backdrop-filter: blur(4px);
+	}
+	.svc-body {
+		flex: 1;
+		min-width: 0;
+		align-self: center;
+	}
+	.svc-body b {
+		display: block;
+		font-family: 'Plus Jakarta Sans', sans-serif;
+		font-size: 1.08rem;
+		line-height: 1.1;
+	}
+	.svc-body small {
+		opacity: 0.85;
+		font-size: 0.78rem;
+	}
+	.svc-go {
+		display: grid;
+		width: 34px;
+		height: 34px;
+		place-items: center;
+		background: rgb(255 255 255 / 20%);
+		border-radius: 50%;
+		transition: transform 0.2s ease, background 0.2s ease;
+	}
+	.svc:hover .svc-go {
+		background: #fff;
+		color: var(--ink);
+		transform: rotate(45deg);
+	}
+	.svc-domain {
+		width: 100%;
+		margin-top: auto;
+		padding-top: 6px;
+		opacity: 0.85;
+		font-size: 0.74rem;
+	}
+	.svc.app .svc-domain {
+		margin-top: 30px;
+	}
+
+	/* ===== LIVE MARQUEE ===== */
+	.live {
+		margin-top: 30px;
+	}
+	.live-head,
+	.panel-head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin-bottom: 14px;
+	}
+	.live-head h2,
+	.panel-head h2 {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		margin: 0;
+		font-family: 'Plus Jakarta Sans', sans-serif;
+		font-size: 1.25rem;
+	}
+	.dot {
+		width: 9px;
+		height: 9px;
+		border-radius: 50%;
+		background: var(--orange);
+		box-shadow: 0 0 0 0 rgb(232 106 23 / 60%);
+		animation: pulse 1.8s ease-out infinite;
+	}
+	@keyframes pulse {
+		to {
+			box-shadow: 0 0 0 10px rgb(232 106 23 / 0%);
+		}
+	}
+	.more {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		color: var(--orange-dark);
+		font-size: 0.83rem;
 		font-weight: 600;
+		text-decoration: none;
+	}
+	.marquee {
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
+		overflow: hidden;
+		-webkit-mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent);
+		mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent);
+	}
+	.mrow {
+		display: flex;
+		gap: 12px;
+		width: max-content;
+		animation: scrollL 42s linear infinite;
+	}
+	.mrow.rev {
+		animation: scrollR 50s linear infinite;
+	}
+	.marquee:hover .mrow {
+		animation-play-state: paused;
+	}
+	@keyframes scrollL {
+		to {
+			transform: translateX(-50%);
+		}
+	}
+	@keyframes scrollR {
+		from {
+			transform: translateX(-50%);
+		}
+		to {
+			transform: translateX(0);
+		}
+	}
+	.mp {
+		position: relative;
+		width: 158px;
+		height: 158px;
+		flex: none;
+		overflow: hidden;
+		border-radius: 18px;
+		background: var(--cream);
+		box-shadow: 0 8px 20px -12px rgb(26 23 20 / 45%);
+	}
+	.mp-img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		transition: transform 0.35s ease;
+	}
+	.mp:hover .mp-img {
+		transform: scale(1.07);
+	}
+	.mp-play {
+		position: absolute;
+		top: 8px;
+		right: 8px;
+		color: #fff;
+		filter: drop-shadow(0 1px 2px rgb(0 0 0 / 55%));
+	}
+	.mp-tag {
+		position: absolute;
+		inset: auto 0 0;
+		display: flex;
+		align-items: center;
+		gap: 5px;
+		padding: 20px 9px 8px;
+		background: linear-gradient(transparent, rgb(0 0 0 / 62%));
+		color: #fff;
+	}
+	.mp-av {
+		width: 20px !important;
+		height: 20px !important;
+		flex: none;
+		object-fit: cover;
+		border: 1.5px solid rgb(255 255 255 / 80%);
+		border-radius: 50%;
+	}
+	.mp-tag b {
+		overflow: hidden;
+		font-size: 0.74rem;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	/* ===== DUO ===== */
+	.duo {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 16px;
+		margin-top: 30px;
+	}
+	.panel {
+		padding: 18px;
+		background: var(--card);
+		border: 1px solid var(--border);
+		border-radius: 22px;
+		box-shadow: 0 14px 34px -26px rgb(26 23 20 / 50%);
+	}
+	.ann-list {
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+	}
+	.ann {
+		display: flex;
+		gap: 12px;
+		align-items: center;
+	}
+	.ann img,
+	.ann-ph {
+		display: grid;
+		width: 60px;
+		height: 60px;
+		flex: none;
+		place-items: center;
+		object-fit: cover;
+		border-radius: 13px;
+		background: var(--cream);
+		color: var(--orange-dark);
+	}
+	.ann b {
+		display: block;
+		font-size: 0.9rem;
+	}
+	.pin {
+		margin-right: 4px;
+	}
+	.ann p {
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+		margin: 2px 0 0;
+		color: var(--ink-soft);
+		font-size: 0.8rem;
+		line-height: 1.45;
+	}
+	.prod-scroll {
+		display: flex;
+		gap: 12px;
+		overflow-x: auto;
+		padding-bottom: 6px;
+		scroll-snap-type: x mandatory;
+	}
+	.prod-scroll::-webkit-scrollbar {
+		height: 5px;
+	}
+	.prod-scroll::-webkit-scrollbar-thumb {
+		background: var(--border);
+		border-radius: 999px;
+	}
+	.prod {
+		display: flex;
+		flex-direction: column;
+		width: 130px;
+		flex: none;
+		scroll-snap-align: start;
+		color: var(--ink);
+		text-decoration: none;
+	}
+	.prod-img {
+		display: block;
+		aspect-ratio: 1;
+		overflow: hidden;
+		border-radius: 13px;
+		background: var(--cream);
+	}
+	.prod-img img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		transition: transform 0.3s ease;
+	}
+	.prod:hover .prod-img img {
+		transform: scale(1.06);
+	}
+	.prod b {
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+		margin-top: 7px;
+		font-size: 0.8rem;
+		font-weight: 600;
+		line-height: 1.3;
+	}
+	.prod-price {
+		margin-top: 3px;
+		color: var(--orange-dark);
+		font-weight: 800;
+		font-size: 0.84rem;
+	}
+	.prod-rate {
+		display: inline-flex;
+		align-items: center;
+		gap: 3px;
+		margin-top: 2px;
+		color: var(--gold);
+		font-size: 0.72rem;
+		font-weight: 700;
+	}
+	.foot {
+		margin-top: 34px;
+		text-align: center;
+		color: var(--ink-soft);
+		font-size: 0.8rem;
 	}
 	@keyframes rise {
 		from {
@@ -406,376 +772,8 @@
 			transform: translateY(0);
 		}
 	}
-	.apps {
-		display: grid;
-		grid-template-columns: repeat(3, 1fr);
-		gap: 22px;
-		max-width: 1100px;
-		margin: 44px auto 0;
-	}
-	.card {
-		position: relative;
-		display: flex;
-		flex-direction: column;
-		padding: 30px 26px;
-		overflow: hidden;
-		background: rgb(255 255 255 / 85%);
-		border: 1px solid rgb(255 255 255 / 40%);
-		border-radius: 24px;
-		box-shadow: 0 1px 3px rgb(26 23 20 / 4%), 0 16px 34px -20px rgb(26 23 20 / 30%);
-		color: var(--ink);
-		text-decoration: none;
-		backdrop-filter: blur(12px);
-		opacity: 0;
-		animation: rise 0.6s ease forwards;
-		transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
-	}
-	.card::before {
-		content: '';
-		position: absolute;
-		inset: 0 0 auto;
-		height: 4px;
-		z-index: 2;
-	}
-	.card.orange::before {
-		background: linear-gradient(90deg, var(--orange), var(--orange-dark));
-	}
-	.card.green::before {
-		background: linear-gradient(90deg, var(--green), var(--green-dark));
-	}
-	.card.duo::before {
-		background: linear-gradient(90deg, var(--orange), var(--green));
-	}
-	.card:hover {
-		transform: translateY(-6px);
-		box-shadow: 0 26px 52px -20px rgb(26 23 20 / 28%);
-		background: rgb(255 255 255 / 95%);
-	}
-	.card-media {
-		position: absolute;
-		inset: 0;
-		z-index: 0;
-		background-size: cover;
-		background-position: center;
-		opacity: 0.14;
-		-webkit-mask-image: linear-gradient(135deg, transparent 12%, black 82%);
-		mask-image: linear-gradient(135deg, transparent 12%, black 82%);
-		transition: transform 0.6s ease, opacity 0.4s ease;
-	}
-	.card:hover .card-media {
-		transform: scale(1.08);
-		opacity: 0.2;
-	}
-	.card > :not(.card-media) {
-		position: relative;
-		z-index: 1;
-	}
-	.arch {
-		display: grid;
-		width: 60px;
-		height: 70px;
-		place-items: center;
-		margin-bottom: 20px;
-		border-radius: 50% 50% 16px 16px;
-		transition: transform 0.3s ease, box-shadow 0.3s ease;
-	}
-	.card.orange .arch {
-		background: rgb(232 106 23 / 10%);
-		color: var(--orange-dark);
-	}
-	.card.green .arch {
-		background: rgb(42 94 58 / 10%);
-		color: var(--green-dark);
-	}
-	.card.duo .arch {
-		background: rgb(232 106 23 / 8%);
-		color: var(--ink);
-	}
-	.card.orange:hover .arch {
-		box-shadow: 0 0 0 8px rgb(232 106 23 / 8%);
-		transform: scale(1.05);
-	}
-	.card.green:hover .arch {
-		box-shadow: 0 0 0 8px rgb(42 94 58 / 8%);
-		transform: scale(1.05);
-	}
-	.card.duo:hover .arch {
-		box-shadow: 0 0 0 8px rgb(26 23 20 / 6%);
-		transform: scale(1.05);
-	}
-	.card h2 {
-		margin: 0 0 8px;
-		font-family: 'Plus Jakarta Sans', sans-serif;
-		font-size: 1.28rem;
-	}
-	.card p {
-		flex-grow: 1;
-		margin: 0 0 22px;
-		color: var(--ink-soft);
-		font-size: 0.94rem;
-		line-height: 1.6;
-	}
-	.foot {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		padding-top: 16px;
-		border-top: 1px solid rgb(26 23 20 / 6%);
-	}
-	.domain {
-		color: var(--ink-soft);
-		font-size: 0.78rem;
-		font-weight: 500;
-	}
-	.go {
-		display: grid;
-		width: 34px;
-		height: 34px;
-		place-items: center;
-		border-radius: 50%;
-		transition: background 0.25s ease, color 0.25s ease, transform 0.25s ease;
-	}
-	.card.orange .go {
-		background: rgb(232 106 23 / 8%);
-		color: var(--orange-dark);
-	}
-	.card.green .go {
-		background: rgb(42 94 58 / 8%);
-		color: var(--green-dark);
-	}
-	.card.duo .go {
-		background: rgb(26 23 20 / 6%);
-		color: var(--ink);
-	}
-	.card.orange:hover .go {
-		background: var(--orange);
-		color: #fff;
-		transform: translateX(3px);
-	}
-	.card.green:hover .go {
-		background: var(--green);
-		color: #fff;
-		transform: translateX(3px);
-	}
-	.card.duo:hover .go {
-		background: var(--ink);
-		color: #fff;
-		transform: translateX(3px);
-	}
-	.block {
-		max-width: 1100px;
-		margin: 56px auto 0;
-	}
-	.block-head {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		margin-bottom: 18px;
-	}
-	.block-head h2 {
-		display: inline-flex;
-		align-items: center;
-		gap: 8px;
-		margin: 0;
-		font-family: 'Plus Jakarta Sans', sans-serif;
-		font-size: 1.42rem;
-	}
-	.more {
-		display: inline-flex;
-		align-items: center;
-		gap: 4px;
-		color: var(--orange-dark);
-		font-size: 0.85rem;
-		font-weight: 600;
-		text-decoration: none;
-	}
-	.more:hover {
-		gap: 7px;
-	}
-	.posts {
-		display: grid;
-		grid-template-columns: repeat(4, 1fr);
-		gap: 12px;
-	}
-	.post {
-		position: relative;
-		aspect-ratio: 1;
-		overflow: hidden;
-		border-radius: 18px;
-		background: var(--cream);
-		box-shadow: 0 6px 18px -10px rgb(26 23 20 / 30%);
-	}
-	.post-img {
-		width: 100%;
-		height: 100%;
-		object-fit: cover;
-		transition: transform 0.35s ease;
-	}
-	.post:hover .post-img {
-		transform: scale(1.06);
-	}
-	.post-badge {
-		position: absolute;
-		top: 9px;
-		right: 9px;
-		color: #fff;
-		filter: drop-shadow(0 1px 2px rgb(0 0 0 / 55%));
-	}
-	.post-over {
-		position: absolute;
-		inset: auto 0 0;
-		display: flex;
-		align-items: center;
-		gap: 6px;
-		padding: 26px 11px 10px;
-		background: linear-gradient(transparent, rgb(0 0 0 / 60%));
-		color: #fff;
-	}
-	/* Avatar chip kecil — dipaksa ukuran agar tak menutupi gambar. */
-	.pu-av {
-		width: 22px !important;
-		height: 22px !important;
-		flex: none;
-		object-fit: cover;
-		border: 1.5px solid rgb(255 255 255 / 80%);
-		border-radius: 50%;
-	}
-	.post-over b {
-		overflow: hidden;
-		font-size: 0.78rem;
-		font-weight: 700;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-	.announcements {
-		display: grid;
-		grid-template-columns: repeat(2, 1fr);
-		gap: 14px;
-	}
-	.ann {
-		display: flex;
-		gap: 14px;
-		padding: 14px;
-		background: var(--card);
-		border: 1px solid var(--border);
-		border-radius: 18px;
-		transition: transform 0.18s ease, box-shadow 0.18s ease;
-	}
-	.ann:hover {
-		transform: translateY(-2px);
-		box-shadow: 0 14px 30px -16px rgb(26 23 20 / 30%);
-	}
-	.ann img {
-		width: 84px;
-		height: 84px;
-		flex: none;
-		object-fit: cover;
-		border-radius: 14px;
-	}
-	.ann-body {
-		min-width: 0;
-	}
-	.ann-pin {
-		display: inline-block;
-		margin-bottom: 4px;
-		padding: 2px 8px;
-		background: var(--orange-soft);
-		border-radius: 999px;
-		color: var(--orange-dark);
-		font-size: 0.66rem;
-		font-weight: 700;
-	}
-	.ann-body h3 {
-		margin: 0 0 4px;
-		font-size: 1rem;
-	}
-	.ann-body p {
-		margin: 0 0 6px;
-		color: var(--ink-soft);
-		font-size: 0.84rem;
-		line-height: 1.5;
-	}
-	.ann-body small {
-		color: var(--ink-soft);
-		opacity: 0.8;
-		font-size: 0.74rem;
-	}
-	.products {
-		display: grid;
-		grid-template-columns: repeat(4, 1fr);
-		gap: 14px;
-	}
-	.product {
-		display: flex;
-		flex-direction: column;
-		overflow: hidden;
-		background: var(--card);
-		border: 1px solid var(--border);
-		border-radius: 18px;
-		color: var(--ink);
-		text-decoration: none;
-		transition: transform 0.18s ease, box-shadow 0.18s ease;
-	}
-	.product:hover {
-		transform: translateY(-4px);
-		box-shadow: 0 16px 34px -18px rgb(26 23 20 / 32%);
-	}
-	.prod-img {
-		display: block;
-		aspect-ratio: 1;
-		background: var(--cream);
-	}
-	.prod-img img {
-		width: 100%;
-		height: 100%;
-		object-fit: cover;
-	}
-	.prod-body {
-		display: block;
-		padding: 11px 12px 13px;
-	}
-	.prod-body strong {
-		display: -webkit-box;
-		-webkit-line-clamp: 2;
-		-webkit-box-orient: vertical;
-		overflow: hidden;
-		font-size: 0.86rem;
-		font-weight: 600;
-		line-height: 1.35;
-	}
-	.prod-rate {
-		display: inline-flex;
-		align-items: center;
-		gap: 3px;
-		margin-top: 5px;
-		color: var(--gold, #c99a2e);
-		font-size: 0.74rem;
-		font-weight: 700;
-	}
-	.prod-price {
-		display: flex;
-		align-items: baseline;
-		gap: 6px;
-		margin-top: 5px;
-	}
-	.prod-price > span {
-		color: var(--orange-dark);
-		font-weight: 800;
-		font-size: 0.9rem;
-	}
-	.prod-price del {
-		color: var(--ink-soft);
-		opacity: 0.6;
-		font-size: 0.74rem;
-	}
-	.foot-note {
-		max-width: 1100px;
-		margin: 56px auto 0;
-		text-align: center;
-		color: var(--ink-soft);
-		font-size: 0.82rem;
-	}
-	/* ── Transition overlay ── */
+
+	/* ===== overlay ===== */
 	.overlay {
 		position: fixed;
 		inset: 0;
@@ -788,7 +786,7 @@
 	.overlay.expand {
 		clip-path: circle(150% at var(--x, 50%) var(--y, 50%));
 	}
-	.overlay-mark {
+	.ov-mark {
 		position: absolute;
 		top: 50%;
 		left: 50%;
@@ -802,7 +800,7 @@
 		font-weight: 700;
 		transition: opacity 0.3s ease 0.25s, transform 0.4s ease 0.25s;
 	}
-	.overlay.expand .overlay-mark {
+	.overlay.expand .ov-mark {
 		opacity: 1;
 		transform: translate(-50%, -50%) scale(1);
 	}
@@ -819,26 +817,44 @@
 			transform: rotate(360deg);
 		}
 	}
-	@media (max-width: 860px) {
-		.apps {
-			grid-template-columns: 1fr;
+
+	/* ===== responsive ===== */
+	@media (max-width: 820px) {
+		.bento {
+			grid-template-columns: 1fr 1fr;
+			grid-template-areas:
+				'hero hero'
+				'app  app'
+				'meet mkt';
+			grid-auto-rows: minmax(140px, auto);
 		}
-		.posts,
-		.products {
-			grid-template-columns: repeat(2, 1fr);
-		}
-		.announcements {
+		.duo {
 			grid-template-columns: 1fr;
 		}
 	}
+	@media (max-width: 520px) {
+		.bento {
+			grid-template-columns: 1fr;
+			grid-template-areas:
+				'hero'
+				'app'
+				'meet'
+				'mkt';
+		}
+		.stat-row {
+			flex-wrap: wrap;
+		}
+		.mp {
+			width: 132px;
+			height: 132px;
+		}
+	}
 	@media (prefers-reduced-motion: reduce) {
-		.glow,
 		.accent,
-		.shine,
-		.card,
-		.salam,
-		.title,
-		.lead {
+		.dot,
+		.mrow,
+		.hero-tile,
+		.svc {
 			animation: none !important;
 		}
 	}
