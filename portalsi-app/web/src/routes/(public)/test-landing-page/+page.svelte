@@ -1,21 +1,17 @@
 <script lang="ts">
 	import {
 		ArrowRight,
-		ArrowUpRight,
 		ChevronDown,
 		LogIn,
 		Video,
 		Store,
+		Mail,
 		Megaphone,
 		Play,
 		BadgeCheck,
 		HelpCircle,
-		MessageSquarePlus,
-		Star,
-		X,
-		LoaderCircle
+		Star
 	} from '@lucide/svelte';
-	import { enhance } from '$app/forms';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -57,6 +53,16 @@
 			bg: 'https://portalsi.com/marketplace.webp',
 			theme: 'mkt',
 			label: 'Membuka Marketplace'
+		},
+		{
+			name: 'Portal SI Mail',
+			long: 'Email resmi komunitas dengan domain sendiri — kirim, terima, dan kelola pesan @portalsi.com.',
+			href: 'https://mail.portalsi.com/',
+			domain: 'mail.portalsi.com',
+			icon: Mail,
+			bg: 'https://portalsi.com/mail.webp',
+			theme: 'mail',
+			label: 'Membuka Mail'
 		}
 	];
 
@@ -74,18 +80,13 @@
 		return { dev: 'Dev', teacher: 'Ustadz', parent: 'Wali' }[role] ?? '';
 	}
 
-	// ── Contact Us modal ──
-	let contactOpen = $state(false);
-	let captcha = $state(data.captcha);
-	let captchaAnswer = $state('');
-	let submitting = $state(false);
-	let feedback = $state<{ ok: boolean; text: string } | null>(null);
-	let sent = $state(false);
-	function openContact() {
-		contactOpen = true;
-		feedback = null;
-		sent = false;
-	}
+	// Warna aksen per layanan (untuk transisi lingkaran).
+	const themeColor: Record<string, string> = {
+		app: '#e86a17',
+		meet: '#1f7a45',
+		mkt: '#1c1c1c',
+		mail: '#1f6feb'
+	};
 
 	// Transisi lingkaran melebar saat memilih layanan.
 	let overlay = $state<{ x: number; y: number; color: string; label: string } | null>(null);
@@ -95,8 +96,12 @@
 		if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 		event.preventDefault();
 		const el = (event.currentTarget as HTMLElement).getBoundingClientRect();
-		const color = app.theme === 'meet' ? '#1f7a45' : app.theme === 'mkt' ? '#8a4b16' : '#e86a17';
-		overlay = { x: el.left + el.width / 2, y: el.top + el.height / 2, color, label: app.label };
+		overlay = {
+			x: el.left + el.width / 2,
+			y: el.top + el.height / 2,
+			color: themeColor[app.theme] ?? '#e86a17',
+			label: app.label
+		};
 		requestAnimationFrame(() => requestAnimationFrame(() => (expanding = true)));
 		setTimeout(() => (window.location.href = app.href), 640);
 	}
@@ -106,7 +111,7 @@
 	<title>Portal SI — Satu Portal, All In One</title>
 	<meta
 		name="description"
-		content="Portal SI — media sosial Islami, video meeting, dan marketplace komunitas dalam satu tempat."
+		content="Portal SI — media sosial Islami, video meeting, marketplace, dan email komunitas dalam satu tempat."
 	/>
 	<link rel="preconnect" href="https://fonts.googleapis.com" />
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
@@ -175,28 +180,18 @@
 			<a
 				class="svc {app.theme}"
 				href={app.href}
-				style={`background-image:linear-gradient(140deg,var(--g1),var(--g2)),url('${app.bg}')`}
+				style={`--bg:url('${app.bg}')`}
 				onclick={(e) => launch(e, app)}
 			>
-				<span class="svc-top">
-					<span class="svc-ico"><Icon size={20} /></span>
-					<span class="svc-go"><ArrowUpRight size={18} /></span>
-				</span>
+				<span class="svc-ico"><Icon size={22} /></span>
 				<b class="svc-name">{app.name}</b>
 				<p class="svc-desc">{app.long}</p>
-				<span class="svc-domain">{app.domain}</span>
+				<span class="svc-foot">
+					<span class="svc-domain">{app.domain}</span>
+					<span class="svc-go"><ArrowRight size={17} /></span>
+				</span>
 			</a>
 		{/each}
-
-		<button class="svc contact" onclick={openContact}>
-			<span class="svc-top">
-				<span class="svc-ico"><MessageSquarePlus size={20} /></span>
-				<span class="svc-go"><ArrowUpRight size={18} /></span>
-			</span>
-			<b class="svc-name">Contact Us</b>
-			<p class="svc-desc">Punya saran, kritik, atau pertanyaan? Kirim langsung ke tim kami.</p>
-			<span class="svc-domain">Buka formulir saran</span>
-		</button>
 	</section>
 
 	{#if data.posts.length}
@@ -229,7 +224,7 @@
 	{/if}
 
 	{#if data.products.length}
-		<section class="mkt">
+		<section class="mkt-sec">
 			<div class="sec-head">
 				<h2><Store size={18} /> Dari Marketplace</h2>
 				<a class="more" href="https://marketplace.portalsi.com/">Lihat semua <ArrowRight size={14} /></a>
@@ -249,75 +244,6 @@
 
 	<footer class="foot">© {new Date().getFullYear()} Portal SI · Satu Portal, All In One.</footer>
 </div>
-
-<!-- ===== CONTACT MODAL ===== -->
-{#if contactOpen}
-	<div class="cm-scrim" role="presentation" onclick={() => (contactOpen = false)}>
-		<form
-			class="cm-card"
-			method="POST"
-			action="?/contact"
-			onclick={(e) => e.stopPropagation()}
-			use:enhance={() => {
-				submitting = true;
-				feedback = null;
-				return async ({ result }) => {
-					submitting = false;
-					if (result.type === 'success' && (result.data as any)?.success) {
-						sent = true;
-						feedback = { ok: true, text: String((result.data as any).message ?? 'Terkirim!') };
-					} else if (result.type === 'failure') {
-						const d = result.data as any;
-						feedback = { ok: false, text: String(d?.message ?? 'Gagal mengirim.') };
-						if (d?.captcha) captcha = d.captcha;
-						captchaAnswer = '';
-					} else {
-						feedback = { ok: false, text: 'Gagal mengirim. Coba lagi.' };
-					}
-				};
-			}}
-		>
-			<header class="cm-head">
-				<div><strong>Contact Us</strong><small>Kirim saran atau pertanyaan ke tim Portal SI.</small></div>
-				<button type="button" class="cm-x" onclick={() => (contactOpen = false)} aria-label="Tutup"><X size={18} /></button>
-			</header>
-
-			{#if sent}
-				<div class="cm-done">
-					<span class="cm-check"><BadgeCheck size={30} /></span>
-					<p>{feedback?.text}</p>
-					<button type="button" class="cm-submit" onclick={() => (contactOpen = false)}>Tutup</button>
-				</div>
-			{:else}
-				<label class="cm-field">Nama<input name="name" maxlength="120" required placeholder="Nama Anda" /></label>
-				<label class="cm-field">Email<input name="email" type="email" maxlength="190" required placeholder="email@contoh.com" /></label>
-				<label class="cm-field">No. telepon <em>(opsional)</em><input name="phone" maxlength="40" placeholder="08xxxxxxxxxx" /></label>
-				<label class="cm-field">Pesan / saran<textarea name="message" rows="3" maxlength="2000" required placeholder="Tulis pesan Anda…"></textarea></label>
-
-				<div class="cm-captcha">
-					<span class="cm-q">Berapa hasil <b>{captcha.question || '…'}</b>?</span>
-					<input
-						class="cm-ans"
-						name="captcha_answer"
-						inputmode="numeric"
-						autocomplete="off"
-						required
-						bind:value={captchaAnswer}
-						placeholder="?"
-					/>
-					<input type="hidden" name="captcha_token" value={captcha.token} />
-				</div>
-
-				{#if feedback && !feedback.ok}<p class="cm-err">{feedback.text}</p>{/if}
-
-				<button class="cm-submit" type="submit" disabled={submitting}>
-					{#if submitting}<LoaderCircle size={16} class="cm-spin" /> Mengirim…{:else}Kirim saran{/if}
-				</button>
-				<p class="cm-note">Maksimal 3 pesan per hari.</p>
-			{/if}
-		</form>
-	</div>
-{/if}
 
 {#if overlay}
 	<div
@@ -410,8 +336,8 @@
 		grid-template-columns: repeat(4, 1fr);
 		grid-template-areas:
 			'hero hero app  meet'
-			'hero hero mkt  contact';
-		grid-auto-rows: minmax(196px, 1fr);
+			'hero hero mkt  mail';
+		grid-auto-rows: minmax(200px, 1fr);
 		gap: 14px;
 		margin-top: 6px;
 	}
@@ -611,105 +537,121 @@
 		cursor: pointer;
 	}
 
-	/* ===== service + contact tiles ===== */
+	/* ===== service tiles (kartu terang) ===== */
 	.svc {
 		position: relative;
 		display: flex;
 		flex-direction: column;
-		padding: 18px;
+		padding: 20px;
 		overflow: hidden;
+		border: 1px solid var(--border);
 		border-radius: 22px;
-		background-size: cover !important;
-		background-position: center !important;
-		color: #fff;
+		background-color: #fff;
+		background-image: linear-gradient(158deg, rgb(255 255 255 / 80%), rgb(255 255 255 / 94%)),
+			var(--bg, none);
+		background-size: cover;
+		background-position: center;
+		color: var(--ink);
 		text-align: left;
 		text-decoration: none;
-		box-shadow: 0 16px 34px -22px rgb(26 23 20 / 60%);
+		box-shadow: 0 16px 34px -24px rgb(26 23 20 / 45%);
 		animation: rise 0.5s ease both;
 		transition: transform 0.22s ease, box-shadow 0.22s ease;
 		cursor: pointer;
 	}
+	.svc::before {
+		content: '';
+		position: absolute;
+		inset: 0 0 auto;
+		height: 5px;
+		background: var(--accent);
+	}
 	.svc.app {
 		grid-area: app;
-		--g1: rgb(232 106 23 / 92%);
-		--g2: rgb(155 66 8 / 9%);
+		--accent: #e86a17;
+		--tint: rgb(232 106 23 / 12%);
+		animation-delay: 0.04s;
 	}
 	.svc.meet {
 		grid-area: meet;
-		--g1: rgb(42 94 58 / 93%);
-		--g2: rgb(18 56 33 / 9%);
+		--accent: #1f7a45;
+		--tint: rgb(31 122 69 / 12%);
+		animation-delay: 0.08s;
 	}
 	.svc.mkt {
 		grid-area: mkt;
-		--g1: rgb(201 122 46 / 93%);
-		--g2: rgb(42 94 58 / 9%);
-	}
-	.svc.contact {
-		grid-area: contact;
-		border: 0;
-		background: linear-gradient(140deg, #2b2621, #4a4038);
-	}
-	.svc:nth-of-type(3) {
-		animation-delay: 0.06s;
-	}
-	.svc:nth-of-type(4) {
+		--accent: #1c1c1c;
+		--tint: rgb(26 23 20 / 9%);
 		animation-delay: 0.12s;
+	}
+	.svc.mail {
+		grid-area: mail;
+		--accent: #1f6feb;
+		--tint: rgb(31 111 235 / 12%);
+		animation-delay: 0.16s;
 	}
 	.svc:hover {
 		transform: translateY(-4px);
-		box-shadow: 0 24px 44px -22px rgb(26 23 20 / 70%);
-	}
-	.svc-top {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		margin-bottom: 14px;
+		box-shadow: 0 24px 46px -24px rgb(26 23 20 / 55%);
 	}
 	.svc-ico {
 		display: grid;
-		width: 40px;
-		height: 40px;
+		width: 52px;
+		height: 52px;
 		place-items: center;
-		background: rgb(255 255 255 / 22%);
-		border: 1px solid rgb(255 255 255 / 30%);
-		border-radius: 12px;
-		backdrop-filter: blur(4px);
-	}
-	.svc-go {
-		display: grid;
-		width: 32px;
-		height: 32px;
-		place-items: center;
-		background: rgb(255 255 255 / 20%);
-		border-radius: 50%;
-		transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease;
-	}
-	.svc:hover .svc-go {
-		background: #fff;
-		color: var(--ink);
-		transform: rotate(45deg);
+		margin-bottom: 16px;
+		background: var(--tint);
+		border-radius: 16px;
+		color: var(--accent);
 	}
 	.svc-name {
 		font-family: 'Plus Jakarta Sans', sans-serif;
-		font-size: 1.12rem;
-		line-height: 1.1;
+		font-size: 1.2rem;
+		line-height: 1.15;
 	}
 	.svc-desc {
-		margin: 7px 0 0;
-		color: rgb(255 255 255 / 88%);
-		font-size: 0.82rem;
-		line-height: 1.45;
+		margin: 8px 0 0;
+		color: var(--ink-soft);
+		font-size: 0.88rem;
+		line-height: 1.5;
+	}
+	.svc-foot {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 10px;
+		margin-top: auto;
+		padding-top: 16px;
+		border-top: 1px solid var(--border);
 	}
 	.svc-domain {
-		margin-top: auto;
-		padding-top: 12px;
-		opacity: 0.85;
-		font-size: 0.74rem;
+		overflow: hidden;
+		color: var(--ink-soft);
+		font-size: 0.8rem;
+		font-weight: 600;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.svc-go {
+		display: grid;
+		width: 38px;
+		height: 38px;
+		flex: none;
+		place-items: center;
+		background: var(--tint);
+		border-radius: 50%;
+		color: var(--accent);
+		transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease;
+	}
+	.svc:hover .svc-go {
+		background: var(--accent);
+		color: #fff;
+		transform: translateX(3px);
 	}
 
 	/* ===== section heads ===== */
 	.live,
-	.mkt {
+	.mkt-sec {
 		margin-top: 30px;
 	}
 	.sec-head {
@@ -932,181 +874,6 @@
 		}
 	}
 
-	/* ===== contact modal ===== */
-	.cm-scrim {
-		position: fixed;
-		inset: 0;
-		z-index: 900;
-		display: grid;
-		place-items: center;
-		padding: 16px;
-		background: rgb(15 12 9 / 60%);
-		backdrop-filter: blur(4px);
-		animation: fade 0.2s ease;
-	}
-	.cm-card {
-		width: min(100%, 440px);
-		max-height: 92vh;
-		overflow-y: auto;
-		padding: 20px;
-		background: #fff;
-		border-radius: 22px;
-		box-shadow: 0 30px 70px rgb(0 0 0 / 45%);
-		animation: pop 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-	}
-	.cm-head {
-		display: flex;
-		align-items: flex-start;
-		gap: 10px;
-		margin-bottom: 14px;
-	}
-	.cm-head strong {
-		display: block;
-		font-family: 'Plus Jakarta Sans', sans-serif;
-		font-size: 1.1rem;
-	}
-	.cm-head small {
-		color: var(--ink-soft);
-		font-size: 0.8rem;
-	}
-	.cm-x {
-		display: grid;
-		width: 32px;
-		height: 32px;
-		flex: none;
-		margin-left: auto;
-		place-items: center;
-		padding: 0;
-		background: var(--cream);
-		border: 0;
-		border-radius: 50%;
-		color: var(--ink-soft);
-		cursor: pointer;
-	}
-	.cm-field {
-		display: block;
-		margin-bottom: 10px;
-		color: var(--ink);
-		font-size: 0.8rem;
-		font-weight: 600;
-	}
-	.cm-field em {
-		color: var(--ink-soft);
-		font-weight: 400;
-	}
-	.cm-field input,
-	.cm-field textarea {
-		width: 100%;
-		margin-top: 4px;
-		padding: 10px 12px;
-		background: var(--cream);
-		border: 1px solid var(--border);
-		border-radius: 11px;
-		font: inherit;
-		font-weight: 400;
-		resize: vertical;
-	}
-	.cm-field input:focus,
-	.cm-field textarea:focus,
-	.cm-ans:focus {
-		outline: 2px solid var(--orange);
-		outline-offset: 0;
-	}
-	.cm-captcha {
-		display: flex;
-		align-items: center;
-		gap: 10px;
-		margin: 4px 0 12px;
-		padding: 10px 12px;
-		background: var(--cream);
-		border: 1px solid var(--border);
-		border-radius: 12px;
-	}
-	.cm-q {
-		flex: 1;
-		font-size: 0.86rem;
-		font-weight: 600;
-	}
-	.cm-q b {
-		color: var(--orange-dark);
-	}
-	.cm-ans {
-		width: 74px;
-		padding: 8px 10px;
-		background: #fff;
-		border: 1px solid var(--border);
-		border-radius: 10px;
-		font: inherit;
-		text-align: center;
-	}
-	.cm-err {
-		margin: 0 0 10px;
-		color: #c0392b;
-		font-size: 0.82rem;
-		font-weight: 600;
-	}
-	.cm-submit {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		gap: 7px;
-		width: 100%;
-		min-height: 46px;
-		background: var(--ink);
-		border: 0;
-		border-radius: 13px;
-		color: #fff;
-		font-size: 0.9rem;
-		font-weight: 700;
-		cursor: pointer;
-	}
-	.cm-submit:disabled {
-		opacity: 0.6;
-		cursor: default;
-	}
-	.cm-note {
-		margin: 8px 0 0;
-		text-align: center;
-		color: var(--ink-soft);
-		font-size: 0.72rem;
-	}
-	.cm-done {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 10px;
-		padding: 14px 0 4px;
-		text-align: center;
-	}
-	.cm-check {
-		display: grid;
-		width: 58px;
-		height: 58px;
-		place-items: center;
-		background: var(--green-soft, #e1efe2);
-		border-radius: 50%;
-		color: var(--green);
-	}
-	.cm-done p {
-		margin: 0;
-		color: var(--ink-soft);
-		font-size: 0.9rem;
-	}
-	:global(.cm-spin) {
-		animation: spin 0.8s linear infinite;
-	}
-	@keyframes fade {
-		from {
-			opacity: 0;
-		}
-	}
-	@keyframes pop {
-		from {
-			opacity: 0;
-			transform: translateY(14px) scale(0.97);
-		}
-	}
-
 	/* ===== overlay transisi ===== */
 	.overlay {
 		position: fixed;
@@ -1159,11 +926,14 @@
 			grid-template-areas:
 				'hero hero'
 				'app  meet'
-				'mkt  contact';
-			grid-auto-rows: minmax(168px, auto);
+				'mkt  mail';
+			grid-auto-rows: minmax(176px, auto);
 		}
 	}
-	@media (max-width: 520px) {
+	@media (max-width: 560px) {
+		.land {
+			padding: 0 14px 36px;
+		}
 		.bento {
 			grid-template-columns: 1fr;
 			grid-template-areas:
@@ -1171,11 +941,68 @@
 				'app'
 				'meet'
 				'mkt'
-				'contact';
+				'mail';
+			gap: 12px;
+		}
+
+		/* Pengumuman: lebih lega & enak dibaca di mobile */
+		.hero-tile {
+			padding: 24px 20px;
+			border-radius: 22px;
+		}
+		.ann {
+			margin-top: 20px;
+			padding-top: 16px;
+		}
+		.ann-head {
+			font-size: 0.78rem;
+			margin-bottom: 10px;
+		}
+		.ann-items {
+			gap: 10px;
+			max-height: none;
+			overflow: visible;
+		}
+		.pa {
+			padding: 14px 15px;
+			border-radius: 15px;
+		}
+		.pa-toggle {
+			align-items: flex-start;
+			gap: 10px;
+			font-size: 0.98rem;
+			line-height: 1.35;
+		}
+		.pa-title {
+			white-space: normal;
+		}
+		.pa-toggle :global(.chev) {
+			margin-top: 2px;
+		}
+		.pa-author {
+			margin-top: 11px;
+			padding: 4px 11px 4px 4px;
+			font-size: 0.8rem;
+		}
+		.pa-author img {
+			width: 22px;
+			height: 22px;
+		}
+		.pa-body {
+			font-size: 0.92rem;
+			line-height: 1.6;
+		}
+		.ann-all {
+			margin-top: 12px;
+			font-size: 0.88rem;
+		}
+
+		.svc {
+			padding: 20px 20px 22px;
 		}
 		.mp {
-			width: 132px;
-			height: 132px;
+			width: 140px;
+			height: 140px;
 		}
 	}
 	@media (prefers-reduced-motion: reduce) {

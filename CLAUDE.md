@@ -18,14 +18,14 @@ Monorepo di komputer user: `D:\Projects\portalsi` (folder git yang di-mount ke C
 | Folder | Fungsi | Stack | Domain |
 |---|---|---|---|
 | `portalsi-app/web` | Sosial media utama (produk inti) | SvelteKit 2 + Svelte 5 runes, adapter-node, Zod, Laravel Echo/Pusher | app.portalsi.com |
-| `portalsi-app/api` | Backend inti **+ modul marketplace** | Laravel 10, PHP 8.3, MariaDB, Sanctum, R2/S3 | api-new.portalsi.com |
+| `portalsi-app/api` | Backend inti **+ modul marketplace** | Laravel 10, PHP 8.3, MariaDB, Sanctum, R2/S3 | api.portalsi.com |
 | `portalsi-marketplace` | Marketplace multivendor (frontend + backend terpisah) | SvelteKit 2 + Tailwind / Laravel 11 + Tripay | — |
 | `portalsi-meet` | Video conference | Next.js 14 + LiveKit + Redis + coturn, Docker | meet.portalsi.com |
 | `portalsi-admin` | Panel admin lintas-app (SPA 1 file, ~1775 baris) | React 18 + Vite, tanpa router | — |
 | `landing-page` | Halaman statis | HTML murni | portalsi.com |
 
 **Catatan domain**: handoff lama menyebut `api.portalsi.com`, tapi `.env.example` di
-`portalsi-admin` & `portalsi-meet` menunjuk ke **`api-new.portalsi.com/api`**. Konfirmasi ke user
+`portalsi-admin` & `portalsi-meet` menunjuk ke **`api.portalsi.com/api`**. Konfirmasi ke user
 mana yang aktif sebelum mengubah konfigurasi.
 
 ### Integrasi antar-app (SSO)
