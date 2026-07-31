@@ -55,7 +55,8 @@
         "itemListElement": [
           { "@type": "SiteNavigationElement", "position": 1, "name": "Portal SI App", "description": "Aplikasi sosial santri Portal SI", "url": "https://app.portalsi.com/" },
           { "@type": "SiteNavigationElement", "position": 2, "name": "Portal SI Meet", "description": "Video meeting online Portal SI", "url": "https://meet.portalsi.com/" },
-          { "@type": "SiteNavigationElement", "position": 3, "name": "Portal SI Marketplace", "description": "Marketplace pesantren Portal SI", "url": "https://marketplace.portalsi.com/" }
+          { "@type": "SiteNavigationElement", "position": 3, "name": "Portal SI Marketplace", "description": "Marketplace pesantren Portal SI", "url": "https://marketplace.portalsi.com/" },
+          { "@type": "SiteNavigationElement", "position": 4, "name": "Portal SI Mail", "description": "Email komunitas Portal SI dengan domain sendiri", "url": "https://mail.portalsi.com/" }
         ]
       }
     ]
@@ -271,8 +272,8 @@
 
     /* ===== portal cards ===== */
     .portals {
-      display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px;
-      max-width: 1100px; margin: 0 auto; padding: 0 24px 20px;
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 22px;
+      max-width: 1180px; margin: 0 auto; padding: 0 24px 20px;
     }
 
     .portal-card {
@@ -290,6 +291,7 @@
     .portal-card:nth-child(1) { animation-delay: .3s; }
     .portal-card:nth-child(2) { animation-delay: .4s; }
     .portal-card:nth-child(3) { animation-delay: .5s; }
+    .portal-card:nth-child(4) { animation-delay: .6s; }
 
     .portal-card::before {
       content: ""; position: absolute; top: 0; left: 0; right: 0; height: 3px; z-index: 2;
@@ -365,6 +367,14 @@
     .portal-orange:hover .go-arrow { background: var(--orange); color: #fff; transform: translateX(3px); }
     .portal-green:hover .go-arrow { background: var(--green); color: #fff; transform: translateX(3px); }
     .portal-duo:hover .go-arrow { background: var(--ink); color: #fff; transform: translateX(3px); }
+
+    /* ----- Mail (biru) ----- */
+    .portal-blue::before { background: linear-gradient(90deg, #2f80ed, #1554c0); }
+    .portal-blue .portal-arch { background: rgba(31,111,235,0.10); color: #1554c0; }
+    .portal-blue:hover .portal-arch { box-shadow: 0 0 0 8px rgba(31,111,235,0.08); transform: scale(1.05); }
+    .portal-blue .go-arrow { background: rgba(31,111,235,0.08); color: #1554c0; }
+    .portal-blue:hover .go-arrow { background: #1f6feb; color: #fff; transform: translateX(3px); }
+    .portal-blue:focus-visible { outline-color: #1f6feb; }
 
     /* footer */
     footer {
@@ -580,6 +590,27 @@
         <p>Marketplace terpercaya untuk menemukan produk, jasa, dan kebutuhan komunitas dalam satu tempat.</p>
         <div class="portal-footer">
           <span class="domain">marketplace.portalsi.com</span>
+          <span class="go-arrow">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M5 12h14"></path><path d="M13 6l6 6-6 6"></path>
+            </svg>
+          </span>
+        </div>
+      </a>
+
+      <!-- CARD 4 : MAIL -->
+      <a class="portal-card portal-blue" href="https://mail.portalsi.com/" data-label="Membuka Mail" aria-label="Buka Portal SI Mail">
+        <div class="card-media" style="background-image: url('mail.webp');" aria-hidden="true"></div>
+        <div class="portal-arch">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+            <path d="M2 7l10 6 10-6"></path>
+          </svg>
+        </div>
+        <h2>Portal SI Mail</h2>
+        <p>Email resmi komunitas dengan domain sendiri — kirim, terima, dan kelola pesan @portalsi.com.</p>
+        <div class="portal-footer">
+          <span class="domain">mail.portalsi.com</span>
           <span class="go-arrow">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M5 12h14"></path><path d="M13 6l6 6-6 6"></path>
