@@ -1,13 +1,17 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { mailCredentials, mailStatus } from '$lib/server/portal';
 import {
+	archiveMessage,
 	getMessage,
+	getThread,
 	listFolders,
 	listMessages,
 	moveToTrash,
 	sendMessage,
 	setSeen,
-	type Creds
+	setStar,
+	type Creds,
+	type OutAttachment
 } from '$lib/server/mailbox';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -26,6 +30,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 	const key = url.searchParams.get('folder') || 'inbox';
 	const folder = folders.find((f) => f.key === key) || folders[0];
+	const opsPath = folder.virtual ? 'INBOX' : folder.path;
 	const page = Number(url.searchParams.get('page') || '1') || 1;
 	const q = url.searchParams.get('q') || '';
 
@@ -33,55 +38,106 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 	const uidParam = url.searchParams.get('uid');
 	let message = null;
+	let thread: any[] = [];
 	if (uidParam) {
-		message = await getMessage(creds, folder.path, Number(uidParam)).catch(() => null);
+		message = await getMessage(creds, opsPath, Number(uidParam)).catch(() => null);
+		if (message) {
+			thread = await getThread(creds, opsPath, message.subject, message.uid).catch(() => []);
+		}
 	}
 
 	return {
 		account,
 		folders,
 		folderKey: folder.key,
-		folderPath: folder.path,
+		folderPath: opsPath,
 		messages: list.messages,
 		total: list.total,
 		page: list.page,
 		pages: list.pages,
 		q,
-		message
+		message,
+		thread
 	};
 };
 
+function credsFrom(locals: App.Locals) {
+	if (!locals.token) throw redirect(302, '/login');
+	return mailCredentials(locals.token);
+}
+
 export const actions: Actions = {
 	send: async ({ request, locals }) => {
-		if (!locals.token) throw redirect(302, '/login');
-		const creds = await mailCredentials(locals.token);
+		const creds = await credsFrom(locals);
 		const folders = await listFolders(creds);
 		const sentPath = folders.find((f) => f.key === 'sent')?.path;
 
 		const f = await request.formData();
 		const to = String(f.get('to') ?? '').trim();
 		const cc = String(f.get('cc') ?? '').trim();
+		const bcc = String(f.get('bcc') ?? '').trim();
 		const subject = String(f.get('subject') ?? '').trim();
 		const text = String(f.get('body') ?? '');
+		const html = String(f.get('html') ?? '') || undefined;
 		const inReplyTo = String(f.get('in_reply_to') ?? '') || undefined;
 		const references = String(f.get('references') ?? '') || undefined;
 
 		if (!to) return fail(422, { sendError: 'Isi penerima (To) dulu.' });
 
+		const attachments: OutAttachment[] = [];
+		for (const item of f.getAll('files')) {
+			if (item instanceof File && item.size > 0) {
+				const buf = Buffer.from(await item.arrayBuffer());
+				attachments.push({ filename: item.name, content: buf, contentType: item.type || undefined });
+			}
+		}
+
 		try {
-			await sendMessage(creds, { to, cc, subject, text, inReplyTo, references }, sentPath);
+			await sendMessage(
+				creds,
+				{ to, cc, bcc, subject, text, html, inReplyTo, references, attachments },
+				sentPath
+			);
 		} catch (e: any) {
 			return fail(502, { sendError: e?.message || 'Gagal mengirim email.' });
 		}
 		return { sent: true };
 	},
 
+	star: async ({ request, locals }) => {
+		const creds = await credsFrom(locals);
+		const f = await request.formData();
+		const uid = Number(f.get('uid'));
+		const folderPath = String(f.get('folder_path') ?? 'INBOX');
+		const on = String(f.get('on')) === '1';
+		try {
+			await setStar(creds, folderPath, uid, on);
+		} catch {
+			/* ignore */
+		}
+		return { ok: true };
+	},
+
+	archive: async ({ request, locals }) => {
+		const creds = await credsFrom(locals);
+		const folders = await listFolders(creds);
+		const archivePath = folders.find((f) => f.key === 'archive')?.path || 'Archive';
+		const f = await request.formData();
+		const uid = Number(f.get('uid'));
+		const folderPath = String(f.get('folder_path') ?? 'INBOX');
+		const key = String(f.get('folder_key') ?? 'inbox');
+		try {
+			await archiveMessage(creds, folderPath, archivePath, uid);
+		} catch {
+			/* ignore */
+		}
+		throw redirect(303, `/?folder=${key}`);
+	},
+
 	trash: async ({ request, locals }) => {
-		if (!locals.token) throw redirect(302, '/login');
-		const creds = await mailCredentials(locals.token);
+		const creds = await credsFrom(locals);
 		const folders = await listFolders(creds);
 		const trashPath = folders.find((f) => f.key === 'trash')?.path || 'Trash';
-
 		const f = await request.formData();
 		const uid = Number(f.get('uid'));
 		const folderPath = String(f.get('folder_path') ?? '');
@@ -95,8 +151,7 @@ export const actions: Actions = {
 	},
 
 	toggleRead: async ({ request, locals }) => {
-		if (!locals.token) throw redirect(302, '/login');
-		const creds = await mailCredentials(locals.token);
+		const creds = await credsFrom(locals);
 		const f = await request.formData();
 		const uid = Number(f.get('uid'));
 		const folderPath = String(f.get('folder_path') ?? '');
