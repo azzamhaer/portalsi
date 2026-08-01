@@ -35,6 +35,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 	return {
 		account,
+		user: locals.user,
 		folders: view.folders,
 		folderKey: view.folderKey,
 		folderPath: view.folderPath,
@@ -68,6 +69,7 @@ export const actions: Actions = {
 		const html = String(f.get('html') ?? '') || undefined;
 		const inReplyTo = String(f.get('in_reply_to') ?? '') || undefined;
 		const references = String(f.get('references') ?? '') || undefined;
+		const fromName = String(f.get('from_name') ?? '').trim() || undefined;
 
 		if (!to) return fail(422, { sendError: 'Isi penerima (To) dulu.' });
 
@@ -82,7 +84,7 @@ export const actions: Actions = {
 		try {
 			await sendMessage(
 				creds,
-				{ to, cc, bcc, subject, text, html, inReplyTo, references, attachments },
+				{ to, cc, bcc, subject, text, html, inReplyTo, references, attachments, fromName },
 				sentPath
 			);
 		} catch (e: any) {
@@ -112,13 +114,12 @@ export const actions: Actions = {
 		const f = await request.formData();
 		const uid = Number(f.get('uid'));
 		const folderPath = String(f.get('folder_path') ?? 'INBOX');
-		const key = String(f.get('folder_key') ?? 'inbox');
 		try {
 			await archiveMessage(creds, folderPath, archivePath, uid);
 		} catch {
 			/* ignore */
 		}
-		throw redirect(303, `/?folder=${key}`);
+		return { ok: true };
 	},
 
 	trash: async ({ request, locals }) => {
@@ -128,13 +129,12 @@ export const actions: Actions = {
 		const f = await request.formData();
 		const uid = Number(f.get('uid'));
 		const folderPath = String(f.get('folder_path') ?? '');
-		const key = String(f.get('folder_key') ?? 'inbox');
 		try {
 			await moveToTrash(creds, folderPath, trashPath, uid);
 		} catch {
 			/* ignore */
 		}
-		throw redirect(303, `/?folder=${key}`);
+		return { ok: true };
 	},
 
 	toggleRead: async ({ request, locals }) => {

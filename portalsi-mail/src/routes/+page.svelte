@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { invalidateAll } from '$app/navigation';
 	import { navigating } from '$app/stores';
 	import { tick } from 'svelte';
 	import {
@@ -36,7 +35,9 @@
 		Maximize2,
 		Minimize2,
 		Printer,
-		BadgeCheck
+		BadgeCheck,
+		Pin,
+		Camera
 	} from '@lucide/svelte';
 
 	let { data, form } = $props();
@@ -63,7 +64,14 @@
 	let starOverride = $state<Record<number, boolean>>({});
 	let seenOverride = $state<Record<number, boolean>>({});
 	let checked = $state<Set<number>>(new Set());
-	let bulkBusy = $state(false);
+	let hidden = $state<Set<number>>(new Set());
+	// (aksi massal kini optimistik — tak perlu status sibuk terpisah)
+	let bgCount = $state(0);
+	let bgLabel = $state('');
+	let pinned = $state<number[]>([]);
+	let displayName = $state('');
+	let density = $state<'comfort' | 'compact'>('comfort');
+	let settingsTab = $state<'profil' | 'tanda' | 'tampilan'>('profil');
 
 	// ── composer ──
 	let composeOpen = $state(false);
@@ -92,26 +100,56 @@
 		starOverride = {};
 		seenOverride = {};
 		checked = new Set();
+		hidden = new Set();
 		readerFull = false;
 	});
 
 	$effect(() => {
 		if (typeof localStorage !== 'undefined') {
 			signature = localStorage.getItem('ps_mail_sig') || '';
+			displayName = localStorage.getItem('ps_mail_name') || '';
+			density = (localStorage.getItem('ps_mail_density') as any) || 'comfort';
+			try {
+				pinned = JSON.parse(localStorage.getItem('ps_mail_pins') || '[]');
+			} catch {
+				pinned = [];
+			}
 			const sb = localStorage.getItem('ps_mail_sidebar');
 			if (typeof window !== 'undefined' && window.innerWidth <= 820) sidebarOpen = false;
 			else if (sb !== null) sidebarOpen = sb === '1';
 		}
 	});
+
+	function persistPins() {
+		if (typeof localStorage !== 'undefined') localStorage.setItem('ps_mail_pins', JSON.stringify(pinned));
+	}
+	function isPinned(uid: number) {
+		return pinned.includes(uid);
+	}
+	function togglePin(uid: number) {
+		if (pinned.includes(uid)) pinned = pinned.filter((u) => u !== uid);
+		else {
+			if (pinned.length >= 3) {
+				toast('Maksimal 3 email disematkan.');
+				return;
+			}
+			pinned = [...pinned, uid];
+		}
+		persistPins();
+	}
 	function toggleSidebar() {
 		sidebarOpen = !sidebarOpen;
 		if (typeof localStorage !== 'undefined') localStorage.setItem('ps_mail_sidebar', sidebarOpen ? '1' : '0');
 	}
 
-	function saveSignature() {
-		if (typeof localStorage !== 'undefined') localStorage.setItem('ps_mail_sig', signature);
+	function saveSettings() {
+		if (typeof localStorage !== 'undefined') {
+			localStorage.setItem('ps_mail_sig', signature);
+			localStorage.setItem('ps_mail_name', displayName);
+			localStorage.setItem('ps_mail_density', density);
+		}
 		settingsOpen = false;
-		toast('Tanda tangan disimpan');
+		toast('Pengaturan disimpan');
 	}
 
 	function starOf(m: any): boolean {
@@ -136,12 +174,16 @@
 		}
 	}
 
-	// ── daftar: filter + kelompok tanggal ──
-	let filtered = $derived(filter === 'unread' ? data.messages.filter((m: any) => !seenOf(m)) : data.messages);
+	// ── daftar: filter + pin + kelompok tanggal ──
+	let visible = $derived(data.messages.filter((m: any) => !hidden.has(m.uid)));
+	let filtered = $derived(filter === 'unread' ? visible.filter((m: any) => !seenOf(m)) : visible);
+	let pinnedItems = $derived(data.folderKey === 'inbox' ? filtered.filter((m: any) => isPinned(m.uid)) : []);
 	let groups = $derived.by(() => {
 		const order = ['Hari ini', 'Kemarin', '7 hari terakhir', 'Bulan ini', 'Lebih lama'];
+		const pinnedSet = new Set(pinnedItems.map((m: any) => m.uid));
 		const map = new Map<string, any[]>();
 		for (const m of filtered) {
+			if (pinnedSet.has(m.uid)) continue;
 			const g = groupOf(m.date);
 			if (!map.has(g)) map.set(g, []);
 			map.get(g)!.push(m);
@@ -233,18 +275,43 @@
 	function selectAll() {
 		checked = checked.size === filtered.length ? new Set() : new Set(filtered.map((m: any) => m.uid));
 	}
-	async function bulk(action: 'archive' | 'trash' | 'read') {
-		if (!checked.size) return;
-		bulkBusy = true;
-		const uids = [...checked];
-		for (const uid of uids) {
-			if (action === 'read') await postAction('toggleRead', { uid, folder_path: data.folderPath, seen: 1 });
-			else await postAction(action, { uid, folder_path: data.folderPath, folder_key: data.folderKey });
+	// jalankan sekumpulan aksi di latar belakang + progress
+	async function runBg(label: string, promises: Promise<any>[]) {
+		bgLabel = label;
+		bgCount = promises.length;
+		for (const p of promises) p.finally(() => (bgCount = Math.max(0, bgCount - 1)));
+		await Promise.allSettled(promises);
+		bgLabel = '';
+		bgCount = 0;
+		toast(`${label} selesai`);
+	}
+	// hilangkan baris seketika, kerjakan di latar
+	function optimisticRemove(uids: number[], action: 'archive' | 'trash') {
+		const h = new Set(hidden);
+		uids.forEach((u) => h.add(u));
+		hidden = h;
+		if (selectedUid && uids.includes(selectedUid)) closeReader();
+		if (pinned.some((p) => uids.includes(p))) {
+			pinned = pinned.filter((p) => !uids.includes(p));
+			persistPins();
 		}
+		runBg(
+			action === 'archive' ? 'Mengarsipkan' : 'Menghapus',
+			uids.map((uid) => postAction(action, { uid, folder_path: data.folderPath, folder_key: data.folderKey }))
+		);
+	}
+	function bulk(action: 'archive' | 'trash' | 'read') {
+		if (!checked.size) return;
+		const uids = [...checked];
 		checked = new Set();
-		await invalidateAll();
-		bulkBusy = false;
-		toast(action === 'read' ? 'Ditandai dibaca' : action === 'archive' ? 'Diarsipkan' : 'Dipindah ke sampah');
+		if (action === 'read') {
+			const so = { ...seenOverride };
+			uids.forEach((u) => (so[u] = true));
+			seenOverride = so;
+			runBg('Menandai dibaca', uids.map((uid) => postAction('toggleRead', { uid, folder_path: data.folderPath, seen: 1 })));
+		} else {
+			optimisticRemove(uids, action);
+		}
 	}
 
 	// ── composer ──
@@ -367,7 +434,7 @@
 	<aside class="sb">
 		<div class="sb-head">
 			<button class="hamb" onclick={toggleSidebar} aria-label="Menu"><Menu size={20} /></button>
-			<span class="sb-brand">Portal<b>SI</b></span>
+			<span class="sb-brand">Portal <b>SI</b> Mail</span>
 		</div>
 
 		<button class="compose" onclick={newMail}>
@@ -386,11 +453,18 @@
 			{/each}
 		</nav>
 
-		<div class="sb-foot">
-			<span class="avatar sm" style="background:{avColor(data.account?.email || '')}">{initial(data.account?.email || 'U')}</span>
-			<span class="me lbl" title={data.account?.email}>{data.account?.email}</span>
-			<button class="gear" title="Pengaturan" aria-label="Pengaturan" onclick={() => (settingsOpen = true)}><Settings size={17} /></button>
-		</div>
+		<button class="sb-foot" onclick={() => { settingsTab = 'profil'; settingsOpen = true; }} title="Pengaturan akun">
+			{#if data.user?.profile_picture_url}
+				<img class="pp sm" src={data.user.profile_picture_url} alt="" />
+			{:else}
+				<span class="avatar sm" style="background:{avColor(data.account?.email || '')}">{initial(data.user?.full_name || data.account?.email || 'U')}</span>
+			{/if}
+			<span class="me lbl">
+				<b class="me-name">{data.user?.full_name || data.user?.username || 'Akun'}</b>
+				<span class="me-mail" title={data.account?.email}>{data.account?.email}</span>
+			</span>
+			<span class="gear lbl"><Settings size={17} /></span>
+		</button>
 	</aside>
 
 	{#if sidebarOpen}
@@ -421,15 +495,50 @@
 			<div class="bulkbar">
 				<span>{checked.size} dipilih</span>
 				<div class="bulk-actions">
-					<button onclick={() => bulk('read')} disabled={bulkBusy} title="Tandai dibaca"><MailCheck size={16} /></button>
-					<button onclick={() => bulk('archive')} disabled={bulkBusy} title="Arsipkan"><Archive size={16} /></button>
-					<button onclick={() => bulk('trash')} disabled={bulkBusy} title="Hapus"><Trash2 size={16} /></button>
-					{#if bulkBusy}<span class="spin dark"></span>{/if}
+					<button onclick={() => bulk('read')} title="Tandai dibaca"><MailCheck size={16} /></button>
+					<button onclick={() => bulk('archive')} title="Arsipkan"><Archive size={16} /></button>
+					<button onclick={() => bulk('trash')} title="Hapus"><Trash2 size={16} /></button>
 				</div>
 			</div>
 		{/if}
+		{#if bgCount > 0}
+			<div class="bgbar"><span class="spin dark"></span> {bgLabel}… {bgCount} tersisa</div>
+		{/if}
 
-		<div class="lp-scroll">
+		{#snippet rowEl(m)}
+			<div
+				class="row"
+				class:unseen={!seenOf(m)}
+				class:sel={selectedUid === m.uid}
+				class:checked={checked.has(m.uid)}
+				onclick={() => openMessage(m)}
+				role="button"
+				tabindex="0"
+				onkeydown={(e) => e.key === 'Enter' && openMessage(m)}
+			>
+				<button class="chk" class:on={checked.has(m.uid)} onclick={(e) => toggleCheck(m.uid, e)} aria-label="Pilih">
+					{#if checked.has(m.uid)}<span class="tick">✓</span>{/if}
+				</button>
+				<button class="star" class:on={starOf(m)} onclick={(e) => toggleStar(m, e)} aria-label="Bintang">
+					<Star size={16} fill={starOf(m) ? 'currentColor' : 'none'} />
+				</button>
+				<span class="avatar" style="background:{avColor(m.fromAddr)}">{initial(m.fromName)}</span>
+				<div class="rbody">
+					<div class="rline1">
+						<span class="who">{data.folderKey === 'sent' ? m.to : m.fromName}</span>
+						<span class="date">{fmtDate(m.date)}</span>
+					</div>
+					<div class="rline2">
+						{#if isPinned(m.uid)}<Pin size={12} class="clip pinmark" fill="currentColor" />{/if}
+						{#if !seenOf(m)}<span class="dot"></span>{/if}
+						<span class="subj">{m.subject}</span>
+						{#if m.attachments}<Paperclip size={13} class="clip" />{/if}
+					</div>
+				</div>
+			</div>
+		{/snippet}
+
+		<div class="lp-scroll" class:compact={density === 'compact'}>
 			{#if $navigating}
 				{#each Array(9) as _, i (i)}
 					<div class="sk-row">
@@ -443,39 +552,13 @@
 					<p>{data.q ? 'Tidak ada hasil.' : filter === 'unread' ? 'Semua sudah dibaca 🎉' : 'Folder ini kosong.'}</p>
 				</div>
 			{:else}
+				{#if pinnedItems.length}
+					<div class="grp-h pin"><Pin size={12} fill="currentColor" /> Disematkan</div>
+					{#each pinnedItems as m (m.uid)}{@render rowEl(m)}{/each}
+				{/if}
 				{#each groups as g (g.label)}
 					<div class="grp-h">{g.label}</div>
-					{#each g.items as m (m.uid)}
-						<div
-							class="row"
-							class:unseen={!seenOf(m)}
-							class:sel={selectedUid === m.uid}
-							class:checked={checked.has(m.uid)}
-							onclick={() => openMessage(m)}
-							role="button"
-							tabindex="0"
-							onkeydown={(e) => e.key === 'Enter' && openMessage(m)}
-						>
-							<button class="chk" class:on={checked.has(m.uid)} onclick={(e) => toggleCheck(m.uid, e)} aria-label="Pilih">
-								{#if checked.has(m.uid)}<span class="tick">✓</span>{/if}
-							</button>
-							<button class="star" class:on={starOf(m)} onclick={(e) => toggleStar(m, e)} aria-label="Bintang">
-								<Star size={16} fill={starOf(m) ? 'currentColor' : 'none'} />
-							</button>
-							<span class="avatar" style="background:{avColor(m.fromAddr)}">{initial(m.fromName)}</span>
-							<div class="rbody">
-								<div class="rline1">
-									<span class="who">{data.folderKey === 'sent' ? m.to : m.fromName}</span>
-									<span class="date">{fmtDate(m.date)}</span>
-								</div>
-								<div class="rline2">
-									{#if !seenOf(m)}<span class="dot"></span>{/if}
-									<span class="subj">{m.subject}</span>
-									{#if m.attachments}<Paperclip size={13} class="clip" />{/if}
-								</div>
-							</div>
-						</div>
-					{/each}
+					{#each g.items as m (m.uid)}{@render rowEl(m)}{/each}
 				{/each}
 			{/if}
 
@@ -510,14 +593,11 @@
 				</div>
 				<div class="rd-tools">
 					<button class="icon-btn" class:on={selected.flagged} onclick={() => toggleStar(selected)} aria-label="Bintang"><Star size={18} fill={selected.flagged ? 'currentColor' : 'none'} /></button>
-					<form method="POST" action="?/archive" use:enhance={() => { return async ({ update }) => { closeReader(); await update(); }; }}>
-						<input type="hidden" name="uid" value={selected.uid} /><input type="hidden" name="folder_path" value={data.folderPath} /><input type="hidden" name="folder_key" value={data.folderKey} />
-						<button class="icon-btn" aria-label="Arsipkan"><Archive size={18} /></button>
-					</form>
-					<form method="POST" action="?/trash" use:enhance={() => { return async ({ update }) => { closeReader(); await update(); }; }}>
-						<input type="hidden" name="uid" value={selected.uid} /><input type="hidden" name="folder_path" value={data.folderPath} /><input type="hidden" name="folder_key" value={data.folderKey} />
-						<button class="icon-btn" aria-label="Hapus"><Trash2 size={18} /></button>
-					</form>
+					{#if data.folderKey === 'inbox'}
+						<button class="icon-btn" class:pinon={isPinned(selected.uid)} onclick={() => togglePin(selected.uid)} aria-label="Sematkan"><Pin size={18} fill={isPinned(selected.uid) ? 'currentColor' : 'none'} /></button>
+					{/if}
+					<button class="icon-btn" onclick={() => optimisticRemove([selected.uid], 'archive')} aria-label="Arsipkan"><Archive size={18} /></button>
+					<button class="icon-btn" onclick={() => optimisticRemove([selected.uid], 'trash')} aria-label="Hapus"><Trash2 size={18} /></button>
 					<button class="icon-btn only-desktop" onclick={() => window.print()} aria-label="Cetak"><Printer size={18} /></button>
 					<button class="icon-btn only-desktop" onclick={() => (readerFull = !readerFull)} aria-label="Layar penuh">
 						{#if readerFull}<Minimize2 size={17} />{:else}<Maximize2 size={17} />{/if}
@@ -665,6 +745,7 @@
 
 				<input type="hidden" name="in_reply_to" value={compose.in_reply_to} />
 				<input type="hidden" name="references" value={compose.references} />
+				<input type="hidden" name="from_name" value={displayName} />
 				{#if (form as any)?.sendError}<p class="cp-err">{(form as any).sendError}</p>{/if}
 
 				<div class="cp-foot">
@@ -683,11 +764,45 @@
 <!-- ═══════════ PENGATURAN ═══════════ -->
 {#if settingsOpen}
 	<div class="modal-bg" onclick={() => (settingsOpen = false)} role="presentation">
-		<div class="modal" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+		<div class="modal wide" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
 			<header class="mh"><b>Pengaturan</b><button onclick={() => (settingsOpen = false)} aria-label="Tutup"><X size={16} /></button></header>
-			<label class="ml">Tanda tangan</label>
-			<textarea class="mt" bind:value={signature} placeholder="Nama, jabatan, dsb — ditambahkan otomatis di email baru."></textarea>
-			<div class="mf"><button class="cp-send" onclick={saveSignature}>Simpan</button></div>
+			<div class="tabs">
+				<button class:on={settingsTab === 'profil'} onclick={() => (settingsTab = 'profil')}>Profil</button>
+				<button class:on={settingsTab === 'tanda'} onclick={() => (settingsTab = 'tanda')}>Tanda tangan</button>
+				<button class:on={settingsTab === 'tampilan'} onclick={() => (settingsTab = 'tampilan')}>Tampilan</button>
+			</div>
+
+			{#if settingsTab === 'profil'}
+				<div class="pp-row">
+					{#if data.user?.profile_picture_url}
+						<img class="pp lg" src={data.user.profile_picture_url} alt="" />
+					{:else}
+						<span class="avatar xl" style="background:{avColor(data.account?.email || '')}">{initial(data.user?.full_name || 'U')}</span>
+					{/if}
+					<div class="pp-info">
+						<b>{data.user?.full_name || data.user?.username}</b>
+						<span class="muted">Foto profil dari Portal SI</span>
+						<a class="pp-link" href="https://app.portalsi.com/settings" target="_blank" rel="noopener"><Camera size={14} /> Ubah foto di app.portalsi.com</a>
+					</div>
+				</div>
+				<label class="ml">Nama tampilan (di email keluar)</label>
+				<input class="mi" bind:value={displayName} placeholder="mis. Ustadz Azzam — Portal SI" />
+				<label class="ml">Alamat email</label>
+				<input class="mi" value={data.account?.email} readonly />
+				<p class="note">🔒 Alamat email tidak bisa diubah setelah dibuat.</p>
+			{:else if settingsTab === 'tanda'}
+				<label class="ml">Tanda tangan</label>
+				<textarea class="mt" bind:value={signature} placeholder="Nama, jabatan, dsb — ditambahkan otomatis di email baru."></textarea>
+			{:else}
+				<label class="ml">Kepadatan daftar</label>
+				<div class="seg-pick">
+					<button class:on={density === 'comfort'} onclick={() => (density = 'comfort')}>Nyaman</button>
+					<button class:on={density === 'compact'} onclick={() => (density = 'compact')}>Rapat</button>
+				</div>
+				<p class="note">Mode gelap, ganti kata sandi, balasan otomatis, dan aturan filter menyusul di pembaruan berikutnya.</p>
+			{/if}
+
+			<div class="mf"><button class="cp-send" onclick={saveSettings}>Simpan</button></div>
 		</div>
 	</div>
 {/if}
@@ -838,13 +953,46 @@
 		display: flex;
 		align-items: center;
 		gap: 10px;
-		padding: 10px 8px 0;
+		width: 100%;
+		padding: 10px 8px;
+		margin-top: 6px;
+		border: 0;
 		border-top: 1px solid #e2e6ec;
+		border-radius: 12px;
+		background: transparent;
+		cursor: pointer;
+		text-align: left;
+		transition: background 0.13s;
+	}
+	.sb-foot:hover {
+		background: #eef1f5;
+	}
+	.pp {
+		object-fit: cover;
+		border-radius: 50%;
+		flex: none;
+	}
+	.pp.sm {
+		width: 34px;
+		height: 34px;
 	}
 	.me {
 		flex: 1;
-		font-size: 0.78rem;
-		color: #5f6368;
+		display: flex;
+		flex-direction: column;
+		min-width: 0;
+		line-height: 1.25;
+	}
+	.me-name {
+		font-size: 0.82rem;
+		color: #202124;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.me-mail {
+		font-size: 0.72rem;
+		color: #80868b;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
@@ -1814,6 +1962,142 @@
 		display: flex;
 		justify-content: flex-end;
 		margin-top: 14px;
+	}
+	/* progress latar */
+	.bgbar {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		margin: 0 12px 6px;
+		padding: 8px 12px;
+		background: #fff8e6;
+		border: 1px solid #f5e2a8;
+		border-radius: 10px;
+		font-size: 0.82rem;
+		color: #8a6d0f;
+		font-weight: 600;
+	}
+	.grp-h.pin {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		color: #1f6feb;
+	}
+	:global(.pinmark) {
+		color: #1f6feb !important;
+	}
+	.icon-btn.pinon {
+		color: #1f6feb;
+	}
+	.lp-scroll.compact .row {
+		height: 50px;
+	}
+	.lp-scroll.compact .avatar {
+		width: 34px;
+		height: 34px;
+	}
+	/* settings tabs */
+	.modal.wide {
+		width: min(94vw, 520px);
+	}
+	.tabs {
+		display: flex;
+		gap: 2px;
+		margin-bottom: 16px;
+		border-bottom: 1px solid #eef1f5;
+	}
+	.tabs button {
+		border: 0;
+		background: transparent;
+		padding: 8px 14px;
+		font: inherit;
+		font-size: 0.86rem;
+		font-weight: 600;
+		color: #5f6368;
+		cursor: pointer;
+		border-bottom: 2px solid transparent;
+		margin-bottom: -1px;
+	}
+	.tabs button.on {
+		color: #1f6feb;
+		border-bottom-color: #1f6feb;
+	}
+	.pp-row {
+		display: flex;
+		align-items: center;
+		gap: 14px;
+		margin-bottom: 16px;
+	}
+	.pp.lg {
+		width: 64px;
+		height: 64px;
+	}
+	.avatar.xl {
+		width: 64px;
+		height: 64px;
+		font-size: 1.4rem;
+	}
+	.pp-info {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		min-width: 0;
+	}
+	.pp-info .muted {
+		font-size: 0.8rem;
+		color: #80868b;
+	}
+	.pp-link {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		margin-top: 4px;
+		font-size: 0.8rem;
+		color: #1f6feb;
+		text-decoration: none;
+		font-weight: 600;
+	}
+	.mi {
+		width: 100%;
+		height: 44px;
+		padding: 0 12px;
+		border: 1px solid #d5dae2;
+		border-radius: 10px;
+		font: inherit;
+		outline: none;
+		margin-bottom: 4px;
+	}
+	.mi:focus {
+		border-color: #1f6feb;
+	}
+	.mi[readonly] {
+		background: #f5f7fa;
+		color: #5f6368;
+	}
+	.note {
+		font-size: 0.8rem;
+		color: #80868b;
+		margin: 8px 0 0;
+	}
+	.seg-pick {
+		display: flex;
+		gap: 8px;
+	}
+	.seg-pick button {
+		flex: 1;
+		padding: 11px;
+		border: 1px solid #d5dae2;
+		border-radius: 10px;
+		background: #fff;
+		font: inherit;
+		font-weight: 600;
+		color: #5f6368;
+		cursor: pointer;
+	}
+	.seg-pick button.on {
+		border-color: #1f6feb;
+		background: #eef4ff;
+		color: #0b57d0;
 	}
 	.mail-toast {
 		position: fixed;

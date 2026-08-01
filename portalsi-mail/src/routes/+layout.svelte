@@ -1,8 +1,12 @@
 <script lang="ts">
-	import { Mail, LogOut } from '@lucide/svelte';
+	import { LogOut, LayoutGrid, Video, Store, Globe, MessageSquare, HelpCircle } from '@lucide/svelte';
 	import { page } from '$app/stores';
 	let { data, children } = $props();
-	let flush = $derived($page.url.pathname === '/');
+	let path = $derived($page.url.pathname);
+	let isAuth = $derived(path === '/login' || path === '/register');
+	let isApp = $derived(path === '/');
+	let flush = $derived(isApp || isAuth);
+	let menuOpen = $state(false);
 </script>
 
 <svelte:head>
@@ -15,18 +19,34 @@
 </svelte:head>
 
 <div class="wrap">
-	<header class="top">
-		<a class="brand" href="/">
-			<span class="logo"><Mail size={18} /></span>
-			<span>Portal <b>SI</b> Mail</span>
-		</a>
-		{#if data.user}
-			<form method="POST" action="/logout" class="userbox">
-				<span class="uname">{data.user.full_name || data.user.username}</span>
-				<button class="logout" title="Keluar" aria-label="Keluar"><LogOut size={16} /></button>
-			</form>
-		{/if}
-	</header>
+	{#if !isAuth}
+		<header class="top">
+			<a class="brand" href="/" aria-label="Portal SI Mail">
+				<img src="https://portalsi.com/favicon.png" alt="Portal SI" />
+			</a>
+			{#if data.user}
+				<div class="appswitch">
+					<a class="quick" href="https://app.portalsi.com" target="_blank" rel="noopener" title="Portal SI App"><MessageSquare size={18} /></a>
+					<a class="quick" href="https://meet.portalsi.com" target="_blank" rel="noopener" title="Meet"><Video size={18} /></a>
+					<button class="quick" onclick={() => (menuOpen = !menuOpen)} aria-label="Menu aplikasi" title="Aplikasi Portal SI"><LayoutGrid size={18} /></button>
+					{#if menuOpen}
+						<button class="menu-backdrop" onclick={() => (menuOpen = false)} aria-label="Tutup"></button>
+						<div class="menu">
+							<div class="menu-grid">
+								<a href="https://app.portalsi.com" target="_blank" rel="noopener" class="mg-item"><span class="mg-ico app"><MessageSquare size={20} /></span>App</a>
+								<a href="https://meet.portalsi.com" target="_blank" rel="noopener" class="mg-item"><span class="mg-ico meet"><Video size={20} /></span>Meet</a>
+								<a href="https://portalsi.com/marketplace" target="_blank" rel="noopener" class="mg-item"><span class="mg-ico market"><Store size={20} /></span>Market</a>
+								<a href="https://portalsi.com" target="_blank" rel="noopener" class="mg-item"><span class="mg-ico web"><Globe size={20} /></span>Beranda</a>
+							</div>
+							<div class="menu-sep"></div>
+							<a href="https://portalsi.com/bantuan" target="_blank" rel="noopener" class="menu-row"><HelpCircle size={16} /> Bantuan</a>
+							<form method="POST" action="/logout"><button class="menu-row danger" type="submit"><LogOut size={16} /> Keluar</button></form>
+						</div>
+					{/if}
+				</div>
+			{/if}
+		</header>
+	{/if}
 	<main class="main" class:flush>
 		{@render children()}
 	</main>
@@ -60,47 +80,127 @@
 	.brand {
 		display: inline-flex;
 		align-items: center;
-		gap: 10px;
 		text-decoration: none;
-		color: #1a1714;
-		font-weight: 800;
-		font-family: 'Plus Jakarta Sans', sans-serif;
 	}
-	.brand b {
-		color: #e86a17;
+	.brand img {
+		width: 34px;
+		height: 34px;
+		border-radius: 9px;
+		display: block;
 	}
-	.logo {
+	.appswitch {
+		position: relative;
+		display: flex;
+		align-items: center;
+		gap: 4px;
+	}
+	.quick {
 		display: grid;
 		place-items: center;
-		width: 32px;
-		height: 32px;
-		border-radius: 9px;
-		background: rgba(31, 111, 235, 0.12);
+		width: 40px;
+		height: 40px;
+		border: 0;
+		border-radius: 50%;
+		background: transparent;
+		color: #5f6368;
+		cursor: pointer;
+		text-decoration: none;
+		transition: background 0.13s;
+	}
+	.quick:hover {
+		background: #eef1f5;
 		color: #1f6feb;
 	}
-	.userbox {
+	.menu-backdrop {
+		position: fixed;
+		inset: 0;
+		background: transparent;
+		border: 0;
+		z-index: 90;
+		cursor: default;
+	}
+	.menu {
+		position: absolute;
+		top: 48px;
+		right: 0;
+		width: 260px;
+		background: #fff;
+		border: 1px solid #e6e9ef;
+		border-radius: 16px;
+		box-shadow: 0 18px 44px rgba(0, 0, 0, 0.16);
+		padding: 12px;
+		z-index: 95;
+		animation: menuin 0.16s ease;
+	}
+	@keyframes menuin {
+		from { opacity: 0; transform: translateY(-6px); }
+		to { opacity: 1; transform: translateY(0); }
+	}
+	.menu-grid {
+		display: grid;
+		grid-template-columns: repeat(4, 1fr);
+		gap: 4px;
+	}
+	.mg-item {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 6px;
+		padding: 10px 4px;
+		border-radius: 12px;
+		text-decoration: none;
+		color: #3c4043;
+		font-size: 0.72rem;
+		font-weight: 600;
+		transition: background 0.12s;
+	}
+	.mg-item:hover {
+		background: #f2f5f9;
+	}
+	.mg-ico {
+		display: grid;
+		place-items: center;
+		width: 40px;
+		height: 40px;
+		border-radius: 12px;
+		color: #fff;
+	}
+	.mg-ico.app { background: #e86a17; }
+	.mg-ico.meet { background: #0b8043; }
+	.mg-ico.market { background: #e3b100; }
+	.mg-ico.web { background: #1f6feb; }
+	.menu-sep {
+		height: 1px;
+		background: #eef1f5;
+		margin: 8px 2px;
+	}
+	.menu-row {
 		display: flex;
 		align-items: center;
 		gap: 10px;
-		margin: 0;
-	}
-	.uname {
-		font-size: 0.88rem;
-		color: #6a6155;
-	}
-	.logout {
-		display: grid;
-		place-items: center;
-		width: 34px;
-		height: 34px;
-		border-radius: 8px;
-		border: 1px solid rgba(26, 23, 20, 0.1);
-		background: #fff;
-		color: #6a6155;
+		width: 100%;
+		padding: 9px 10px;
+		border: 0;
+		border-radius: 10px;
+		background: transparent;
+		color: #3c4043;
+		font-size: 0.86rem;
+		font-weight: 500;
+		text-decoration: none;
 		cursor: pointer;
+		text-align: left;
 	}
-	.logout:hover {
-		background: #f5f0e8;
+	.menu-row:hover {
+		background: #f2f5f9;
+	}
+	.menu-row.danger {
+		color: #c0392b;
+	}
+	.menu-row.danger:hover {
+		background: #fdecea;
+	}
+	.menu form {
+		margin: 0;
 	}
 	.main {
 		flex: 1;

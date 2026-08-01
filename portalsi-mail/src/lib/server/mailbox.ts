@@ -514,11 +514,12 @@ export async function sendMessage(
 		inReplyTo?: string;
 		references?: string;
 		attachments?: OutAttachment[];
+		fromName?: string;
 	},
 	sentPath?: string
 ): Promise<void> {
 	const composer = new MailComposer({
-		from: creds.email,
+		from: msg.fromName ? { name: msg.fromName, address: creds.email } : creds.email,
 		to: msg.to,
 		cc: msg.cc || undefined,
 		bcc: msg.bcc || undefined,

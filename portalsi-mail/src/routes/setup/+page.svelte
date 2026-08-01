@@ -1,9 +1,23 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { AtSign } from '@lucide/svelte';
+	import { AtSign, ShieldAlert, X } from '@lucide/svelte';
 	let { data, form } = $props();
 	let submitting = $state(false);
 	let local = $state(form?.local ?? '');
+	let confirmOpen = $state(false);
+	let formEl: HTMLFormElement | null = null;
+
+	const clean = $derived((local || '').toLowerCase().trim());
+	const valid = $derived(/^[a-z][a-z0-9._-]{2,}$/.test(clean));
+
+	function askConfirm() {
+		if (!valid) return;
+		confirmOpen = true;
+	}
+	function doSubmit() {
+		confirmOpen = false;
+		formEl?.requestSubmit();
+	}
 </script>
 
 <div class="card">
@@ -11,12 +25,13 @@
 	<h1>Buat email kamu</h1>
 	<p class="sub">
 		Pilih nama untuk alamat email @{data.domain}. Minimal 3 karakter, huruf kecil/angka, diawali
-		huruf. Satu akun per pengguna dan tidak bisa diganti.
+		huruf. Satu akun per pengguna dan <b>tidak bisa diganti</b> setelah dibuat.
 	</p>
 
 	{#if form?.message}<div class="err">{form.message}</div>{/if}
 
 	<form
+		bind:this={formEl}
 		method="POST"
 		use:enhance={() => {
 			submitting = true;
@@ -36,15 +51,33 @@
 					autocomplete="off"
 					spellcheck="false"
 					required
-					autofocus
 				/>
 				<span class="suffix">@{data.domain}</span>
 			</span>
 		</label>
-		<p class="preview">Alamat: <b>{(local || 'namamu').toLowerCase()}@{data.domain}</b></p>
-		<button class="btn orange" disabled={submitting}>
+		<p class="preview">Alamat: <b>{clean || 'namamu'}@{data.domain}</b></p>
+		<button type="button" class="btn" onclick={askConfirm} disabled={submitting || !valid}>
 			{#if submitting}<span class="spin"></span>{:else}Buat email{/if}
 		</button>
+
+		{#if confirmOpen}
+			<div class="cf-bg" role="presentation" onclick={() => (confirmOpen = false)}>
+				<div class="cf" role="dialog" aria-modal="true" onclick={(e) => e.stopPropagation()}>
+					<button class="cf-x" onclick={() => (confirmOpen = false)} aria-label="Tutup"><X size={16} /></button>
+					<div class="cf-ico"><ShieldAlert size={26} /></div>
+					<h2>Konfirmasi alamat email</h2>
+					<p>Kamu akan membuat:</p>
+					<div class="cf-addr">{clean}@{data.domain}</div>
+					<p class="cf-warn">Alamat ini <b>permanen</b> dan <b>tidak bisa diubah atau dihapus</b> setelahnya. Pastikan ejaannya benar.</p>
+					<div class="cf-actions">
+						<button type="button" class="cf-cancel" onclick={() => (confirmOpen = false)}>Periksa lagi</button>
+						<button type="submit" class="btn" onclick={doSubmit} disabled={submitting}>
+							{#if submitting}<span class="spin"></span>{:else}Ya, buat permanen{/if}
+						</button>
+					</div>
+				</div>
+			</div>
+		{/if}
 	</form>
 </div>
 
@@ -55,8 +88,8 @@
 		width: 48px;
 		height: 48px;
 		border-radius: 14px;
-		background: rgba(232, 106, 23, 0.12);
-		color: #e86a17;
+		background: rgba(31, 111, 235, 0.12);
+		color: #1f6feb;
 		margin-bottom: 14px;
 	}
 	.addr {
@@ -81,24 +114,111 @@
 		outline: none;
 	}
 	.addr:focus-within {
-		outline: 2px solid #e86a17;
+		outline: 2px solid #1f6feb;
 		background: #fff;
 	}
 	.suffix {
 		display: flex;
 		align-items: center;
 		padding: 0 12px;
-		background: #efe9df;
-		color: #6a6155;
+		background: #eef1f5;
+		color: #5f6368;
 		font-size: 0.9rem;
 		white-space: nowrap;
 	}
 	.preview {
 		margin: 4px 0 16px;
 		font-size: 0.85rem;
-		color: #6a6155;
+		color: #5f6368;
 	}
 	.preview b {
 		color: #1a1714;
+	}
+	:global(.btn:disabled) {
+		opacity: 0.6;
+		cursor: default;
+	}
+	.cf-bg {
+		position: fixed;
+		inset: 0;
+		background: rgba(0, 0, 0, 0.45);
+		display: grid;
+		place-items: center;
+		z-index: 100;
+		padding: 20px;
+	}
+	.cf {
+		position: relative;
+		width: min(94vw, 400px);
+		background: #fff;
+		border-radius: 18px;
+		padding: 26px 24px 22px;
+		text-align: center;
+		box-shadow: 0 24px 60px rgba(0, 0, 0, 0.34);
+	}
+	.cf-x {
+		position: absolute;
+		top: 14px;
+		right: 14px;
+		border: 0;
+		background: transparent;
+		cursor: pointer;
+		color: #9aa0a6;
+	}
+	.cf-ico {
+		display: grid;
+		place-items: center;
+		width: 56px;
+		height: 56px;
+		border-radius: 50%;
+		background: #fff2e6;
+		color: #e37400;
+		margin: 0 auto 12px;
+	}
+	.cf h2 {
+		margin: 0 0 6px;
+		font-size: 1.15rem;
+	}
+	.cf p {
+		margin: 0 0 8px;
+		color: #5f6368;
+		font-size: 0.9rem;
+	}
+	.cf-addr {
+		font-weight: 700;
+		font-size: 1.05rem;
+		color: #1f6feb;
+		background: #eef4ff;
+		border-radius: 10px;
+		padding: 10px;
+		margin: 4px 0 10px;
+		word-break: break-all;
+	}
+	.cf-warn {
+		font-size: 0.82rem !important;
+		color: #b06a00 !important;
+		background: #fff8ec;
+		border: 1px solid #f3dca8;
+		border-radius: 10px;
+		padding: 9px 11px;
+	}
+	.cf-actions {
+		display: flex;
+		gap: 10px;
+		margin-top: 16px;
+	}
+	.cf-cancel {
+		flex: 1;
+		padding: 12px;
+		border: 1px solid #d5dae2;
+		border-radius: 12px;
+		background: #fff;
+		font: inherit;
+		font-weight: 600;
+		color: #3c4043;
+		cursor: pointer;
+	}
+	.cf-actions .btn {
+		flex: 1.3;
 	}
 </style>
