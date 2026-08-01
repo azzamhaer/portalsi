@@ -27,7 +27,7 @@
   <meta name="twitter:description" content="Satu pintu Portal SI: aplikasi sosial santri, video meeting, dan marketplace pesantren.">
   <meta name="twitter:image" content="https://portalsi.com/app.webp">
 
-  <!-- Data terstruktur: Organization, WebSite (sitelinks searchbox), dan 3 megalink -->
+  <!-- Data terstruktur: Organization, WebSite, dan 4 megalink -->
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -66,96 +66,61 @@
   <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="">
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
-    /* ===== reset & base ===== */
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html { scroll-behavior: smooth; }
 
     :root {
-      --cream: #F5F0E8;
-      --cream-dark: #EBE5DB;
-      --card: #FFFFFF;
-      --ink: #1A1714;
-      --ink-soft: #5C5347;
-      --orange: #E86A17;
-      --orange-dark: #B8530E;
-      --orange-soft: #FDE9D2;
-      --green: #2A5E3A;
-      --green-dark: #1A4028;
-      --green-soft: #E1EFE2;
-      --gold: #C99A2E;
-      --border: rgba(26,23,20,0.08);
-      --shadow: rgba(26,23,20,0.12);
+      --cream: #F5F0E8; --cream-dark: #EBE5DB; --card: #FFFFFF;
+      --ink: #1A1714; --ink-soft: #5C5347;
+      --orange: #E86A17; --orange-dark: #B8530E;
+      --green: #2A5E3A; --green-dark: #1A4028; --green-soft: #E1EFE2;
+      --yellow: #E4A70A; --yellow-dark: #9A6F05;
+      --blue: #1F6FEB; --blue-dark: #1554C0;
+      --border: rgba(26,23,20,0.08); --shadow: rgba(26,23,20,0.12);
       --font-display: 'Plus Jakarta Sans', sans-serif;
       --font-body: 'Inter', sans-serif;
+      --ease: cubic-bezier(.5, 0, .15, 1);
     }
 
     body {
-      font-family: var(--font-body);
-      background: var(--cream);
-      color: var(--ink);
-      min-height: 100vh;
-      overflow-x: hidden;
-      position: relative;
-      line-height: 1.5;
+      font-family: var(--font-body); background: var(--cream); color: var(--ink);
+      min-height: 100vh; display: flex; flex-direction: column;
+      overflow-x: hidden; position: relative; line-height: 1.5;
     }
-
-    /* background lebih gelap dengan gradien elegan */
     body::before {
-      content: "";
-      position: fixed; inset: 0; z-index: 0; pointer-events: none;
-      background: 
-        radial-gradient(ellipse at 20% 50%, rgba(232, 106, 23, 0.08) 0%, transparent 60%),
-        radial-gradient(ellipse at 80% 50%, rgba(42, 94, 58, 0.08) 0%, transparent 60%),
-        radial-gradient(ellipse at 50% 100%, rgba(26, 23, 20, 0.04) 0%, transparent 40%);
+      content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(ellipse at 20% 50%, rgba(232,106,23,0.08) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 50%, rgba(42,94,58,0.08) 0%, transparent 60%),
+        radial-gradient(ellipse at 50% 100%, rgba(26,23,20,0.04) 0%, transparent 40%);
     }
-
-    /* subtle pattern lebih halus */
     body::after {
-      content: "";
-      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
       background-image: radial-gradient(circle at 1px 1px, rgba(26,23,20,0.04) 1px, transparent 1px);
       background-size: 32px 32px;
       -webkit-mask-image: radial-gradient(circle at 50% 30%, black 0%, transparent 70%);
               mask-image: radial-gradient(circle at 50% 30%, black 0%, transparent 70%);
     }
-
-    .glow {
-      position: fixed; border-radius: 50%; pointer-events: none; z-index: 0; filter: blur(80px);
-      opacity: 0.5;
-    }
+    .glow { position: fixed; border-radius: 50%; pointer-events: none; z-index: 0; filter: blur(80px); opacity: 0.5; }
     .glow-1 { top: -120px; left: -120px; width: 380px; height: 380px; background: radial-gradient(circle, rgba(232,106,23,0.25), transparent 70%); animation: drift1 14s ease-in-out infinite alternate; }
     .glow-2 { bottom: -160px; right: -160px; width: 440px; height: 440px; background: radial-gradient(circle, rgba(42,94,58,0.2), transparent 70%); animation: drift2 16s ease-in-out infinite alternate; }
-
     @keyframes drift1 { from { transform: translate(0,0); } to { transform: translate(40px,30px); } }
     @keyframes drift2 { from { transform: translate(0,0); } to { transform: translate(-35px,-20px); } }
 
     header, main, footer { position: relative; z-index: 1; }
 
-    /* ===== header ===== */
     .site-header {
+      position: absolute; top: 0; left: 0; right: 0; z-index: 3;
       display: flex; align-items: center; justify-content: space-between;
-      max-width: 1100px; margin: 0 auto; padding: 28px 24px 0;
+      width: 100%; max-width: 1320px; margin: 0 auto; padding: 20px 28px 0;
     }
-    .logo {
-      display: flex; align-items: center; gap: 10px;
-      font-family: var(--font-display); font-weight: 800; font-size: 1.25rem;
-    }
-    .logo-mark {
-      width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0;
-      display: flex; align-items: center; justify-content: center;
-      overflow: hidden;
-    }
-    .logo-mark img {
-      width: 100%; height: 100%; object-fit: cover; display: block;
-    }
+    .logo { display: flex; align-items: center; gap: 10px; font-family: var(--font-display); font-weight: 800; font-size: 1.25rem; }
+    .logo-mark { width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+    .logo-mark img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .logo .si { color: var(--orange); }
-
-    .header-actions { display: flex; align-items: center; gap: 10px; }
-
     .help-btn {
       display: flex; align-items: center; gap: 6px; white-space: nowrap;
-      font-family: var(--font-body); font-size: 0.85rem; font-weight: 600;
-      color: var(--green-dark);
+      font-size: 0.85rem; font-weight: 600; color: var(--green-dark);
       background: rgba(255,255,255,0.7); backdrop-filter: blur(8px);
       border: 1px solid rgba(26,23,20,0.08); text-decoration: none;
       padding: 8px 16px; border-radius: 999px;
@@ -163,331 +128,179 @@
     }
     .help-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
     .help-btn:hover { background: var(--green-soft); border-color: var(--green); transform: translateY(-1px); }
-    .help-btn:focus-visible { outline: 3px solid var(--green); outline-offset: 2px; }
 
-    /* ===== hero dengan typography elegan & shiny ===== */
-    .hero {
-      max-width: 720px; margin: 0 auto; padding: 56px 24px 40px; text-align: center;
-      position: relative;
+    /* ===== stage: teks kiri | grid | teks kanan ===== */
+    .stage {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      gap: clamp(18px, 3.5vw, 56px);
+      width: 100%; max-width: 1320px; margin: 0 auto; padding: 28px 28px 20px;
     }
-
-    .greeting {
-      font-size: 1rem; color: var(--ink-soft); margin-bottom: 16px;
-      opacity: 0; animation: riseIn .6s ease forwards;
-      font-weight: 500;
-      letter-spacing: 0.5px;
-    }
-
-    /* Container utama untuk judul dengan efek shiny */
-    .hero-title-wrapper {
-      position: relative;
-      display: inline-block;
-      margin-bottom: 20px;
-      opacity: 0;
-      animation: riseIn .6s ease .1s forwards;
-    }
-
+    .hero-side { flex: 1 1 0; min-width: 0; max-width: 330px; }
+    .hero-left { text-align: right; }
+    .hero-right { text-align: left; }
+    .hero-title-wrapper { position: relative; display: inline-block; opacity: 0; animation: riseIn .6s ease .1s forwards; }
     .hero-title-wrapper h1 {
-      font-family: var(--font-display);
-      font-weight: 800;
-      line-height: 1.08;
-      font-size: clamp(2.4rem, 6vw, 3.8rem);
-      margin: 0;
-      display: inline-block;
-      position: relative;
+      font-family: var(--font-display); font-weight: 800; line-height: 1.05;
+      font-size: clamp(2rem, 3.2vw, 3.3rem); margin: 0; display: inline-block; position: relative;
       background: linear-gradient(135deg, #1A1714 0%, #3D352A 40%, #5C5347 70%, #1A1714 100%);
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
-      background-size: 300% 300%;
-      animation: gradientShift 6s ease-in-out infinite;
-      letter-spacing: -0.02em;
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+      background-size: 300% 300%; animation: gradientShift 6s ease-in-out infinite; letter-spacing: -0.02em;
     }
-
-    /* Efek shiny yang elegan - bergerak seperti cahaya */
     .hero-title-wrapper::after {
-      content: '';
-      position: absolute;
-      top: -10%;
-      left: -20%;
-      width: 140%;
-      height: 120%;
-      background: linear-gradient(
-        105deg,
-        transparent 30%,
-        rgba(255,255,255,0.15) 45%,
-        rgba(255,255,255,0.25) 50%,
-        rgba(255,255,255,0.15) 55%,
-        transparent 70%
-      );
-      animation: shineMove 5s ease-in-out infinite;
-      pointer-events: none;
-      border-radius: 20px;
+      content: ''; position: absolute; top: -10%; left: -20%; width: 140%; height: 120%;
+      background: linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.15) 45%, rgba(255,255,255,0.25) 50%, rgba(255,255,255,0.15) 55%, transparent 70%);
+      animation: shineMove 5s ease-in-out infinite; pointer-events: none; border-radius: 20px;
     }
-
-    @keyframes shineMove {
-      0% { transform: translateX(-100%) skewX(-15deg); }
-      30% { transform: translateX(100%) skewX(-15deg); }
-      100% { transform: translateX(100%) skewX(-15deg); }
-    }
-
+    @keyframes shineMove { 0% { transform: translateX(-100%) skewX(-15deg); } 30% { transform: translateX(100%) skewX(-15deg); } 100% { transform: translateX(100%) skewX(-15deg); } }
     .accent-text {
       background: linear-gradient(135deg, #E86A17 0%, #F58A3E 30%, #2A5E3A 70%, #3D8B55 100%);
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
-      background-size: 300% 300%;
-      animation: gradientShift 4s ease-in-out infinite;
-      position: relative;
-      display: inline-block;
-      padding: 0 4px;
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+      background-size: 300% 300%; animation: gradientShift 4s ease-in-out infinite; display: inline-block;
     }
+    @keyframes gradientShift { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+    @keyframes riseIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes fadeIn { from { opacity: 0; } }
 
-    @keyframes gradientShift {
-      0%, 100% { background-position: 0% 50%; }
-      50% { background-position: 100% 50%; }
-    }
-
-    /* Subtitle dengan elegan */
-    .hero .sub {
-      font-size: 1.05rem;
-      color: var(--ink-soft);
-      max-width: 460px;
-      margin: 0 auto;
-      opacity: 0;
-      animation: riseIn .6s ease .2s forwards;
-      font-weight: 400;
-      letter-spacing: 0.3px;
-    }
-
-    .hero .sub .sub-highlight {
-      color: var(--orange);
-      font-weight: 500;
-    }
-
-    @keyframes riseIn {
-      from { opacity: 0; transform: translateY(14px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    /* ===== portal cards ===== */
+    /* ===== grid 2x2 ===== */
     .portals {
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 22px;
-      max-width: 1180px; margin: 0 auto; padding: 0 24px 20px;
+      --size: min(46vw, calc(100vh - 180px), 620px);
+      position: relative; flex: none; align-self: center;
+      display: grid; grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(2, 1fr);
+      gap: clamp(12px, 1.4vw, 18px);
+      width: var(--size); height: var(--size);
     }
 
     .portal-card {
-      position: relative; display: flex; flex-direction: column;
-      background: rgba(255,255,255,0.85);
-      backdrop-filter: blur(12px);
-      border: 1px solid rgba(255,255,255,0.3);
-      border-radius: 22px;
-      padding: 30px 26px; text-decoration: none; color: inherit; overflow: hidden;
+      position: relative; display: flex; flex-direction: column; height: 100%;
+      background: rgba(255,255,255,0.94);
+      border: 1px solid rgba(255,255,255,0.6); border-radius: 22px;
+      padding: clamp(16px, 1.7vw, 26px); text-decoration: none; color: inherit; overflow: hidden;
       box-shadow: 0 1px 3px rgba(26,23,20,0.04), 0 14px 30px -18px var(--shadow);
-      transition: transform .25s ease, box-shadow .25s ease, background .25s ease;
-      opacity: 0; animation: riseIn .6s ease forwards;
-      cursor: pointer;
+      opacity: 1; animation: fadeIn .5s ease backwards; cursor: pointer;
+      transition: transform .42s var(--ease), opacity .3s ease;
     }
+    .portal-card.active { will-change: transform; }
     .portal-card:nth-child(1) { animation-delay: .3s; }
     .portal-card:nth-child(2) { animation-delay: .4s; }
     .portal-card:nth-child(3) { animation-delay: .5s; }
     .portal-card:nth-child(4) { animation-delay: .6s; }
 
-    .portal-card::before {
-      content: ""; position: absolute; top: 0; left: 0; right: 0; height: 3px; z-index: 2;
-      border-radius: 22px 22px 0 0;
-    }
+    .portal-card::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 3px; z-index: 2; border-radius: 22px 22px 0 0; }
     .portal-orange::before { background: linear-gradient(90deg, var(--orange), var(--orange-dark)); }
-    .portal-green::before { background: linear-gradient(90deg, var(--green), var(--green-dark)); }
-    .portal-duo::before { background: linear-gradient(90deg, var(--orange), var(--green)); }
+    .portal-green::before  { background: linear-gradient(90deg, var(--green), var(--green-dark)); }
+    .portal-yellow::before { background: linear-gradient(90deg, var(--yellow), var(--yellow-dark)); }
+    .portal-blue::before   { background: linear-gradient(90deg, #2F80ED, var(--blue-dark)); }
 
-    .portal-card:hover { 
-      transform: translateY(-6px); 
-      box-shadow: 0 24px 48px -18px rgba(26,23,20,0.2);
-      background: rgba(255,255,255,0.95);
-    }
-    .portal-card:focus-visible { outline: 3px solid var(--orange); outline-offset: 3px; }
+    .portal-card:hover { transform: translateY(-6px); box-shadow: 0 24px 48px -18px rgba(26,23,20,0.2); background: rgba(255,255,255,0.95); }
+    .portals.has-expanded .portal-card:hover { transform: none; }
 
-    /* ----- gambar background lebih subtle ----- */
     .card-media {
-      position: absolute; inset: 0; z-index: 0;
-      background-size: cover; background-position: center;
-      opacity: 0.12;
-      -webkit-mask-image: linear-gradient(135deg, transparent 15%, black 80%);
-              mask-image: linear-gradient(135deg, transparent 15%, black 80%);
-      transition: transform .6s ease, opacity .4s ease;
-      pointer-events: none;
+      position: absolute; inset: 0; z-index: 0; background-size: cover; background-position: center; opacity: 0.12;
+      -webkit-mask-image: linear-gradient(135deg, transparent 15%, black 80%); mask-image: linear-gradient(135deg, transparent 15%, black 80%);
+      transition: transform .6s ease, opacity .4s ease; pointer-events: none;
     }
-    .portal-card .card-media {
-      background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="400" height="300"><rect width="400" height="300" fill="%23f0ede8"/><circle cx="200" cy="120" r="70" fill="%23e3ddd3"/><circle cx="140" cy="200" r="50" fill="%23d6cfc2"/><circle cx="260" cy="200" r="50" fill="%23d6cfc2"/></svg>');
-    }
-
+    .portal-card .card-media { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="400" height="300"><rect width="400" height="300" fill="%23f0ede8"/><circle cx="200" cy="120" r="70" fill="%23e3ddd3"/><circle cx="140" cy="200" r="50" fill="%23d6cfc2"/><circle cx="260" cy="200" r="50" fill="%23d6cfc2"/></svg>'); }
     .portal-card:hover .card-media { transform: scale(1.08); opacity: 0.18; }
-
     .portal-card > *:not(.card-media) { position: relative; z-index: 1; }
 
-    /* icon arch */
     .portal-arch {
-      width: 60px; height: 72px; border-radius: 50% 50% 14px 14px;
-      display: flex; align-items: center; justify-content: center;
-      margin-bottom: 20px; transition: box-shadow .3s ease, transform .3s ease;
+      width: 54px; height: 64px; border-radius: 50% 50% 14px 14px;
+      display: flex; align-items: center; justify-content: center; margin-bottom: 14px; flex-shrink: 0;
+      transition: box-shadow .3s ease, transform .3s ease;
     }
     .portal-orange .portal-arch { background: rgba(232,106,23,0.10); color: var(--orange-dark); }
-    .portal-green .portal-arch { background: rgba(42,94,58,0.10); color: var(--green-dark); }
-    .portal-duo .portal-arch { background: rgba(232,106,23,0.08); color: var(--ink); }
-    .portal-arch svg { width: 26px; height: 26px; }
+    .portal-green .portal-arch  { background: rgba(42,94,58,0.10);  color: var(--green-dark); }
+    .portal-yellow .portal-arch { background: rgba(228,167,10,0.14); color: var(--yellow-dark); }
+    .portal-blue .portal-arch   { background: rgba(31,111,235,0.10); color: var(--blue-dark); }
+    .portal-arch svg { width: 24px; height: 24px; }
 
-    .portal-orange:hover .portal-arch { box-shadow: 0 0 0 8px rgba(232,106,23,0.08); transform: scale(1.05); }
-    .portal-green:hover .portal-arch { box-shadow: 0 0 0 8px rgba(42,94,58,0.08); transform: scale(1.05); }
-    .portal-duo:hover .portal-arch { box-shadow: 0 0 0 8px rgba(26,23,20,0.06); transform: scale(1.05); }
+    .portal-card h2 { font-family: var(--font-display); font-size: clamp(1.05rem, 1.4vw, 1.28rem); font-weight: 700; margin-bottom: 6px; }
 
-    .portal-card h2 {
-      font-family: var(--font-display); font-size: 1.28rem; font-weight: 700; margin-bottom: 8px;
-    }
+    /* deskripsi tersembunyi saat kompak, mengembang saat aktif */
     .portal-card p {
-      font-size: 0.94rem; color: var(--ink-soft); flex-grow: 1; margin-bottom: 22px;
-      line-height: 1.6;
+      font-size: clamp(0.9rem, 1vw, 1.02rem); color: var(--ink-soft); line-height: 1.6;
+      max-height: 0; opacity: 0; margin: 0; overflow: hidden;
     }
-    .portal-footer {
-      display: flex; align-items: center; justify-content: space-between;
-      padding-top: 16px; border-top: 1px solid rgba(26,23,20,0.06); margin-top: auto;
-    }
-    .domain { font-size: 0.78rem; color: var(--ink-soft); font-weight: 500; letter-spacing: 0.2px; }
-    .go-arrow {
-      width: 32px; height: 32px; border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      transition: background .25s ease, color .25s ease, transform .25s ease;
-      flex-shrink: 0;
-    }
+    .portal-card.active p { max-height: 1000px; opacity: 1; margin: 8px 0 16px; }
+
+    .portal-footer { order: 2; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-top: 12px; border-top: 1px solid rgba(26,23,20,0.06); margin-top: auto; }
+    .domain { font-size: 0.8rem; color: var(--ink-soft); font-weight: 500; letter-spacing: 0.2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .go-arrow { width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: background .25s ease, color .25s ease, transform .25s ease; }
     .go-arrow svg { width: 16px; height: 16px; }
     .portal-orange .go-arrow { background: rgba(232,106,23,0.08); color: var(--orange-dark); }
-    .portal-green .go-arrow { background: rgba(42,94,58,0.08); color: var(--green-dark); }
-    .portal-duo .go-arrow { background: rgba(232,106,23,0.08); color: var(--ink); }
-
+    .portal-green .go-arrow  { background: rgba(42,94,58,0.08);  color: var(--green-dark); }
+    .portal-yellow .go-arrow { background: rgba(228,167,10,0.12); color: var(--yellow-dark); }
+    .portal-blue .go-arrow   { background: rgba(31,111,235,0.08); color: var(--blue-dark); }
     .portal-orange:hover .go-arrow { background: var(--orange); color: #fff; transform: translateX(3px); }
-    .portal-green:hover .go-arrow { background: var(--green); color: #fff; transform: translateX(3px); }
-    .portal-duo:hover .go-arrow { background: var(--ink); color: #fff; transform: translateX(3px); }
+    .portal-green:hover .go-arrow  { background: var(--green);  color: #fff; transform: translateX(3px); }
+    .portal-yellow:hover .go-arrow { background: var(--yellow); color: #fff; transform: translateX(3px); }
+    .portal-blue:hover .go-arrow   { background: var(--blue);   color: #fff; transform: translateX(3px); }
 
-    /* ----- Mail (biru) ----- */
-    .portal-blue::before { background: linear-gradient(90deg, #2f80ed, #1554c0); }
-    .portal-blue .portal-arch { background: rgba(31,111,235,0.10); color: #1554c0; }
-    .portal-blue:hover .portal-arch { box-shadow: 0 0 0 8px rgba(31,111,235,0.08); transform: scale(1.05); }
-    .portal-blue .go-arrow { background: rgba(31,111,235,0.08); color: #1554c0; }
-    .portal-blue:hover .go-arrow { background: #1f6feb; color: #fff; transform: translateX(3px); }
-    .portal-blue:focus-visible { outline-color: #1f6feb; }
+    /* ===== state: kartu aktif (mengembang menutupi grid) ===== */
+    .portal-card.active { z-index: 10; background: #fff; box-shadow: 0 40px 80px -30px rgba(26,23,20,0.45); }
+    .portals.has-expanded .portal-card:not(.active) { opacity: 0; pointer-events: none; }
+
+    .open-hint {
+      order: 1; display: flex; align-items: center; gap: 6px; margin-top: 12px;
+      font-size: 0.9rem; font-weight: 600; color: var(--ink-soft);
+      max-height: 0; opacity: 0; overflow: hidden;
+    }
+    .portal-card.active .open-hint { max-height: 40px; opacity: 1; }
+    .open-hint svg { width: 15px; height: 15px; }
+
+    /* tombol back di pojok grid */
+    .grid-back {
+      position: absolute; top: 14px; right: 14px; z-index: 12;
+      width: 42px; height: 42px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(255,255,255,0.92); border: 1px solid var(--border); color: var(--ink);
+      cursor: pointer; box-shadow: 0 8px 20px -10px rgba(0,0,0,0.35); backdrop-filter: blur(6px);
+      opacity: 0; transform: scale(.7); pointer-events: none;
+      transition: opacity .25s ease, transform .25s var(--ease), background .2s ease;
+    }
+    .grid-back svg { width: 20px; height: 20px; }
+    .grid-back:hover { background: #fff; }
+    .portals.has-expanded .grid-back { opacity: 1; transform: scale(1); pointer-events: auto; }
 
     /* footer */
-    footer {
-      text-align: center; padding: 26px 24px 40px;
-      color: var(--ink-soft); font-size: 0.82rem;
-      opacity: 0.7;
-    }
+    footer { text-align: center; padding: 14px 24px 22px; color: var(--ink-soft); font-size: 0.82rem; opacity: 0.7; }
 
-    /* ===== transition overlay ===== */
-    .transition-overlay {
-      position: fixed; inset: 0; z-index: 999; pointer-events: none;
-      background: var(--overlay-color, var(--orange));
-      clip-path: circle(0px at var(--x, 50%) var(--y, 50%));
-      transition: clip-path .62s cubic-bezier(.65,0,.35,1);
-    }
-    .transition-overlay.expand {
-      clip-path: circle(150% at var(--x, 50%) var(--y, 50%));
-    }
-    .transition-overlay .overlay-mark {
-      position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%) scale(.6);
-      opacity: 0; transition: opacity .3s ease .25s, transform .4s ease .25s;
-      font-family: var(--font-display); font-weight: 700; color: #fff; font-size: 1.05rem;
-      display: flex; align-items: center; gap: 8px; white-space: nowrap;
-    }
-    .transition-overlay.expand .overlay-mark { opacity: 1; transform: translate(-50%,-50%) scale(1); }
-    .overlay-mark .spinner {
-      width: 18px; height: 18px; border-radius: 50%;
-      border: 2.5px solid rgba(255,255,255,0.35); border-top-color: #fff;
-      animation: spin .7s linear infinite;
-    }
+    /* ===== transition overlay (buka halaman) ===== */
+    .transition-overlay { position: fixed; inset: 0; z-index: 999; pointer-events: none; background: var(--overlay-color, var(--orange)); display: flex; align-items: center; justify-content: center; clip-path: circle(0% at 50% 50%); transition: clip-path .55s cubic-bezier(.65,0,.35,1); }
+    .transition-overlay.show { clip-path: circle(150% at 50% 50%); }
+    .overlay-mark { display: flex; align-items: center; gap: 10px; color: #fff; font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; opacity: 0; transform: scale(.85); transition: opacity .3s ease .18s, transform .3s ease .18s; }
+    .transition-overlay.show .overlay-mark { opacity: 1; transform: scale(1); }
+    .overlay-mark .spinner { width: 18px; height: 18px; border-radius: 50%; border: 2.5px solid rgba(255,255,255,0.35); border-top-color: #fff; animation: spin .7s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ===== responsive ===== */
-    @media (max-width: 860px) {
-      .site-header { padding-top: 22px; }
-      .portals { gap: 16px; }
-      .portal-card { padding: 24px 20px; }
+    /* ===== responsive: mobile juga 2x2 + expand ===== */
+    @media (max-width: 900px) {
+      .stage { flex: none; flex-direction: column; justify-content: flex-start; align-items: center; gap: 6px; padding: 78px 20px 22px; }
+      .hero-side { flex: none; max-width: 560px; width: 100%; text-align: center; }
+      .hero-left { order: 1; }
+      .hero-right { order: 2; margin-bottom: 18px; }
+      .hero-side .hero-title-wrapper { margin: 0; }
+      .hero-side .hero-title-wrapper h1 { font-size: clamp(2.2rem, 9vw, 3rem); }
+      .portals { order: 3; --size: min(92vw, 460px); }
+      .domain { opacity: 1; }
+      .portal-arch { width: 50px; height: 60px; margin-bottom: 10px; }
+      .portal-card h2 { font-size: 1.02rem; }
     }
-
-    @media (max-width: 620px) {
-      .hero { padding: 36px 20px 28px; }
-      .portals {
-        grid-template-columns: 1fr;
-        gap: 18px;
-        padding: 0 20px 24px;
-      }
-      .portal-card {
-        display: flex;
-        flex-direction: column;
-        padding: 22px 22px 22px;
-        border-radius: 20px;
-        text-align: left;
-        min-height: 180px;
-        background: rgba(255,255,255,0.9);
-      }
-      .portal-card .card-media {
-        opacity: 0.10;
-        -webkit-mask-image: linear-gradient(135deg, transparent 10%, black 75%);
-        mask-image: linear-gradient(135deg, transparent 10%, black 75%);
-      }
-      .portal-arch {
-        width: 56px;
-        height: 56px;
-        border-radius: 16px;
-        margin-bottom: 14px;
-      }
-      .portal-arch svg { width: 24px; height: 24px; }
-      .portal-card h2 {
-        font-size: 1.2rem;
-        margin-bottom: 6px;
-      }
-      .portal-card p {
-        font-size: 0.92rem;
-        line-height: 1.5;
-        margin-bottom: 18px;
-        flex-grow: 1;
-        display: block;
-        -webkit-line-clamp: unset;
-        -webkit-box-orient: unset;
-        overflow: visible;
-        max-height: none;
-      }
-      .portal-footer {
-        border-top: 1px solid rgba(26,23,20,0.06);
-        padding-top: 14px;
-        margin-top: 0;
-        justify-content: space-between;
-      }
-      .domain {
-        display: block;
-        font-size: 0.76rem;
-      }
-      .go-arrow {
-        width: 36px;
-        height: 36px;
-      }
-      .go-arrow svg { width: 17px; height: 17px; }
-      .hero-title-wrapper::after {
-        display: none;
-      }
-    }
-
-    @media (max-width: 380px) {
-      .portal-card { padding: 18px 18px; }
-      .portal-card h2 { font-size: 1.05rem; }
-      .portal-card p { font-size: 0.85rem; }
-      .portal-arch { width: 48px; height: 48px; }
+    @media (max-width: 480px) {
+      .site-header { padding: 16px 18px 0; }
+      .stage { padding: 72px 16px 30px; }
+      .portals { --size: min(94vw, 400px); gap: 11px; }
+      .portal-card { border-radius: 18px; padding: 14px; }
+      .portal-arch { width: 44px; height: 52px; margin-bottom: 8px; }
       .portal-arch svg { width: 20px; height: 20px; }
+      .portal-card h2 { font-size: 0.96rem; }
+      .portal-footer { padding-top: 8px; }
+      .domain { font-size: 0.68rem; }
+      .go-arrow { width: 30px; height: 30px; }
+      .go-arrow svg { width: 15px; height: 15px; }
     }
 
-    @media (prefers-reduced-motion: reduce) {
-      * { animation: none !important; transition: none !important; }
-    }
+    @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
   </style>
 </head>
 <body>
@@ -497,187 +310,213 @@
 
   <header class="site-header">
     <div class="logo">
-      <span class="logo-mark">
-        <!-- GANTI src="logo.png" DENGAN FILE LOGO ANDA -->
-        <img src="favicon.png" alt="Logo Portal SI">
-      </span>
+      <span class="logo-mark"><img src="favicon.png" alt="Logo Portal SI"></span>
       <span>Portal <span class="si">SI</span></span>
     </div>
-    <div class="header-actions">
-      <a class="help-btn" href="https://wa.me/6281350880733" aria-label="Bantuan dan FAQ">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <circle cx="12" cy="12" r="10"></circle>
-          <path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.4-1.2 1.9-1.9 2.7-.4.5-.6 1-.6 1.55"></path>
-          <circle cx="12" cy="17" r=".6" fill="currentColor" stroke="none"></circle>
-        </svg>
-        Bantuan
-      </a>
-    </div>
+    <a class="help-btn" href="https://wa.me/6281350880733?text=Assalamu%27alaikum%20wr.%20wb.%20%F0%9F%99%8F%0A%0ASaya%20ingin%20bertanya%20seputar%20layanan%20Portal%20SI.%20Boleh%20dibantu%3F%20Terima%20kasih%20sebelumnya." target="_blank" rel="noopener" aria-label="Bantuan via WhatsApp">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="10"></circle>
+        <path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.4-1.2 1.9-1.9 2.7-.4.5-.6 1-.6 1.55"></path>
+        <circle cx="12" cy="17" r=".6" fill="currentColor" stroke="none"></circle>
+      </svg>
+      Bantuan
+    </a>
   </header>
 
-  <main>
-    <section class="hero">
-      <p class="greeting">Assalamu'alaikum 👋</p>
+  <main class="stage">
 
-      <div class="hero-title-wrapper">
-        <h1>
-          Satu Portal,<br>
-          <span class="accent-text">All In One.</span>
-        </h1>
-      </div>
-
-      <p class="sub">
-        Pilih layanan yang Anda butuhkan, <span class="sub-highlight">semua dalam satu tempat.</span>
-      </p>
-    </section>
+    <div class="hero-side hero-left">
+      <div class="hero-title-wrapper"><h1>Satu Portal,</h1></div>
+    </div>
 
     <section class="portals" aria-label="Pilih layanan Portal SI">
 
-      <!-- CARD 1 : APP -->
-      <a class="portal-card portal-orange" href="https://app.portalsi.com/" data-label="Membuka Aplikasi" aria-label="Masuk ke Portal SI App">
+      <a class="portal-card portal-orange" href="https://app.portalsi.com/" data-label="Membuka Aplikasi" aria-label="Portal SI App">
         <div class="card-media" style="background-image: url('app.webp');" aria-hidden="true"></div>
         <div class="portal-arch">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M9 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3"></path>
-            <path d="M13 16l4-4-4-4"></path>
-            <path d="M17 12H4"></path>
-          </svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3"></path><path d="M13 16l4-4-4-4"></path><path d="M17 12H4"></path></svg>
         </div>
         <h2>Portal SI App</h2>
         <p>Media sosial Islami yang menghubungkan silaturahmi, berbagi inspirasi, dan bertumbuh dalam kebaikan.</p>
         <div class="portal-footer">
           <span class="domain">app.portalsi.com</span>
-          <span class="go-arrow">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M5 12h14"></path><path d="M13 6l6 6-6 6"></path>
-            </svg>
-          </span>
+          <span class="go-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"></path><path d="M13 6l6 6-6 6"></path></svg></span>
         </div>
+        <span class="open-hint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M13 6l6 6-6 6"></path></svg> Ketuk lagi untuk membuka</span>
       </a>
 
-      <!-- CARD 2 : MEET -->
-      <a class="portal-card portal-green" href="https://meet.portalsi.com/" data-label="Membuka Meet" aria-label="Buka Portal SI Meet">
+      <a class="portal-card portal-green" href="https://meet.portalsi.com/" data-label="Membuka Meet" aria-label="Portal SI Meet">
         <div class="card-media" style="background-image: url('meet.webp');" aria-hidden="true"></div>
         <div class="portal-arch">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M23 7l-7 5 7 5V7z"></path>
-            <rect x="1" y="5" width="15" height="14" rx="2.5"></rect>
-          </svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 7l-7 5 7 5V7z"></path><rect x="1" y="5" width="15" height="14" rx="2.5"></rect></svg>
         </div>
         <h2>Portal SI Meet</h2>
         <p>Video meeting open source, instan dan gratis. Host login pakai akun Portal SI, peserta bisa gabung cukup dengan nama.</p>
         <div class="portal-footer">
           <span class="domain">meet.portalsi.com</span>
-          <span class="go-arrow">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M5 12h14"></path><path d="M13 6l6 6-6 6"></path>
-            </svg>
-          </span>
+          <span class="go-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"></path><path d="M13 6l6 6-6 6"></path></svg></span>
         </div>
+        <span class="open-hint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M13 6l6 6-6 6"></path></svg> Ketuk lagi untuk membuka</span>
       </a>
 
-      <!-- CARD 3 : MARKETPLACE -->
-      <a class="portal-card portal-duo" href="https://marketplace.portalsi.com/" data-label="Membuka Marketplace" aria-label="Buka Marketplace">
+      <a class="portal-card portal-yellow" href="https://marketplace.portalsi.com/" data-label="Membuka Marketplace" aria-label="Marketplace">
         <div class="card-media" style="background-image: url('marketplace.webp');" aria-hidden="true"></div>
         <div class="portal-arch">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
-            <path d="M3 6h18"></path>
-            <path d="M16 10a4 4 0 0 1-8 0"></path>
-          </svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
         </div>
         <h2>Marketplace</h2>
         <p>Marketplace terpercaya untuk menemukan produk, jasa, dan kebutuhan komunitas dalam satu tempat.</p>
         <div class="portal-footer">
           <span class="domain">marketplace.portalsi.com</span>
-          <span class="go-arrow">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M5 12h14"></path><path d="M13 6l6 6-6 6"></path>
-            </svg>
-          </span>
+          <span class="go-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"></path><path d="M13 6l6 6-6 6"></path></svg></span>
         </div>
+        <span class="open-hint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M13 6l6 6-6 6"></path></svg> Ketuk lagi untuk membuka</span>
       </a>
 
-      <!-- CARD 4 : MAIL -->
-      <a class="portal-card portal-blue" href="https://mail.portalsi.com/" data-label="Membuka Mail" aria-label="Buka Portal SI Mail">
+      <a class="portal-card portal-blue" href="https://mail.portalsi.com/" data-label="Membuka Mail" aria-label="Portal SI Mail">
         <div class="card-media" style="background-image: url('mail.webp');" aria-hidden="true"></div>
         <div class="portal-arch">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <rect x="2" y="4" width="20" height="16" rx="2"></rect>
-            <path d="M2 7l10 6 10-6"></path>
-          </svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="M2 7l10 6 10-6"></path></svg>
         </div>
         <h2>Portal SI Mail</h2>
-        <p>Email resmi komunitas dengan domain sendiri — kirim, terima, dan kelola pesan @portalsi.com.</p>
+        <p>Email komunitas untuk tetap terhubung, berbagi informasi, dan berkolaborasi dengan lebih mudah.</p>
         <div class="portal-footer">
           <span class="domain">mail.portalsi.com</span>
-          <span class="go-arrow">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M5 12h14"></path><path d="M13 6l6 6-6 6"></path>
-            </svg>
-          </span>
+          <span class="go-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"></path><path d="M13 6l6 6-6 6"></path></svg></span>
         </div>
+        <span class="open-hint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M13 6l6 6-6 6"></path></svg> Ketuk lagi untuk membuka</span>
       </a>
 
     </section>
+
+    <div class="hero-side hero-right">
+      <div class="hero-title-wrapper"><h1><span class="accent-text">All In One.</span></h1></div>
+    </div>
+
   </main>
 
-  <footer>
-    <p>© 2026 Portal SI. All rights reserved.</p>
-  </footer>
+  <footer><p>© 2026 Portal SI. All rights reserved.</p></footer>
 
   <script>
-    (function() {
-      const cards = document.querySelectorAll('.portal-card');
+    (function () {
+      const portals = document.querySelector('.portals');
+      const cards = Array.from(document.querySelectorAll('.portal-card'));
       const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const themeColor = { 'portal-orange': 'var(--orange)', 'portal-green': 'var(--green)', 'portal-yellow': 'var(--yellow-dark)', 'portal-blue': 'var(--blue)' };
+      let active = null, busy = false;
 
-      cards.forEach(function(card) {
-        card.addEventListener('click', function(e) {
-          const href = card.getAttribute('href');
-          if (!href) return;
-          e.preventDefault();
+      // Tombol back di pojok grid
+      const backBtn = document.createElement('button');
+      backBtn.className = 'grid-back';
+      backBtn.type = 'button';
+      backBtn.setAttribute('aria-label', 'Kembali');
+      backBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"></path></svg>';
+      portals.appendChild(backBtn);
+      backBtn.addEventListener('click', function (e) { e.stopPropagation(); collapse(); });
 
-          const label = card.getAttribute('data-label') || 'Membuka portal…';
-
-          if (reduceMotion) {
-            window.location.href = href;
-            return;
-          }
-
-          const rect = card.getBoundingClientRect();
-          const x = rect.left + rect.width / 2;
-          const y = rect.top + rect.height / 2;
-
-          let color = 'var(--orange)';
-          if (card.classList.contains('portal-green')) color = 'var(--green)';
-          if (card.classList.contains('portal-duo')) color = 'var(--ink)';
-
-          const overlay = document.createElement('div');
-          overlay.className = 'transition-overlay';
-          overlay.style.setProperty('--x', x + 'px');
-          overlay.style.setProperty('--y', y + 'px');
-          overlay.style.setProperty('--overlay-color', color);
-
-          const mark = document.createElement('div');
-          mark.className = 'overlay-mark';
-          mark.innerHTML = '<span class="spinner"></span><span>' + label + '…</span>';
-          overlay.appendChild(mark);
-
-          document.body.appendChild(overlay);
-
-          requestAnimationFrame(function() {
-            requestAnimationFrame(function() {
-              overlay.classList.add('expand');
-            });
-          });
-
-          setTimeout(function() {
-            window.location.href = href;
-          }, 640);
+      // Bekukan keempat kartu di posisi selnya (mencegah grid reflow saat satu kartu diangkat).
+      function freeze() {
+        const pr = portals.getBoundingClientRect();
+        const rects = cards.map(function (c) {
+          const r = c.getBoundingClientRect();
+          return { t: r.top - pr.top, l: r.left - pr.left, w: r.width, h: r.height };
         });
+        cards.forEach(function (c, i) {
+          c._r = rects[i];
+          c.style.position = 'absolute';
+          c.style.margin = '0';
+          c.style.top = rects[i].t + 'px';
+          c.style.left = rects[i].l + 'px';
+          c.style.width = rects[i].w + 'px';
+          c.style.height = rects[i].h + 'px';
+        });
+      }
+      function reset() {
+        cards.forEach(function (c) {
+          c.style.transition = 'none';
+          c.style.position = c.style.margin = c.style.top = c.style.left = c.style.width = c.style.height = c.style.transform = c.style.transformOrigin = '';
+          void c.offsetWidth;
+          c.style.transition = '';
+        });
+      }
+      // Transform yang membuat kartu (yang sudah seukuran grid) tampak persis di selnya.
+      function flip(card) {
+        const r = card._r, fw = portals.clientWidth, fh = portals.clientHeight;
+        return 'translate(' + r.l + 'px,' + r.t + 'px) scale(' + (r.w / fw) + ',' + (r.h / fh) + ')';
+      }
+      function expand(card) {
+        if (busy || active) return;
+        busy = true;
+        freeze();
+        card.classList.add('active');
+        card.style.transformOrigin = '0 0';
+        card.style.transition = 'none';
+        card.style.top = '0px';
+        card.style.left = '0px';
+        card.style.width = portals.clientWidth + 'px';
+        card.style.height = portals.clientHeight + 'px';
+        card.style.transform = flip(card);
+        portals.classList.add('has-expanded');
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () {
+            card.style.transition = '';
+            card.style.transform = 'translate(0px,0px) scale(1,1)';
+            active = card;
+            setTimeout(function () { busy = false; }, 440);
+          });
+        });
+      }
+      function collapse() {
+        if (!active || busy) return;
+        busy = true;
+        const card = active;
+        active = null;
+        card.classList.remove('active');
+        portals.classList.remove('has-expanded');
+        card.style.transform = flip(card);
+        setTimeout(function () { reset(); busy = false; }, 440);
+      }
+      function navigate(card) {
+        const href = card.getAttribute('href');
+        if (!href) return;
+        if (reduceMotion) { window.location.href = href; return; }
+        const cls = ['portal-orange', 'portal-green', 'portal-yellow', 'portal-blue'].find(function (k) { return card.classList.contains(k); });
+        const ov = document.createElement('div');
+        ov.className = 'transition-overlay';
+        ov.style.setProperty('--overlay-color', themeColor[cls] || 'var(--orange)');
+        ov.innerHTML = '<div class="overlay-mark"><span class="spinner"></span><span>' + (card.getAttribute('data-label') || 'Membuka') + '…</span></div>';
+        document.body.appendChild(ov);
+        requestAnimationFrame(function () { requestAnimationFrame(function () { ov.classList.add('show'); }); });
+        setTimeout(function () { window.location.href = href; }, 600);
+      }
+
+      cards.forEach(function (card) {
+        card.addEventListener('click', function (e) {
+          e.preventDefault();
+          if (busy) return;
+          if (card === active) navigate(card);
+          else if (active) return;
+          else if (reduceMotion) navigate(card);
+          else expand(card);
+        });
+      });
+
+      function forceClose() {
+        document.querySelectorAll('.transition-overlay').forEach(function (el) { el.remove(); });
+        cards.forEach(function (c) { c.classList.remove('active'); });
+        active = null; busy = false;
+        portals.classList.remove('has-expanded');
+        reset();
+      }
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape') collapse(); });
+      window.addEventListener('resize', function () { if (active) forceClose(); });
+      // Kembali (back) dari subdomain: kalau halaman dipulihkan dari bfcache,
+      // muat ulang agar benar-benar fresh (tidak ada sisa modal/overlay).
+      window.addEventListener('pageshow', function (e) {
+        if (e.persisted) { window.location.reload(); return; }
+        forceClose();
       });
     })();
   </script>
-
 </body>
 </html>
