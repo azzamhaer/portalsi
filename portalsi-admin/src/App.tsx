@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
-import type { ElementType, ReactNode } from 'react';
+import type { CSSProperties, ElementType, ReactNode } from 'react';
 import {
   Activity,
   Ban,
@@ -11,6 +11,7 @@ import {
   FileText,
   Gavel,
   Lock,
+  Mail,
   LogOut,
   Menu,
   MessageSquare,
@@ -41,7 +42,7 @@ const PORTAL_API = (import.meta.env.VITE_PORTALSI_API_URL || 'https://api..porta
 const MEET_API = (import.meta.env.VITE_MEET_API_URL || 'https://meet.portalsi.com/api').replace(/\/+$/, '');
 const STORAGE_KEY = 'portalsi-admin-session';
 
-type Tab = 'dashboard' | 'users' | 'admins' | 'chats' | 'content' | 'moderation' | 'policies' | 'meet' | 'appeals' | 'security' | 'audit';
+type Tab = 'dashboard' | 'users' | 'admins' | 'chats' | 'content' | 'moderation' | 'policies' | 'mail' | 'meet' | 'appeals' | 'security' | 'audit';
 
 interface DialogOpts {
   title: string;
@@ -111,6 +112,10 @@ const navGroups: Array<{ heading: string; items: NavItem[] }> = [
   {
     heading: 'Kebijakan',
     items: [{ id: 'policies', label: 'Popup Kebijakan', icon: ScrollText }],
+  },
+  {
+    heading: 'Mail',
+    items: [{ id: 'mail', label: 'Portal SI Mail', icon: Mail }],
   },
   {
     heading: 'Sistem',
@@ -224,6 +229,8 @@ export function App() {
   const [moderationRows, setModerationRows] = useState<any[]>([]);
   const [policiesRows, setPoliciesRows] = useState<any[]>([]);
   const [editingPolicy, setEditingPolicy] = useState<any | 'new' | null>(null);
+  const [mailSettings, setMailSettings] = useState<{ gate_enabled: boolean; has_master_password: boolean; accounts_count?: number } | null>(null);
+  const [mailAccounts, setMailAccounts] = useState<any[]>([]);
   const [previewPolicy, setPreviewPolicy] = useState<any | null>(null);
   const [acceptancePolicy, setAcceptancePolicy] = useState<any | null>(null);
   const [rooms, setRooms] = useState<any[]>([]);
@@ -363,6 +370,25 @@ export function App() {
     });
   }
 
+  async function loadMail() {
+    const [settings, accounts] = await Promise.all([
+      portal<{ gate_enabled: boolean; has_master_password: boolean; accounts_count?: number }>(`/admin-panel/mail/settings`),
+      portal<PageResult<any>>(`/admin-panel/mail/accounts?per_page=100`),
+    ]);
+    setMailSettings(settings);
+    setMailAccounts(accounts.data || []);
+  }
+
+  async function saveMailSettings(patch: { gate_enabled?: boolean; master_password?: string; clear_master_password?: boolean }) {
+    await run('Pengaturan mail disimpan', async () => {
+      const body: any = { gate_enabled: patch.gate_enabled ?? mailSettings?.gate_enabled ?? true };
+      if (patch.master_password) body.master_password = patch.master_password;
+      if (patch.clear_master_password) body.clear_master_password = true;
+      await portal(`/admin-panel/mail/settings`, { method: 'PUT', body: JSON.stringify(body) });
+      await loadMail();
+    });
+  }
+
   async function loadRooms() {
     const query = new URLSearchParams({ limit: '100' });
     if (roomSearch.trim()) query.set('search', roomSearch.trim());
@@ -464,6 +490,7 @@ export function App() {
       if (tab === 'content') await loadContent();
       if (tab === 'moderation') await loadModeration();
       if (tab === 'policies') await loadPolicies();
+      if (tab === 'mail') await loadMail();
       if (tab === 'meet') await loadRooms();
       if (tab === 'appeals') await loadAppeals();
       if (tab === 'security') await loadSecurity();
@@ -928,6 +955,24 @@ export function App() {
             onToggle={togglePolicy}
             onPreview={(p) => setPreviewPolicy(p)}
             onAcceptances={(p) => setAcceptancePolicy(p)}
+          />
+        )}
+        {tab === 'mail' && (
+          <MailPanel
+            settings={mailSettings}
+            accounts={mailAccounts}
+            reload={() => run('', loadMail)}
+            onToggleGate={(enabled) => saveMailSettings({ gate_enabled: enabled })}
+            onSetPassword={async () => {
+              const val = await askDialog({ title: 'Set master password', message: 'Password yang harus dimasukkan pengguna beta untuk membuka setup email & webmail. Minimal 4 karakter.', input: true, inputLabel: 'Master password baru', inputPlaceholder: '********', inputRequired: true, confirmLabel: 'Simpan' });
+              if (val === null) return;
+              await saveMailSettings({ master_password: val });
+            }}
+            onClearPassword={async () => {
+              const ok = await askDialog({ title: 'Hapus master password?', message: 'Gate tetap aktif, tapi tanpa password tidak ada pengguna yang bisa lolos sampai kamu set lagi.', confirmLabel: 'Hapus', danger: true });
+              if (ok === null) return;
+              await saveMailSettings({ clear_master_password: true });
+            }}
           />
         )}
         {tab === 'meet' && (
@@ -2037,6 +2082,106 @@ function PoliciesPanel(props: {
           ))}
           {props.rows.length === 0 && (
             <tr><td colSpan={7} className="empty-cell">Belum ada kebijakan. Klik "Buat kebijakan" untuk memulai.</td></tr>
+          )}
+        </tbody>
+      </Table>
+    </section>
+  );
+}
+
+function MailPanel(props: {
+  settings: { gate_enabled: boolean; has_master_password: boolean; accounts_count?: number } | null;
+  accounts: any[];
+  reload: () => void;
+  onToggleGate: (enabled: boolean) => void;
+  onSetPassword: () => void;
+  onClearPassword: () => void;
+}) {
+  const s = props.settings;
+  const rowStyle: CSSProperties = {
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    gap: 16, flexWrap: 'wrap', padding: 16,
+    border: '1px solid var(--border, #e5e7eb)', borderRadius: 12,
+    background: 'var(--surface, #fff)',
+  };
+  const descStyle: CSSProperties = { margin: '4px 0 0', color: 'var(--muted, #6b7280)', fontSize: 13, maxWidth: 620 };
+
+  return (
+    <section className="panel">
+      <Header
+        title="Portal SI Mail"
+        subtitle="Kelola gate master password (mode beta) dan pantau akun email @portalsi.com yang dibuat pengguna."
+        action={
+          <div className="header-actions">
+            <button className="secondary-button" onClick={props.reload}><RefreshCw size={16} /> Muat ulang</button>
+          </div>
+        }
+      />
+
+      <div style={{ display: 'grid', gap: 14, marginBottom: 20 }}>
+        <div style={rowStyle}>
+          <div>
+            <strong>Gate master password</strong>
+            <p style={descStyle}>Bila aktif, pengguna wajib memasukkan master password setelah login sebelum bisa membuat email &amp; membuka webmail.</p>
+          </div>
+          <div className="header-actions">
+            {s ? (s.gate_enabled ? <Badge ok>Aktif</Badge> : <Badge>Nonaktif</Badge>) : <Badge>…</Badge>}
+            <button
+              className={s?.gate_enabled ? 'secondary-button' : 'primary-button'}
+              disabled={!s}
+              onClick={() => props.onToggleGate(!(s?.gate_enabled))}
+            >
+              <Power size={16} /> {s?.gate_enabled ? 'Nonaktifkan' : 'Aktifkan'}
+            </button>
+          </div>
+        </div>
+
+        <div style={rowStyle}>
+          <div>
+            <strong>Master password</strong>
+            <p style={descStyle}>
+              {s?.has_master_password
+                ? 'Sudah diset. Pengguna beta memakai password ini untuk lolos gate.'
+                : 'Belum diset — selama gate aktif tanpa password, tidak ada pengguna yang bisa lolos.'}
+            </p>
+          </div>
+          <div className="header-actions">
+            {s ? (s.has_master_password ? <Badge ok>Terpasang</Badge> : <Badge>Kosong</Badge>) : null}
+            <button className="primary-button" disabled={!s} onClick={props.onSetPassword}>
+              <Lock size={16} /> {s?.has_master_password ? 'Ganti' : 'Set'} password
+            </button>
+            {s?.has_master_password && (
+              <button className="secondary-button" onClick={props.onClearPassword}><Trash2 size={16} /> Hapus</button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <Table>
+        <thead>
+          <tr>
+            <th>Email</th>
+            <th>Pemilik (akun Portal SI)</th>
+            <th>Dibuat</th>
+          </tr>
+        </thead>
+        <tbody>
+          {props.accounts.map((a) => (
+            <tr key={a.id}>
+              <td><strong>{a.email}</strong></td>
+              <td>
+                {a.user ? (
+                  <div className="user-cell">
+                    <strong>{a.user.name || a.user.username}</strong>
+                    <span>@{a.user.username}{a.user.account_email ? ` · ${a.user.account_email}` : ''}</span>
+                  </div>
+                ) : <span>—</span>}
+              </td>
+              <td>{fmt(a.created_at)}</td>
+            </tr>
+          ))}
+          {props.accounts.length === 0 && (
+            <tr><td colSpan={3} className="empty-cell">Belum ada akun email yang dibuat pengguna.</td></tr>
           )}
         </tbody>
       </Table>
