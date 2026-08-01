@@ -882,13 +882,12 @@
 				</div>
 				<label class="ml">Nama tampilan (di email keluar)</label>
 				<button class="dark-toggle" onclick={() => (nameFollow = !nameFollow)}>
-					<span class="dt-left"><UserRound size={16} /> Ikuti nama akun{#if data.user?.full_name} ({data.user.full_name}){/if}</span>
+					<span class="dt-left"><UserRound size={16} /> Ikuti nama akun {#if data.user?.full_name} ({data.user.full_name}){/if}</span>
 					<span class="switch-ui" class:on={nameFollow}><span class="knob"></span></span>
 				</button>
 				{#if !nameFollow}
-					<input class="mi" bind:value={displayName} placeholder="Muhammad Fulan" />
+					<input class="mi" bind:value={displayName} placeholder="Tuliskan nama pengirim kustom..." />
 				{/if}
-				<p class="note">Tampil di kolom "Dari": <b>{effName || '(tanpa nama)'}</b></p>
 				<label class="ml">Alamat email</label>
 				<input class="mi" value={data.account?.email} readonly />
 				<p class="note">Alamat email tidak bisa diubah setelah dibuat.</p>
