@@ -202,4 +202,18 @@
 		font-weight: 600;
 		text-decoration: none;
 	}
+	:global(.spin) {
+		display: inline-block;
+		width: 18px;
+		height: 18px;
+		border-radius: 50%;
+		border: 2.4px solid rgba(255, 255, 255, 0.4);
+		border-top-color: #fff;
+		animation: spinbtn 0.7s linear infinite;
+	}
+	@keyframes -global-spinbtn {
+		to {
+			transform: rotate(360deg);
+		}
+	}
 </style>

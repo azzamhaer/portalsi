@@ -101,6 +101,24 @@ class MailController extends Controller
         ]);
     }
 
+    /**
+     * Kredensial mailbox (email + password terdekripsi) untuk dipakai server
+     * webmail (mail app) login IMAP/SMTP atas nama user. Hanya server-to-server;
+     * tidak pernah dikirim ke browser.
+     */
+    public function credentials(Request $request)
+    {
+        $account = MailAccount::where('user_id', (int) $request->user()->getKey())->first();
+        if (! $account) {
+            return response()->json(['message' => 'Belum ada akun email.'], 404);
+        }
+
+        return response()->json([
+            'email' => $account->email,
+            'password' => $account->password,
+        ]);
+    }
+
     /** Buat akun email @portalsi.com (maks 1 per user). */
     public function createAccount(Request $request)
     {

@@ -28,7 +28,9 @@
 			Password
 			<input name="password" type="password" autocomplete="current-password" required />
 		</label>
-		<button class="btn" disabled={submitting}>{submitting ? 'Memproses…' : 'Masuk'}</button>
+		<button class="btn" disabled={submitting}>
+			{#if submitting}<span class="spin"></span>{:else}Masuk{/if}
+		</button>
 	</form>
 
 	<p class="altlink">Belum punya akun? <a href="/register">Daftar</a></p>

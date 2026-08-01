@@ -40,7 +40,9 @@
 				Password
 				<input name="password" type="password" autocomplete="new-password" required />
 			</label>
-			<button class="btn orange" disabled={submitting}>{submitting ? 'Memproses…' : 'Daftar'}</button>
+			<button class="btn orange" disabled={submitting}>
+				{#if submitting}<span class="spin"></span>{:else}Daftar{/if}
+			</button>
 		</form>
 		<p class="altlink">Sudah punya akun? <a href="/login">Masuk</a></p>
 	{/if}

@@ -29,7 +29,9 @@
 			Master password
 			<input name="master_password" type="password" autocomplete="off" required autofocus />
 		</label>
-		<button class="btn" disabled={submitting}>{submitting ? 'Memeriksa…' : 'Buka akses'}</button>
+		<button class="btn" disabled={submitting}>
+			{#if submitting}<span class="spin"></span>{:else}Buka akses{/if}
+		</button>
 	</form>
 </div>
 

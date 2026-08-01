@@ -42,7 +42,9 @@
 			</span>
 		</label>
 		<p class="preview">Alamat: <b>{(local || 'namamu').toLowerCase()}@{data.domain}</b></p>
-		<button class="btn orange" disabled={submitting}>{submitting ? 'Membuat…' : 'Buat email'}</button>
+		<button class="btn orange" disabled={submitting}>
+			{#if submitting}<span class="spin"></span>{:else}Buat email{/if}
+		</button>
 	</form>
 </div>
 

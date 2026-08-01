@@ -132,3 +132,12 @@ export async function mailCreateAccount(
 		token
 	)) as { account: MailAccountInfo };
 }
+
+export interface MailboxCreds {
+	email: string;
+	password: string;
+}
+
+export async function mailCredentials(token: string): Promise<MailboxCreds> {
+	return (await req('/mail/credentials', { method: 'GET' }, token)) as MailboxCreds;
+}
