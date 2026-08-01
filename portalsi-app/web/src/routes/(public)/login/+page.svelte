@@ -16,12 +16,12 @@
 	const nextTarget = $derived(page.url.searchParams.get('next') ?? '');
 </script>
 
-<svelte:head><title>Masuk — Portal SI</title></svelte:head>
+<svelte:head><title>Masuk — Portal SI App</title></svelte:head>
 
 <AuthShell>
 	<div class="heading">
 		<p class="eyebrow">Selamat datang kembali</p>
-		<h1>Masuk ke Portal SI</h1>
+		<h1>Masuk ke Portal SI App</h1>
 		<p>Lanjutkan percakapan dan lihat kabar terbaru dari komunitas.</p>
 	</div>
 	{#if form?.message}<div class="form-alert" role="alert">

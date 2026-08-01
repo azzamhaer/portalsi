@@ -12,8 +12,7 @@
 <svelte:head><title>Masuk — Portal SI Mail</title></svelte:head>
 
 <AuthShell>
-	<div class="heading">
-		<p class="eyebrow">Selamat datang kembali</p>
+	<div class="heading">SELAMAT DATANG KEMBALI</p>
 		<h1>Masuk ke Portal SI Mail</h1>
 		<p>Buka kotak masuk dan lanjutkan percakapanmu.</p>
 	</div>

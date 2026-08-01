@@ -6,12 +6,12 @@
 
 <main class="auth-shell">
 	<section class="auth-visual" aria-label="Tentang Portal SI Mail">
-		<a class="brand" href="https://portalsi.com"><img src="https://portalsi.com/favicon.png" alt="" /><span>Portal <b>SI</b> Mail</span></a>
+		<a class="brand" href="https://portalsi.com"><img src="https://portalsi.com/favicon.png" alt="" /><span>Portal <b>SI</b></span></a>
 		<div class="visual-copy">
 			<span class="quote"><Quote size={22} fill="currentColor" /></span>
 			<p>
 				{mode === 'register'
-					? 'Email resmi dengan nama pesantrenmu — profesional, aman, dan sepenuhnya milikmu.'
+					? 'Buat email resmi untuk seluruh detak jantung komunitas Sekolah Impian.'
 					: 'Satu kotak masuk untuk semua kabar penting. Rapi, cepat, dan aman.'}
 			</p>
 			<small>Layanan email keluarga besar Portal SI</small>

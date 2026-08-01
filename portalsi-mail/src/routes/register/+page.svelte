@@ -15,9 +15,9 @@
 
 <AuthShell mode="register">
 	<div class="heading">
-		<p class="eyebrow">Mulai di sini</p>
-		<h1>Buat akun Portal SI Mail</h1>
-		<p>Daftar sekali, langsung punya identitas email pesantrenmu.</p>
+		<p class="eyebrow">MULAI PERJALANAN ANDA</p>
+		<h1>Buat akun Portal SI</h1>
+		<p>Karena jutaan langkah dimulai dari satu langkah.</p>
 	</div>
 	{#if form?.success}
 		<div class="form-ok" role="status">{form.message}</div>
