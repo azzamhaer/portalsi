@@ -10,8 +10,9 @@ return new class extends Migration
     {
         Schema::create('mail_accounts', function (Blueprint $table) {
             $table->id();
-            // Satu akun email per user Portal SI.
-            $table->foreignId('user_id')->unique()->constrained()->cascadeOnDelete();
+            // Satu akun email per user Portal SI. Tanpa FK DB (tipe users.id bervariasi
+            // antar-instalasi); integritas dijaga di level aplikasi + index unik.
+            $table->unsignedBigInteger('user_id')->unique();
             $table->string('local_part', 64)->unique();  // "abc"
             $table->string('email')->unique();            // "abc@portalsi.com"
             // Password mailbox (dienkripsi dengan APP_KEY) — dipakai webmail untuk
