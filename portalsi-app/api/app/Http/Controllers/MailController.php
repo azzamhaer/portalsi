@@ -39,11 +39,11 @@ class MailController extends Controller
     {
         $user = $request->user();
         $settings = MailSetting::current();
-        $account = MailAccount::where('user_id', $user->id)->first();
+        $account = MailAccount::where('user_id', (int) $user->getKey())->first();
 
         return response()->json([
             'gate_enabled' => $settings->gate_enabled,
-            'unlocked' => ! $settings->gate_enabled || $this->isUnlocked($user->id),
+            'unlocked' => ! $settings->gate_enabled || $this->isUnlocked((int) $user->getKey()),
             'has_account' => (bool) $account,
             'account' => $account ? [
                 'email' => $account->email,
@@ -66,7 +66,7 @@ class MailController extends Controller
         }
 
         // Batasi brute force: 5 percobaan / menit / user.
-        $throttleKey = 'mail_unlock:' . $user->id;
+        $throttleKey = 'mail_unlock:' . (int) $user->getKey();
         if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
             $seconds = RateLimiter::availableIn($throttleKey);
             throw ValidationException::withMessages([
@@ -82,7 +82,7 @@ class MailController extends Controller
         }
 
         RateLimiter::clear($throttleKey);
-        Cache::put($this->unlockKey($user->id), true, now()->addHours(self::UNLOCK_TTL_HOURS));
+        Cache::put($this->unlockKey((int) $user->getKey()), true, now()->addHours(self::UNLOCK_TTL_HOURS));
 
         return response()->json(['unlocked' => true]);
     }
@@ -90,7 +90,7 @@ class MailController extends Controller
     /** Akun email milik user (atau null). */
     public function account(Request $request)
     {
-        $account = MailAccount::where('user_id', $request->user()->id)->first();
+        $account = MailAccount::where('user_id', (int) $request->user()->getKey())->first();
 
         return response()->json([
             'account' => $account ? [
@@ -107,11 +107,11 @@ class MailController extends Controller
         $user = $request->user();
         $settings = MailSetting::current();
 
-        if ($settings->gate_enabled && ! $this->isUnlocked($user->id)) {
+        if ($settings->gate_enabled && ! $this->isUnlocked((int) $user->getKey())) {
             return response()->json(['message' => 'Masukkan master password dulu.'], 403);
         }
 
-        if (MailAccount::where('user_id', $user->id)->exists()) {
+        if (MailAccount::where('user_id', (int) $user->getKey())->exists()) {
             return response()->json(['message' => 'Kamu sudah memiliki satu akun email.'], 409);
         }
 
@@ -151,7 +151,7 @@ class MailController extends Controller
         }
 
         $account = MailAccount::create([
-            'user_id' => $user->id,
+            'user_id' => (int) $user->getKey(),
             'local_part' => $local,
             'email' => $email,
             'password' => $password,

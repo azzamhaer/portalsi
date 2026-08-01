@@ -51,7 +51,7 @@ class MailAdminController extends Controller
     public function accounts(Request $request)
     {
         $accounts = MailAccount::query()
-            ->with('user:id,name,username,email')
+            ->with('user')
             ->latest()
             ->paginate((int) $request->integer('per_page', 30));
 
@@ -60,8 +60,8 @@ class MailAdminController extends Controller
             'email' => $a->email,
             'created_at' => $a->created_at,
             'user' => $a->user ? [
-                'id' => $a->user->id,
-                'name' => $a->user->name,
+                'id' => $a->user->getKey(),
+                'name' => $a->user->full_name ?? $a->user->username,
                 'username' => $a->user->username,
                 'account_email' => $a->user->email,
             ] : null,
