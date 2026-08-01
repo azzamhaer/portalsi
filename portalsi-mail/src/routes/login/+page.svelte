@@ -15,7 +15,7 @@
 	<div class="heading">
 		<p class="eyebrow">SELAMAT DATANG KEMBALI</p>
 		<h1>Masuk ke Portal SI Mail</h1>
-		<p>Buka kotak masuk dan lanjutkan percakapanmu.</p>
+		<p>Buka email dan lanjutkan bisnismu.</p>
 	</div>
 	{#if form?.message}<div class="form-alert" role="alert">{form.message}</div>{/if}
 	<form method="POST" onsubmit={() => (submitting = true)}>
