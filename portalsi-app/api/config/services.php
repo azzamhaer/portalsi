@@ -74,4 +74,15 @@ return [
         'upload_ttl_seconds' => (int) env('MEET_UPLOAD_TTL_SECONDS', 3600),
     ],
 
+    // HestiaCP REST API (localhost) untuk membuat/menghapus akun mail @portalsi.com.
+    // Key dibatasi scope 'mail-accounts' & API di-set localhost-only (API_ALLOWED_IP=127.0.0.1).
+    'hestia' => [
+        'url' => env('HESTIA_API_URL', 'https://127.0.0.1:8083/api/'),
+        'access_key' => env('HESTIA_ACCESS_KEY'),
+        'secret_key' => env('HESTIA_SECRET_KEY'),
+        'user' => env('HESTIA_MAIL_USER', 'portalsi'),
+        'domain' => env('HESTIA_MAIL_DOMAIN', 'portalsi.com'),
+        'timeout' => (int) env('HESTIA_API_TIMEOUT', 15),
+    ],
+
 ];

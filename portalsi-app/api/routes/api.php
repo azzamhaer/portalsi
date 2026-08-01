@@ -541,6 +541,21 @@ Route::middleware(['auth:sanctum', 'admin.panel'])->prefix('admin-panel')->group
     Route::delete('/policies/{id}', [\App\Http\Controllers\PolicyController::class, 'destroy'])->whereNumber('id');
     Route::post('/policies/{id}/toggle', [\App\Http\Controllers\PolicyController::class, 'toggle'])->whereNumber('id');
     Route::get('/policies/{id}/acceptances', [\App\Http\Controllers\PolicyController::class, 'acceptances'])->whereNumber('id');
+
+    // Portal SI Mail — kelola gate master password & daftar akun email.
+    Route::get('/mail/settings', [\App\Http\Controllers\MailAdminController::class, 'settings']);
+    Route::put('/mail/settings', [\App\Http\Controllers\MailAdminController::class, 'updateSettings']);
+    Route::get('/mail/accounts', [\App\Http\Controllers\MailAdminController::class, 'accounts']);
+});
+
+// ═══════════════════════════════════════════
+// PORTAL SI MAIL — endpoint user (butuh login + tidak dibanned).
+// ═══════════════════════════════════════════
+Route::middleware(['auth:sanctum', 'notBanned'])->prefix('mail')->group(function () {
+    Route::get('/status', [\App\Http\Controllers\MailController::class, 'status']);
+    Route::post('/unlock', [\App\Http\Controllers\MailController::class, 'unlock']);
+    Route::get('/account', [\App\Http\Controllers\MailController::class, 'account']);
+    Route::post('/account', [\App\Http\Controllers\MailController::class, 'createAccount']);
 });
 
 // ═══════════════════════════════════════════
