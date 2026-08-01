@@ -40,10 +40,18 @@
 		--color-danger-soft: #fff0ef;
 		--focus-ring: 0 0 0 3px rgb(31 111 235 / 22%);
 	}
+	@font-face {
+		font-family: 'Alan Sans';
+		src: url('/assets/fonts/AlanSans-VariableFont_wght.ttf') format('truetype');
+		font-style: normal;
+		font-weight: 100 900;
+		font-display: swap;
+	}
 	.auth-shell {
 		display: grid;
 		min-height: 100vh;
 		background: var(--color-surface);
+		font-family: 'Alan Sans', Inter, ui-sans-serif, system-ui, sans-serif;
 	}
 	.auth-visual {
 		position: relative;
@@ -141,8 +149,9 @@
 		text-decoration: none;
 	}
 	.mobile-brand {
-		margin: 34px auto 24px;
-		font-size: 1.1rem;
+		justify-content: center;
+		margin: 30px 0 26px;
+		font-size: 1.2rem;
 	}
 	.form-wrap {
 		width: 100%;

@@ -766,41 +766,23 @@
 	<div class="modal-bg" onclick={() => (settingsOpen = false)} role="presentation">
 		<div class="modal wide" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
 			<header class="mh"><b>Pengaturan</b><button onclick={() => (settingsOpen = false)} aria-label="Tutup"><X size={16} /></button></header>
-			<div class="tabs">
-				<button class:on={settingsTab === 'profil'} onclick={() => (settingsTab = 'profil')}>Profil</button>
-				<button class:on={settingsTab === 'tanda'} onclick={() => (settingsTab = 'tanda')}>Tanda tangan</button>
-				<button class:on={settingsTab === 'tampilan'} onclick={() => (settingsTab = 'tampilan')}>Tampilan</button>
+			<div class="pp-row">
+				{#if data.user?.profile_picture_url}
+					<img class="pp lg" src={data.user.profile_picture_url} alt="" />
+				{:else}
+					<span class="avatar xl" style="background:{avColor(data.account?.email || '')}">{initial(data.user?.full_name || 'U')}</span>
+				{/if}
+				<div class="pp-info">
+					<b>{data.user?.full_name || data.user?.username}</b>
+					<span class="muted">Foto profil dari Portal SI</span>
+					<a class="pp-link" href="https://app.portalsi.com/profile/edit" target="_blank" rel="noopener"><Camera size={14} /> Ubah foto di app.portalsi.com</a>
+				</div>
 			</div>
-
-			{#if settingsTab === 'profil'}
-				<div class="pp-row">
-					{#if data.user?.profile_picture_url}
-						<img class="pp lg" src={data.user.profile_picture_url} alt="" />
-					{:else}
-						<span class="avatar xl" style="background:{avColor(data.account?.email || '')}">{initial(data.user?.full_name || 'U')}</span>
-					{/if}
-					<div class="pp-info">
-						<b>{data.user?.full_name || data.user?.username}</b>
-						<span class="muted">Foto profil dari Portal SI</span>
-						<a class="pp-link" href="https://app.portalsi.com/settings" target="_blank" rel="noopener"><Camera size={14} /> Ubah foto di app.portalsi.com</a>
-					</div>
-				</div>
-				<label class="ml">Nama tampilan (di email keluar)</label>
-				<input class="mi" bind:value={displayName} placeholder="mis. Ustadz Azzam — Portal SI" />
-				<label class="ml">Alamat email</label>
-				<input class="mi" value={data.account?.email} readonly />
-				<p class="note">🔒 Alamat email tidak bisa diubah setelah dibuat.</p>
-			{:else if settingsTab === 'tanda'}
-				<label class="ml">Tanda tangan</label>
-				<textarea class="mt" bind:value={signature} placeholder="Nama, jabatan, dsb — ditambahkan otomatis di email baru."></textarea>
-			{:else}
-				<label class="ml">Kepadatan daftar</label>
-				<div class="seg-pick">
-					<button class:on={density === 'comfort'} onclick={() => (density = 'comfort')}>Nyaman</button>
-					<button class:on={density === 'compact'} onclick={() => (density = 'compact')}>Rapat</button>
-				</div>
-				<p class="note">Mode gelap, ganti kata sandi, balasan otomatis, dan aturan filter menyusul di pembaruan berikutnya.</p>
-			{/if}
+			<label class="ml">Nama tampilan (di email keluar)</label>
+			<input class="mi" bind:value={displayName} placeholder="mis. Ustadz Azzam — Portal SI" />
+			<label class="ml">Alamat email</label>
+			<input class="mi" value={data.account?.email} readonly />
+			<p class="note">🔒 Alamat email tidak bisa diubah setelah dibuat.</p>
 
 			<div class="mf"><button class="cp-send" onclick={saveSettings}>Simpan</button></div>
 		</div>
@@ -913,6 +895,7 @@
 		gap: 1px;
 		overflow-y: auto;
 		min-height: 0;
+		flex: 1;
 	}
 	.fitem {
 		display: flex;
