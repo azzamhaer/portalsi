@@ -13,6 +13,9 @@ import {
 } from '$lib/server/mailbox';
 import type { Actions, PageServerLoad } from './$types';
 
+// batas permintaan reset password: 3/hari per user (in-memory, cukup untuk beta)
+const resetCounts = new Map<string, { date: string; count: number }>();
+
 async function ensure(locals: App.Locals): Promise<{ token: string; creds: Creds; account: any }> {
 	if (!locals.user || !locals.token) throw redirect(302, '/login');
 	const status = await mailStatus(locals.token);
@@ -137,14 +140,21 @@ export const actions: Actions = {
 		return { ok: true };
 	},
 
-	resetPassword: async ({ request, locals }) => {
+	resetPassword: async ({ locals }) => {
 		if (!locals.user) throw redirect(302, '/login');
-		const f = await request.formData();
-		const email = String(f.get('email') ?? '').trim();
-		if (!email) return fail(422, { pwError: 'Alamat email wajib diisi.' });
+		const email = (locals.user.email || '').trim();
+		if (!email) return fail(422, { pwError: 'Akunmu belum punya email untuk menerima tautan. Atur di app.portalsi.com.' });
+
+		const key = String(locals.user.user_id ?? email);
+		const today = new Date().toISOString().slice(0, 10);
+		const rec = resetCounts.get(key);
+		const n = rec && rec.date === today ? rec.count : 0;
+		if (n >= 3) return fail(429, { pwError: 'Batas 3 permintaan per hari tercapai. Coba lagi besok.' });
+
 		try {
 			const r = await forgotPassword(email);
-			return { pwSent: true, pwMessage: r.message };
+			resetCounts.set(key, { date: today, count: n + 1 });
+			return { pwSent: true, pwMessage: r.message, pwLeft: 3 - (n + 1) };
 		} catch (e: any) {
 			return fail(e?.status && e.status < 500 ? 422 : 502, { pwError: e?.message || 'Gagal mengirim tautan.' });
 		}

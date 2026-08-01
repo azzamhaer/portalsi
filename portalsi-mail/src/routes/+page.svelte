@@ -41,7 +41,8 @@
 		Moon,
 		Sun,
 		KeyRound,
-		ShieldCheck
+		ShieldCheck,
+		UserRound
 	} from '@lucide/svelte';
 
 	let { data, form } = $props();
@@ -74,6 +75,7 @@
 	let bgLabel = $state('');
 	let pinned = $state<number[]>([]);
 	let displayName = $state('');
+	let nameFollow = $state(true);
 	let density = $state<'comfort' | 'compact'>('comfort');
 	let darkMode = $state(false);
 	let settingsTab = $state<'profil' | 'keamanan' | 'tampilan'>('profil');
@@ -121,6 +123,7 @@
 		if (typeof localStorage !== 'undefined') {
 			signature = localStorage.getItem('ps_mail_sig') || '';
 			displayName = localStorage.getItem('ps_mail_name') || '';
+			nameFollow = localStorage.getItem('ps_mail_namefollow') !== '0';
 			density = (localStorage.getItem('ps_mail_density') as any) || 'comfort';
 			darkMode = localStorage.getItem('ps_mail_dark') === '1';
 			try {
@@ -204,11 +207,15 @@
 		if (typeof localStorage !== 'undefined') {
 			localStorage.setItem('ps_mail_sig', signature);
 			localStorage.setItem('ps_mail_name', displayName);
-			localStorage.setItem('ps_mail_density', density);
+			localStorage.setItem('ps_mail_namefollow', nameFollow ? '1' : '0');
+			localStorage.setItem('ps_mail_dark', darkMode ? '1' : '0');
 		}
 		settingsOpen = false;
 		toast('Pengaturan disimpan');
 	}
+
+	// nama pengirim efektif (ikut akun atau kustom)
+	let effName = $derived(nameFollow ? (data.user?.full_name || '').trim() : displayName.trim());
 
 	function starOf(m: any): boolean {
 		return m.uid in starOverride ? starOverride[m.uid] : m.flagged;
@@ -766,10 +773,10 @@
 		<header class="cp-head">
 			<span><MailIcon size={15} /> Pesan baru</span>
 			<div class="cp-hbtns">
-				<button class="cp-hbtn" onclick={() => (composeMin = !composeMin)} aria-label="Kecilkan">
+				<button class="cp-hbtn only-desktop" onclick={() => { composeMin = !composeMin; if (composeMin) composeFull = false; }} aria-label="Kecilkan">
 					{#if composeMin}<ChevronRight size={15} style="transform:rotate(-90deg)" />{:else}<ChevronRight size={15} style="transform:rotate(90deg)" />{/if}
 				</button>
-				<button class="cp-hbtn" onclick={() => { composeFull = !composeFull; composeMin = false; }} aria-label="Layar penuh">
+				<button class="cp-hbtn only-desktop" onclick={() => { composeFull = !composeFull; composeMin = false; }} aria-label="Layar penuh">
 					{#if composeFull}<Minimize2 size={14} />{:else}<Maximize2 size={14} />{/if}
 				</button>
 				<button class="cp-hbtn" onclick={() => (composeOpen = false)} aria-label="Tutup"><X size={16} /></button>
@@ -833,7 +840,7 @@
 
 				<input type="hidden" name="in_reply_to" value={compose.in_reply_to} />
 				<input type="hidden" name="references" value={compose.references} />
-				<input type="hidden" name="from_name" value={displayName} />
+				<input type="hidden" name="from_name" value={effName} />
 				{#if (form as any)?.sendError}<p class="cp-err">{(form as any).sendError}</p>{/if}
 
 				<div class="cp-foot">
@@ -874,10 +881,17 @@
 					</div>
 				</div>
 				<label class="ml">Nama tampilan (di email keluar)</label>
-				<input class="mi" bind:value={displayName} placeholder="mis. Ustadz Azzam — Portal SI" />
+				<button class="dark-toggle" onclick={() => (nameFollow = !nameFollow)}>
+					<span class="dt-left"><UserRound size={16} /> Ikuti nama akun{#if data.user?.full_name} ({data.user.full_name}){/if}</span>
+					<span class="switch-ui" class:on={nameFollow}><span class="knob"></span></span>
+				</button>
+				{#if !nameFollow}
+					<input class="mi" bind:value={displayName} placeholder="Muhammad Fulan" />
+				{/if}
+				<p class="note">Tampil di kolom "Dari": <b>{effName || '(tanpa nama)'}</b></p>
 				<label class="ml">Alamat email</label>
 				<input class="mi" value={data.account?.email} readonly />
-				<p class="note">🔒 Alamat email tidak bisa diubah setelah dibuat.</p>
+				<p class="note">Alamat email tidak bisa diubah setelah dibuat.</p>
 				<div class="mf"><button class="cp-send" onclick={saveSettings}>Simpan</button></div>
 			{:else if settingsTab === 'keamanan'}
 				<div class="sec-ico"><KeyRound size={22} /></div>
@@ -887,9 +901,9 @@
 					<span>Kata sandi ini dipakai untuk <b>seluruh layanan Portal SI</b> (App, Meet, Marketplace, Mail). Menggantinya akan mengubah kata sandi di <b>semua</b> layanan tersebut.</span>
 				</div>
 				{#if (form as any)?.pwSent}
-					<div class="ok-box">✅ {(form as any).pwMessage || 'Tautan konfirmasi telah dikirim ke email. Cek kotak masuk (dan folder spam) untuk melanjutkan.'}</div>
+					<div class="ok-box">{(form as any).pwMessage || 'Tautan konfirmasi telah dikirim ke email. Cek kotak masuk (dan folder spam) untuk melanjutkan.'}</div>
 				{:else}
-					<p class="note">Kami akan mengirim <b>tautan konfirmasi</b> ke email pemulihanmu. Klik tautan itu untuk menyetel kata sandi baru.</p>
+					<p class="note">Tautan konfirmasi dikirim ke email akunmu: <b>{data.user?.email || '—'}</b>. Klik tautan itu untuk menyetel kata sandi baru. <span class="muted">(Maks 3 permintaan per hari.)</span></p>
 					<form
 						method="POST"
 						action="?/resetPassword"
@@ -901,12 +915,10 @@
 							};
 						}}
 					>
-						<label class="ml">Email pemulihan</label>
-						<input class="mi" name="email" type="email" value={data.user?.email ?? ''} placeholder="email@akunmu" required />
 						{#if (form as any)?.pwError}<p class="err-inline">{(form as any).pwError}</p>{/if}
 						<div class="mf">
-							<button class="cp-send" disabled={pwSending}>
-								{#if pwSending}<span class="spin"></span>{:else}Kirim tautan{/if}
+							<button class="cp-send" disabled={pwSending || !data.user?.email}>
+								{#if pwSending}<span class="spin"></span>{:else}Kirim tautan ke email{/if}
 							</button>
 						</div>
 					</form>
@@ -920,11 +932,7 @@
 					</span>
 					<span class="switch-ui" class:on={darkMode}><span class="knob"></span></span>
 				</button>
-				<label class="ml">Kepadatan daftar</label>
-				<div class="seg-pick">
-					<button class:on={density === 'comfort'} onclick={() => (density = 'comfort')}>Nyaman</button>
-					<button class:on={density === 'compact'} onclick={() => (density = 'compact')}>Rapat</button>
-				</div>
+				<p class="note">Mode gelap berlaku di seluruh aplikasi Mail.</p>
 				<div class="mf"><button class="cp-send" onclick={saveSettings}>Simpan</button></div>
 			{/if}
 		</div>
@@ -1829,12 +1837,13 @@
 		width: 300px;
 	}
 	.composer.full {
-		right: 50%;
-		transform: translateX(50%);
+		left: 50%;
+		right: auto;
+		transform: translateX(-50%);
 		bottom: 3vh;
-		width: min(96vw, 880px);
-		height: 92vh;
-		border-radius: 14px;
+		width: min(95vw, 1120px);
+		height: 94vh;
+		border-radius: 16px;
 	}
 	.composer.full form {
 		flex: 1;
@@ -1900,6 +1909,8 @@
 		padding: 11px 0;
 		font: inherit;
 		outline: none;
+		background: transparent;
+		color: inherit;
 	}
 	.cp-ccbtns {
 		display: flex;
@@ -2559,10 +2570,12 @@
 	:global(html.psdark) .att-ico {
 		background: #1e2a3d;
 	}
-	:global(html.psdark) .rd-body {
+	:global(html.psdark) .textbody {
+		color: #e6e9ef;
+	}
+	:global(html.psdark) .htmlframe {
 		background: #fff;
 		border-radius: 12px;
-		padding: 14px;
 	}
 	:global(html.psdark) .thread-item {
 		color: #c3ccd8;
@@ -2764,6 +2777,10 @@
 			box-shadow: 0 8px 40px rgba(0, 0, 0, 0.25);
 			transform: translateX(-100%);
 			transition: transform 0.22s ease;
+		}
+		:global(html.psdark) .sb {
+			background: #161a20;
+			box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6);
 		}
 		.app:not(.collapsed) .sb {
 			transform: translateX(0);
