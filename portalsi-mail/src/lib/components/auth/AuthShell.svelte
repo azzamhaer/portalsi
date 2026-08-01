@@ -141,6 +141,7 @@
 		display: flex;
 		width: fit-content;
 		min-height: 40px;
+		margin-bottom: 28px;
 		align-items: center;
 		gap: 6px;
 		color: var(--color-muted);

@@ -96,6 +96,11 @@ export async function register(input: {
 	};
 }
 
+export async function forgotPassword(email: string): Promise<{ message?: string }> {
+	const d = await req('/forgot-password', { method: 'POST', body: JSON.stringify({ email }) });
+	return { message: (d?.message as string) || 'Tautan ganti kata sandi telah dikirim ke email.' };
+}
+
 export async function getPortalUser(token: string): Promise<PortalUser> {
 	const d = await req('/user', { method: 'GET' }, token);
 	return (d.user ?? d) as PortalUser;

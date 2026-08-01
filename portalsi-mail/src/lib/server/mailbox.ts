@@ -412,6 +412,41 @@ export async function listFolders(creds: Creds): Promise<Folder[]> {
 	return withClient(creds, (c) => foldersOn(c, false));
 }
 
+/** Pencarian cepat untuk dropdown live (subjek/pengirim/isi), terbaru dulu, dibatasi. */
+export async function searchPreview(
+	creds: Creds,
+	folderPath: string,
+	q: string,
+	limit = 12
+): Promise<MsgSummary[]> {
+	if (!q.trim()) return [];
+	const mailbox = folderPath === STARRED_PATH ? 'INBOX' : folderPath;
+	return withClient(creds, async (c) => {
+		const lock = await c.getMailboxLock(mailbox);
+		try {
+			const term = q.trim();
+			const uids =
+				(await c.search(
+					{ or: [{ header: { subject: term } }, { from: term }, { to: term }, { body: term }] },
+					{ uid: true }
+				)) || [];
+			const pick = uids.slice(-limit);
+			if (!pick.length) return [];
+			const out: MsgSummary[] = [];
+			for await (const m of c.fetch(
+				pick,
+				{ envelope: true, flags: true, uid: true, bodyStructure: true },
+				{ uid: true }
+			))
+				out.push(summaryFrom(m));
+			out.sort((a, b) => b.uid - a.uid);
+			return out;
+		} finally {
+			lock.release();
+		}
+	});
+}
+
 export async function getAttachment(
 	creds: Creds,
 	folderPath: string,

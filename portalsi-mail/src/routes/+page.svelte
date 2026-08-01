@@ -37,7 +37,11 @@
 		Printer,
 		BadgeCheck,
 		Pin,
-		Camera
+		Camera,
+		Moon,
+		Sun,
+		KeyRound,
+		ShieldCheck
 	} from '@lucide/svelte';
 
 	let { data, form } = $props();
@@ -71,7 +75,16 @@
 	let pinned = $state<number[]>([]);
 	let displayName = $state('');
 	let density = $state<'comfort' | 'compact'>('comfort');
-	let settingsTab = $state<'profil' | 'tanda' | 'tampilan'>('profil');
+	let darkMode = $state(false);
+	let settingsTab = $state<'profil' | 'keamanan' | 'tampilan'>('profil');
+	let pwSending = $state(false);
+
+	// live search
+	let sq = $state('');
+	let searchResults = $state<any[]>([]);
+	let searchOpen = $state(false);
+	let searchLoading = $state(false);
+	let searchTimer: ReturnType<typeof setTimeout> | undefined;
 
 	// ── composer ──
 	let composeOpen = $state(false);
@@ -109,6 +122,7 @@
 			signature = localStorage.getItem('ps_mail_sig') || '';
 			displayName = localStorage.getItem('ps_mail_name') || '';
 			density = (localStorage.getItem('ps_mail_density') as any) || 'comfort';
+			darkMode = localStorage.getItem('ps_mail_dark') === '1';
 			try {
 				pinned = JSON.parse(localStorage.getItem('ps_mail_pins') || '[]');
 			} catch {
@@ -140,6 +154,50 @@
 	function toggleSidebar() {
 		sidebarOpen = !sidebarOpen;
 		if (typeof localStorage !== 'undefined') localStorage.setItem('ps_mail_sidebar', sidebarOpen ? '1' : '0');
+	}
+
+	// terapkan dark mode ke <html> tiap berubah
+	$effect(() => {
+		if (typeof document !== 'undefined') document.documentElement.classList.toggle('psdark', darkMode);
+	});
+	function toggleDark() {
+		darkMode = !darkMode;
+		if (typeof localStorage !== 'undefined') localStorage.setItem('ps_mail_dark', darkMode ? '1' : '0');
+	}
+
+	// ── live search ──
+	function onSearchInput() {
+		clearTimeout(searchTimer);
+		const term = sq.trim();
+		if (term.length < 2) {
+			searchResults = [];
+			searchOpen = term.length > 0;
+			searchLoading = false;
+			return;
+		}
+		searchOpen = true;
+		searchLoading = true;
+		searchTimer = setTimeout(async () => {
+			try {
+				const r = await fetch(`/search?folder=${encodeURIComponent(data.folderPath)}&q=${encodeURIComponent(term)}`);
+				const d = await r.json();
+				if (sq.trim() === term) searchResults = d.results ?? [];
+			} catch {
+				searchResults = [];
+			} finally {
+				searchLoading = false;
+			}
+		}, 260);
+	}
+	function openSearchResult(m: any) {
+		searchOpen = false;
+		sq = '';
+		openMessage(m);
+	}
+	function clearSearch() {
+		sq = '';
+		searchResults = [];
+		searchOpen = false;
 	}
 
 	function saveSettings() {
@@ -485,11 +543,41 @@
 			<a class="icon-btn" href="/?folder={data.folderKey}{qStr}" title="Muat ulang"><RefreshCw size={17} /></a>
 		</div>
 
-		<form class="lp-search" method="GET">
-			<Search size={16} />
-			<input name="q" value={data.q} placeholder="Cari email…" />
-			<input type="hidden" name="folder" value={data.folderKey} />
-		</form>
+		<div class="lp-search-wrap">
+			<form class="lp-search" method="GET" autocomplete="off">
+				<Search size={16} />
+				<input
+					name="q"
+					bind:value={sq}
+					placeholder="Cari email…"
+					oninput={onSearchInput}
+					onfocus={() => { if (sq.trim().length) searchOpen = true; }}
+				/>
+				<input type="hidden" name="folder" value={data.folderKey} />
+				{#if sq}<button type="button" class="s-clear" onclick={clearSearch} aria-label="Bersihkan"><X size={15} /></button>{/if}
+			</form>
+			{#if searchOpen && sq.trim().length >= 1}
+				<button class="s-backdrop" onclick={() => (searchOpen = false)} aria-label="Tutup"></button>
+				<div class="s-results">
+					{#if searchLoading}
+						<div class="s-loading"><span class="spin dark"></span> Mencari…</div>
+					{:else if searchResults.length === 0}
+						<div class="s-empty">{sq.trim().length < 2 ? 'Ketik minimal 2 huruf…' : `Tidak ada hasil untuk "${sq.trim()}".`}</div>
+					{:else}
+						{#each searchResults as m (m.uid)}
+							<button class="s-item" onclick={() => openSearchResult(m)}>
+								<span class="avatar sm" style="background:{avColor(m.fromAddr)}">{initial(m.fromName)}</span>
+								<span class="s-body">
+									<span class="s-line1"><b class="s-who">{m.fromName}</b><span class="s-date">{fmtDate(m.date)}</span></span>
+									<span class="s-subj">{m.subject}{#if m.attachments}<Paperclip size={12} class="clip" />{/if}</span>
+								</span>
+							</button>
+						{/each}
+						<a class="s-all" href="/?folder={data.folderKey}&q={encodeURIComponent(sq.trim())}">Lihat semua hasil →</a>
+					{/if}
+				</div>
+			{/if}
+		</div>
 
 		{#if checked.size}
 			<div class="bulkbar">
@@ -549,7 +637,7 @@
 			{:else if filtered.length === 0}
 				<div class="empty small">
 					<MailOpen size={38} />
-					<p>{data.q ? 'Tidak ada hasil.' : filter === 'unread' ? 'Semua sudah dibaca 🎉' : 'Folder ini kosong.'}</p>
+					<p>{data.q ? 'Tidak ada hasil.' : filter === 'unread' ? 'Semua telah terbaca.' : 'Tidak ada sesuatu disini.'}</p>
 				</div>
 			{:else}
 				{#if pinnedItems.length}
@@ -766,25 +854,79 @@
 	<div class="modal-bg" onclick={() => (settingsOpen = false)} role="presentation">
 		<div class="modal wide" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
 			<header class="mh"><b>Pengaturan</b><button onclick={() => (settingsOpen = false)} aria-label="Tutup"><X size={16} /></button></header>
-			<div class="pp-row">
-				{#if data.user?.profile_picture_url}
-					<img class="pp lg" src={data.user.profile_picture_url} alt="" />
-				{:else}
-					<span class="avatar xl" style="background:{avColor(data.account?.email || '')}">{initial(data.user?.full_name || 'U')}</span>
-				{/if}
-				<div class="pp-info">
-					<b>{data.user?.full_name || data.user?.username}</b>
-					<span class="muted">Foto profil dari Portal SI</span>
-					<a class="pp-link" href="https://app.portalsi.com/profile/edit" target="_blank" rel="noopener"><Camera size={14} /> Ubah foto di app.portalsi.com</a>
-				</div>
+			<div class="tabs">
+				<button class:on={settingsTab === 'profil'} onclick={() => (settingsTab = 'profil')}>Profil</button>
+				<button class:on={settingsTab === 'keamanan'} onclick={() => (settingsTab = 'keamanan')}>Keamanan</button>
+				<button class:on={settingsTab === 'tampilan'} onclick={() => (settingsTab = 'tampilan')}>Tampilan</button>
 			</div>
-			<label class="ml">Nama tampilan (di email keluar)</label>
-			<input class="mi" bind:value={displayName} placeholder="mis. Ustadz Azzam — Portal SI" />
-			<label class="ml">Alamat email</label>
-			<input class="mi" value={data.account?.email} readonly />
-			<p class="note">🔒 Alamat email tidak bisa diubah setelah dibuat.</p>
 
-			<div class="mf"><button class="cp-send" onclick={saveSettings}>Simpan</button></div>
+			{#if settingsTab === 'profil'}
+				<div class="pp-row">
+					{#if data.user?.profile_picture_url}
+						<img class="pp lg" src={data.user.profile_picture_url} alt="" />
+					{:else}
+						<span class="avatar xl" style="background:{avColor(data.account?.email || '')}">{initial(data.user?.full_name || 'U')}</span>
+					{/if}
+					<div class="pp-info">
+						<b>{data.user?.full_name || data.user?.username}</b>
+						<span class="muted">Foto profil dari Portal SI</span>
+						<a class="pp-link" href="https://app.portalsi.com/profile/edit" target="_blank" rel="noopener"><Camera size={14} /> Ubah foto di app.portalsi.com</a>
+					</div>
+				</div>
+				<label class="ml">Nama tampilan (di email keluar)</label>
+				<input class="mi" bind:value={displayName} placeholder="mis. Ustadz Azzam — Portal SI" />
+				<label class="ml">Alamat email</label>
+				<input class="mi" value={data.account?.email} readonly />
+				<p class="note">🔒 Alamat email tidak bisa diubah setelah dibuat.</p>
+				<div class="mf"><button class="cp-send" onclick={saveSettings}>Simpan</button></div>
+			{:else if settingsTab === 'keamanan'}
+				<div class="sec-ico"><KeyRound size={22} /></div>
+				<h3 class="sec-h">Ganti kata sandi</h3>
+				<div class="warn-box">
+					<ShieldCheck size={18} />
+					<span>Kata sandi ini dipakai untuk <b>seluruh layanan Portal SI</b> (App, Meet, Marketplace, Mail). Menggantinya akan mengubah kata sandi di <b>semua</b> layanan tersebut.</span>
+				</div>
+				{#if (form as any)?.pwSent}
+					<div class="ok-box">✅ {(form as any).pwMessage || 'Tautan konfirmasi telah dikirim ke email. Cek kotak masuk (dan folder spam) untuk melanjutkan.'}</div>
+				{:else}
+					<p class="note">Kami akan mengirim <b>tautan konfirmasi</b> ke email pemulihanmu. Klik tautan itu untuk menyetel kata sandi baru.</p>
+					<form
+						method="POST"
+						action="?/resetPassword"
+						use:enhance={() => {
+							pwSending = true;
+							return async ({ update }) => {
+								pwSending = false;
+								await update();
+							};
+						}}
+					>
+						<label class="ml">Email pemulihan</label>
+						<input class="mi" name="email" type="email" value={data.user?.email ?? ''} placeholder="email@akunmu" required />
+						{#if (form as any)?.pwError}<p class="err-inline">{(form as any).pwError}</p>{/if}
+						<div class="mf">
+							<button class="cp-send" disabled={pwSending}>
+								{#if pwSending}<span class="spin"></span>{:else}Kirim tautan{/if}
+							</button>
+						</div>
+					</form>
+				{/if}
+			{:else}
+				<label class="ml">Mode tampilan</label>
+				<button class="dark-toggle" onclick={toggleDark}>
+					<span class="dt-left">
+						{#if darkMode}<Moon size={18} />{:else}<Sun size={18} />{/if}
+						{darkMode ? 'Mode gelap' : 'Mode terang'}
+					</span>
+					<span class="switch-ui" class:on={darkMode}><span class="knob"></span></span>
+				</button>
+				<label class="ml">Kepadatan daftar</label>
+				<div class="seg-pick">
+					<button class:on={density === 'comfort'} onclick={() => (density = 'comfort')}>Nyaman</button>
+					<button class:on={density === 'compact'} onclick={() => (density = 'compact')}>Rapat</button>
+				</div>
+				<div class="mf"><button class="cp-send" onclick={saveSettings}>Simpan</button></div>
+			{/if}
 		</div>
 	</div>
 {/if}
@@ -2081,6 +2223,455 @@
 		border-color: #1f6feb;
 		background: #eef4ff;
 		color: #0b57d0;
+	}
+	/* ═══ LIVE SEARCH ═══ */
+	.lp-search-wrap {
+		position: relative;
+		margin: 0 14px 8px;
+	}
+	.lp-search-wrap .lp-search {
+		margin: 0;
+	}
+	.s-clear {
+		display: grid;
+		place-items: center;
+		width: 24px;
+		height: 24px;
+		border: 0;
+		background: transparent;
+		color: #80868b;
+		cursor: pointer;
+		border-radius: 50%;
+	}
+	.s-clear:hover {
+		background: #e6eaf0;
+	}
+	.s-backdrop {
+		position: fixed;
+		inset: 0;
+		background: transparent;
+		border: 0;
+		z-index: 30;
+	}
+	.s-results {
+		position: absolute;
+		top: calc(100% + 6px);
+		left: 0;
+		right: 0;
+		background: #fff;
+		border: 1px solid #e6e9ef;
+		border-radius: 14px;
+		box-shadow: 0 18px 44px rgba(0, 0, 0, 0.16);
+		z-index: 40;
+		max-height: 62vh;
+		overflow-y: auto;
+		padding: 6px;
+		animation: menuin 0.14s ease;
+	}
+	@keyframes -global-menuin {
+		from { opacity: 0; transform: translateY(-6px); }
+		to { opacity: 1; transform: translateY(0); }
+	}
+	.s-loading,
+	.s-empty {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 14px 12px;
+		color: #80868b;
+		font-size: 0.85rem;
+	}
+	.s-item {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		width: 100%;
+		padding: 8px 10px;
+		border: 0;
+		background: transparent;
+		border-radius: 10px;
+		cursor: pointer;
+		text-align: left;
+	}
+	.s-item:hover {
+		background: #f2f5f9;
+	}
+	.s-body {
+		min-width: 0;
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+	}
+	.s-line1 {
+		display: flex;
+		justify-content: space-between;
+		gap: 8px;
+	}
+	.s-who {
+		font-size: 0.86rem;
+		color: #202124;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.s-date {
+		font-size: 0.72rem;
+		color: #80868b;
+		flex: none;
+	}
+	.s-subj {
+		font-size: 0.8rem;
+		color: #5f6368;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		display: flex;
+		align-items: center;
+		gap: 5px;
+	}
+	.s-all {
+		display: block;
+		text-align: center;
+		padding: 10px;
+		color: #1f6feb;
+		font-size: 0.82rem;
+		font-weight: 600;
+		text-decoration: none;
+		border-top: 1px solid #eef1f5;
+		margin-top: 4px;
+	}
+	.s-all:hover {
+		background: #f2f5f9;
+	}
+	/* ═══ SETTINGS: keamanan + tampilan ═══ */
+	.sec-ico {
+		display: grid;
+		place-items: center;
+		width: 48px;
+		height: 48px;
+		border-radius: 14px;
+		background: #eef4ff;
+		color: #1f6feb;
+		margin-bottom: 10px;
+	}
+	.sec-h {
+		margin: 0 0 12px;
+		font-size: 1.05rem;
+	}
+	.warn-box {
+		display: flex;
+		gap: 10px;
+		padding: 11px 13px;
+		background: #fff8ec;
+		border: 1px solid #f3dca8;
+		border-radius: 12px;
+		font-size: 0.82rem;
+		color: #7a5a00;
+		line-height: 1.5;
+		margin-bottom: 12px;
+	}
+	.warn-box :global(svg) {
+		flex: none;
+		color: #e08600;
+		margin-top: 1px;
+	}
+	.ok-box {
+		padding: 12px 14px;
+		background: #e7f6ec;
+		border: 1px solid #b6e0c4;
+		border-radius: 12px;
+		color: #1a6b34;
+		font-size: 0.86rem;
+		line-height: 1.5;
+	}
+	.err-inline {
+		color: #c0392b;
+		font-size: 0.8rem;
+		margin: 6px 0 0;
+	}
+	.dark-toggle {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		width: 100%;
+		padding: 12px 14px;
+		border: 1px solid #d5dae2;
+		border-radius: 12px;
+		background: #fff;
+		cursor: pointer;
+		font: inherit;
+		font-weight: 600;
+		color: #3c4043;
+		margin-bottom: 14px;
+	}
+	.dt-left {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+	}
+	.switch-ui {
+		width: 44px;
+		height: 26px;
+		border-radius: 999px;
+		background: #c3c9d4;
+		position: relative;
+		transition: background 0.15s;
+		flex: none;
+	}
+	.switch-ui.on {
+		background: #1f6feb;
+	}
+	.knob {
+		position: absolute;
+		top: 3px;
+		left: 3px;
+		width: 20px;
+		height: 20px;
+		border-radius: 50%;
+		background: #fff;
+		transition: left 0.15s;
+	}
+	.switch-ui.on .knob {
+		left: 21px;
+	}
+	/* ═══ DARK MODE ═══ */
+	:global(html.psdark) {
+		color-scheme: dark;
+	}
+	:global(html.psdark body) {
+		background: #0e1116;
+		color: #e6e9ef;
+	}
+	:global(html.psdark) .app {
+		background: #0e1116;
+	}
+	:global(html.psdark) .sb-brand {
+		color: #e6e9ef;
+	}
+	:global(html.psdark) .hamb,
+	:global(html.psdark) .gear {
+		color: #9aa4b2;
+	}
+	:global(html.psdark) .hamb:hover,
+	:global(html.psdark) .gear:hover,
+	:global(html.psdark) .fitem:hover,
+	:global(html.psdark) .sb-foot:hover {
+		background: #1b2029;
+	}
+	:global(html.psdark) .fitem {
+		color: #c3ccd8;
+	}
+	:global(html.psdark) .fitem.active {
+		background: #1e2a3d;
+		color: #7fb0ff;
+	}
+	:global(html.psdark) .fitem .count {
+		background: #1e2a3d;
+		color: #7fb0ff;
+	}
+	:global(html.psdark) .sb-foot {
+		border-top-color: #252b34;
+	}
+	:global(html.psdark) .me-name {
+		color: #e6e9ef;
+	}
+	:global(html.psdark) .listpane,
+	:global(html.psdark) .readpane {
+		background: #161a20;
+		box-shadow: 0 0 0 1px #252b34;
+	}
+	:global(html.psdark) .lp-search {
+		background: #1b2029;
+		color: #9aa4b2;
+	}
+	:global(html.psdark) .lp-search input {
+		color: #e6e9ef;
+	}
+	:global(html.psdark) .segs button {
+		color: #9aa4b2;
+	}
+	:global(html.psdark) .segs button:hover {
+		background: #1b2029;
+	}
+	:global(html.psdark) .segs button.on {
+		background: #1e2a3d;
+		color: #7fb0ff;
+	}
+	:global(html.psdark) .chk {
+		background: #161a20;
+		border-color: #3a424e;
+	}
+	:global(html.psdark) .grp-h {
+		color: #7a8493;
+		background: linear-gradient(#161a20 70%, rgba(22, 26, 32, 0));
+	}
+	:global(html.psdark) .row:hover {
+		background: #1b2029;
+	}
+	:global(html.psdark) .who {
+		color: #dce2ea;
+	}
+	:global(html.psdark) .row.unseen .who {
+		color: #f2f5f9;
+	}
+	:global(html.psdark) .subj,
+	:global(html.psdark) .date {
+		color: #8b95a3;
+	}
+	:global(html.psdark) .row.unseen .subj {
+		color: #b6bfca;
+	}
+	:global(html.psdark) .row.sel {
+		background: #1e2a3d;
+		border-left-color: #4f8bff;
+	}
+	:global(html.psdark) .row.checked {
+		background: #1a2431;
+	}
+	:global(html.psdark) .icon-btn {
+		color: #9aa4b2;
+	}
+	:global(html.psdark) .icon-btn:hover {
+		background: #1b2029;
+	}
+	:global(html.psdark) .rd-toolbar,
+	:global(html.psdark) .rd-actionbar,
+	:global(html.psdark) .thread {
+		border-color: #252b34;
+	}
+	:global(html.psdark) .rd-subject,
+	:global(html.psdark) .rs-name {
+		color: #f2f5f9;
+	}
+	:global(html.psdark) .rs-addr,
+	:global(html.psdark) .rs-date,
+	:global(html.psdark) .rd-to,
+	:global(html.psdark) .counter,
+	:global(html.psdark) .pager,
+	:global(html.psdark) .ti-date {
+		color: #8b95a3;
+	}
+	:global(html.psdark) .att {
+		background: #1b2029;
+		border-color: #2c333d;
+		color: #c3ccd8;
+	}
+	:global(html.psdark) .att-ico {
+		background: #1e2a3d;
+	}
+	:global(html.psdark) .rd-body {
+		background: #fff;
+		border-radius: 12px;
+		padding: 14px;
+	}
+	:global(html.psdark) .thread-item {
+		color: #c3ccd8;
+	}
+	:global(html.psdark) .thread-item:hover {
+		background: #1b2029;
+	}
+	:global(html.psdark) .pill {
+		background: #1b2029;
+		border-color: #2c333d;
+		color: #dce2ea;
+	}
+	:global(html.psdark) .pill.primary {
+		background: #1f6feb;
+		border-color: #1f6feb;
+		color: #fff;
+	}
+	:global(html.psdark) .pill.ghost {
+		background: transparent;
+		border-color: transparent;
+	}
+	:global(html.psdark) .empty {
+		color: #7a8493;
+	}
+	:global(html.psdark) .empty-ill {
+		background: #1e2a3d;
+		color: #7fb0ff;
+	}
+	:global(html.psdark) .empty h3 {
+		color: #dce2ea;
+	}
+	:global(html.psdark) .s-results,
+	:global(html.psdark) .modal,
+	:global(html.psdark) .composer {
+		background: #161a20;
+		color: #e6e9ef;
+	}
+	:global(html.psdark) .s-results {
+		border-color: #2c333d;
+	}
+	:global(html.psdark) .s-item:hover,
+	:global(html.psdark) .s-all:hover {
+		background: #222831;
+	}
+	:global(html.psdark) .s-who {
+		color: #e6e9ef;
+	}
+	:global(html.psdark) .s-subj,
+	:global(html.psdark) .s-date,
+	:global(html.psdark) .s-loading,
+	:global(html.psdark) .s-empty {
+		color: #8b95a3;
+	}
+	:global(html.psdark) .s-all {
+		border-color: #252b34;
+	}
+	:global(html.psdark) .mi,
+	:global(html.psdark) .mt {
+		background: #1b2029;
+		border-color: #2c333d;
+		color: #e6e9ef;
+	}
+	:global(html.psdark) .mi[readonly] {
+		background: #12161c;
+	}
+	:global(html.psdark) .tabs {
+		border-color: #252b34;
+	}
+	:global(html.psdark) .tabs button {
+		color: #8b95a3;
+	}
+	:global(html.psdark) .note,
+	:global(html.psdark) .pp-info .muted {
+		color: #8b95a3;
+	}
+	:global(html.psdark) .dark-toggle {
+		background: #1b2029;
+		border-color: #2c333d;
+		color: #dce2ea;
+	}
+	:global(html.psdark) .seg-pick button {
+		background: #1b2029;
+		border-color: #2c333d;
+		color: #9aa4b2;
+	}
+	:global(html.psdark) .seg-pick button.on {
+		background: #1e2a3d;
+		border-color: #4f8bff;
+		color: #7fb0ff;
+	}
+	:global(html.psdark) .cp-field {
+		border-color: #252b34;
+	}
+	:global(html.psdark) .cp-field input,
+	:global(html.psdark) .cp-editor {
+		color: #e6e9ef;
+	}
+	:global(html.psdark) .cp-toolbar button,
+	:global(html.psdark) .cp-icon,
+	:global(html.psdark) .cp-ccbtns button {
+		color: #9aa4b2;
+	}
+	:global(html.psdark) .cp-toolbar button:hover,
+	:global(html.psdark) .cp-icon:hover {
+		background: #222831;
+	}
+	:global(html.psdark) .sk {
+		background: linear-gradient(90deg, #1b2029 25%, #222831 37%, #1b2029 63%);
+		background-size: 400% 100%;
 	}
 	.mail-toast {
 		position: fixed;

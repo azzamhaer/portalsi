@@ -205,6 +205,35 @@
 	.menu form {
 		margin: 0;
 	}
+	/* dark mode header */
+	:global(html.psdark) .top {
+		background: #12161c;
+		border-bottom-color: #252b34;
+	}
+	:global(html.psdark) .quick {
+		color: #9aa4b2;
+	}
+	:global(html.psdark) .quick:hover,
+	:global(html.psdark) .quick.active {
+		background: #1b2029;
+		color: #7fb0ff;
+		box-shadow: none;
+	}
+	:global(html.psdark) .menu {
+		background: #1b2029;
+		border-color: #2c333d;
+	}
+	:global(html.psdark) .mg-item,
+	:global(html.psdark) .menu-row {
+		color: #c3ccd8;
+	}
+	:global(html.psdark) .mg-item:hover,
+	:global(html.psdark) .menu-row:hover {
+		background: #222831;
+	}
+	:global(html.psdark) .menu-sep {
+		background: #2c333d;
+	}
 	.main {
 		flex: 1;
 		display: flex;

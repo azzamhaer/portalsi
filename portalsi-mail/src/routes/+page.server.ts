@@ -1,5 +1,5 @@
 import { fail, redirect } from '@sveltejs/kit';
-import { mailCredentials, mailStatus } from '$lib/server/portal';
+import { forgotPassword, mailCredentials, mailStatus } from '$lib/server/portal';
 import {
 	archiveMessage,
 	listFolders,
@@ -135,6 +135,19 @@ export const actions: Actions = {
 			/* ignore */
 		}
 		return { ok: true };
+	},
+
+	resetPassword: async ({ request, locals }) => {
+		if (!locals.user) throw redirect(302, '/login');
+		const f = await request.formData();
+		const email = String(f.get('email') ?? '').trim();
+		if (!email) return fail(422, { pwError: 'Alamat email wajib diisi.' });
+		try {
+			const r = await forgotPassword(email);
+			return { pwSent: true, pwMessage: r.message };
+		} catch (e: any) {
+			return fail(e?.status && e.status < 500 ? 422 : 502, { pwError: e?.message || 'Gagal mengirim tautan.' });
+		}
 	},
 
 	toggleRead: async ({ request, locals }) => {
