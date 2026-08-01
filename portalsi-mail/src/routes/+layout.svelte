@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { Mail, LogOut } from '@lucide/svelte';
+	import { page } from '$app/stores';
 	let { data, children } = $props();
+	let flush = $derived($page.url.pathname === '/');
 </script>
 
 <svelte:head>
@@ -25,7 +27,7 @@
 			</form>
 		{/if}
 	</header>
-	<main class="main">
+	<main class="main" class:flush>
 		{@render children()}
 	</main>
 </div>
@@ -50,7 +52,8 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		padding: 14px 20px;
+		height: 56px;
+		padding: 0 20px;
 		border-bottom: 1px solid rgba(26, 23, 20, 0.08);
 		background: #fff;
 	}
@@ -104,6 +107,10 @@
 		display: flex;
 		justify-content: center;
 		padding: 34px 18px 56px;
+	}
+	.main.flush {
+		display: block;
+		padding: 0;
 	}
 
 	/* ── kartu & form dipakai lintas halaman ── */

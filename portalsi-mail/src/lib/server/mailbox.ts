@@ -370,8 +370,8 @@ export interface ViewResult {
 }
 
 /**
- * Muat SEMUA yang dibutuhkan halaman dalam SATU koneksi IMAP.
- * Saat membaca pesan (uid ada), listing dilewati agar cepat.
+ * Muat folder + daftar (dan pesan bila uid ada) dalam SATU koneksi IMAP.
+ * Untuk layout 3-panel, daftar selalu dimuat agar panel kiri tetap terisi.
  */
 export async function loadView(
 	creds: Creds,
@@ -382,14 +382,29 @@ export async function loadView(
 		const folder = folders.find((f) => f.key === p.key) || folders[0];
 		const opsPath = folder.virtual ? 'INBOX' : folder.path;
 
-		if (p.uid) {
-			const message = await messageOn(c, opsPath, p.uid).catch(() => null);
-			let thread: MsgSummary[] = [];
-			if (message) thread = await threadOn(c, opsPath, message.subject, message.uid).catch(() => []);
-			return { folders, folderKey: folder.key, folderPath: opsPath, message, thread, list: null };
-		}
 		const list = await listOn(c, folder.path, { page: p.page, search: p.q });
-		return { folders, folderKey: folder.key, folderPath: opsPath, message: null, thread: [], list };
+
+		let message: FullMessage | null = null;
+		let thread: MsgSummary[] = [];
+		if (p.uid) {
+			message = await messageOn(c, opsPath, p.uid).catch(() => null);
+			if (message) thread = await threadOn(c, opsPath, message.subject, message.uid).catch(() => []);
+		}
+		return { folders, folderKey: folder.key, folderPath: opsPath, message, thread, list };
+	});
+}
+
+/** Muat satu pesan + thread-nya (untuk buka pesan client-side tanpa reload daftar). */
+export async function loadMessage(
+	creds: Creds,
+	opsPath: string,
+	uid: number
+): Promise<{ message: FullMessage | null; thread: MsgSummary[] }> {
+	return withClient(creds, async (c) => {
+		const message = await messageOn(c, opsPath, uid).catch(() => null);
+		let thread: MsgSummary[] = [];
+		if (message) thread = await threadOn(c, opsPath, message.subject, message.uid).catch(() => []);
+		return { message, thread };
 	});
 }
 
