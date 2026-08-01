@@ -29,7 +29,9 @@
 		Link2,
 		Download,
 		Settings,
-		Trash
+		Trash,
+		Maximize2,
+		Minimize2
 	} from '@lucide/svelte';
 
 	let { data, form } = $props();
@@ -47,7 +49,10 @@
 	// ── state ──
 	let composeOpen = $state(false);
 	let composeMin = $state(false);
+	let composeFull = $state(false);
 	let showCc = $state(false);
+
+	const MAX_ATTACH_TOTAL = 20 * 1024 * 1024; // 20 MB total
 	let showBcc = $state(false);
 	let sending = $state(false);
 	let toastMsg = $state('');
@@ -139,6 +144,8 @@
 		showBcc = false;
 		composeMin = false;
 		composeOpen = true;
+		// di layar sempit, buka langsung fullscreen
+		composeFull = typeof window !== 'undefined' && window.innerWidth <= 820;
 		await tick();
 		if (editorEl) {
 			editorEl.innerHTML = initialHtml;
@@ -190,7 +197,15 @@
 
 	function addFiles(e: Event) {
 		const input = e.target as HTMLInputElement;
-		if (input.files) files = [...files, ...Array.from(input.files)];
+		if (input.files) {
+			const next = [...files, ...Array.from(input.files)];
+			const total = next.reduce((s, f) => s + f.size, 0);
+			if (total > MAX_ATTACH_TOTAL) {
+				toast(`Total lampiran maksimal ${fmtSize(MAX_ATTACH_TOTAL)}.`);
+			} else {
+				files = next;
+			}
+		}
 		input.value = '';
 	}
 	function removeFile(i: number) {
@@ -425,12 +440,15 @@
 
 <!-- ═══ Composer ═══ -->
 {#if composeOpen}
-	<div class="composer" class:min={composeMin}>
+	<div class="composer" class:min={composeMin} class:full={composeFull}>
 		<header class="cp-head">
 			<span><MailIcon size={15} /> Pesan baru</span>
 			<div class="cp-hbtns">
 				<button class="cp-hbtn" onclick={() => (composeMin = !composeMin)} aria-label="Kecilkan">
 					{#if composeMin}<ChevronRight size={15} style="transform:rotate(-90deg)" />{:else}<ChevronRight size={15} style="transform:rotate(90deg)" />{/if}
+				</button>
+				<button class="cp-hbtn" onclick={() => { composeFull = !composeFull; composeMin = false; }} aria-label="Layar penuh">
+					{#if composeFull}<Minimize2 size={14} />{:else}<Maximize2 size={14} />{/if}
 				</button>
 				<button class="cp-hbtn" onclick={() => (composeOpen = false)} aria-label="Tutup"><X size={16} /></button>
 			</div>
@@ -588,6 +606,7 @@
 		text-decoration: none;
 		font-size: 0.9rem;
 		font-weight: 500;
+		transition: background 0.13s ease, color 0.13s ease;
 	}
 	.fitem:hover {
 		background: #eaecef;
@@ -682,6 +701,7 @@
 		color: #5f6368;
 		cursor: pointer;
 		text-decoration: none;
+		transition: background 0.13s ease, color 0.13s ease;
 	}
 	.icon-btn:hover {
 		background: #f0f2f5;
@@ -738,6 +758,10 @@
 		background: transparent;
 		color: #c3c7cf;
 		cursor: pointer;
+		transition: color 0.13s ease, transform 0.1s ease;
+	}
+	.star:active {
+		transform: scale(1.25);
 	}
 	.star:hover {
 		color: #9aa0a6;
@@ -1045,6 +1069,22 @@
 	.composer.min {
 		width: 300px;
 	}
+	.composer.full {
+		right: 50%;
+		transform: translateX(50%);
+		bottom: 3vh;
+		width: min(96vw, 860px);
+		height: 92vh;
+		border-radius: 14px;
+	}
+	.composer.full form {
+		flex: 1;
+		min-height: 0;
+	}
+	.composer.full .cp-editor {
+		flex: 1;
+		max-height: none;
+	}
 	.cp-head {
 		display: flex;
 		align-items: center;
@@ -1297,58 +1337,131 @@
 
 	@media (max-width: 820px) {
 		.mail {
-			grid-template-columns: 1fr;
-			height: calc(100vh - 60px);
+			display: flex;
+			flex-direction: column;
+			max-width: none;
+			height: calc(100dvh - 60px);
 		}
+		/* bar folder atas (scroll horizontal) */
 		.side {
+			flex: 0 0 auto;
 			flex-direction: row;
 			align-items: center;
+			gap: 4px;
+			height: 54px;
+			padding: 0 10px;
 			overflow-x: auto;
+			overflow-y: hidden;
 			border-right: 0;
 			border-bottom: 1px solid #e6eaf0;
-			padding: 8px;
-			gap: 4px;
+			-webkit-overflow-scrolling: touch;
+			scrollbar-width: none;
 		}
-		.compose {
-			margin: 0;
-			padding: 10px 16px;
-		}
-		.compose span {
+		.side::-webkit-scrollbar {
 			display: none;
 		}
 		.folders {
 			flex-direction: row;
+			gap: 4px;
+			overflow: visible;
 		}
 		.fitem {
 			border-radius: 999px;
-			padding: 8px 12px;
+			padding: 8px 14px;
 			white-space: nowrap;
 		}
 		.fitem .flabel {
-			display: none;
-		}
-		.fitem.active .flabel {
 			display: inline;
+		}
+		.fitem .count {
+			margin-left: 6px;
 		}
 		.side-foot {
 			display: none;
 		}
+		/* Tulis = FAB mengambang */
+		.compose {
+			position: fixed;
+			right: 18px;
+			bottom: 18px;
+			z-index: 55;
+			width: 56px;
+			height: 56px;
+			padding: 0;
+			margin: 0;
+			border-radius: 50%;
+			justify-content: center;
+			box-shadow: 0 8px 20px -4px rgba(31, 111, 235, 0.75);
+		}
+		.compose span {
+			display: none;
+		}
 		.main {
+			flex: 1;
+			min-height: 0;
 			border-radius: 0;
 			margin: 0;
 			box-shadow: none;
 		}
+		/* baris email dua baris (pengirim + subjek) */
+		.row {
+			height: 66px;
+			grid-template-columns: 34px 1fr auto;
+			padding-right: 12px;
+		}
 		.rmain {
 			grid-template-columns: 34px 1fr;
+			grid-template-rows: auto auto;
+			column-gap: 12px;
+			row-gap: 2px;
+		}
+		.rmain .avatar {
+			grid-row: 1 / 3;
 		}
 		.who {
-			display: none;
+			display: block;
+			grid-column: 2;
+			font-size: 0.9rem;
 		}
-		.composer {
+		.subj {
+			grid-column: 2;
+			font-size: 0.84rem;
+			font-weight: 400 !important;
+			color: #5f6368 !important;
+		}
+		.rdate {
+			display: inline-flex !important;
+			align-self: flex-start;
+			padding-top: 4px;
+		}
+		.ractions {
+			display: none !important;
+		}
+		.reader {
+			padding: 16px 16px 24px;
+		}
+		.rd-top h1 {
+			font-size: 1.2rem;
+		}
+		/* composer = layar penuh di HP */
+		.composer,
+		.composer.full,
+		.composer.min {
 			right: 0;
 			left: 0;
+			bottom: 0;
 			width: 100%;
-			border-radius: 12px 12px 0 0;
+			height: 100dvh;
+			border-radius: 0;
+			transform: none;
+		}
+		.composer form {
+			flex: 1;
+			min-height: 0;
+		}
+		.composer .cp-editor {
+			flex: 1;
+			max-height: none;
 		}
 	}
 </style>

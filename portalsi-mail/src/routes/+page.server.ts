@@ -2,10 +2,8 @@ import { fail, redirect } from '@sveltejs/kit';
 import { mailCredentials, mailStatus } from '$lib/server/portal';
 import {
 	archiveMessage,
-	getMessage,
-	getThread,
 	listFolders,
-	listMessages,
+	loadView,
 	moveToTrash,
 	sendMessage,
 	setSeen,
@@ -26,38 +24,27 @@ async function ensure(locals: App.Locals): Promise<{ token: string; creds: Creds
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	const { creds, account } = await ensure(locals);
-	const folders = await listFolders(creds);
 
 	const key = url.searchParams.get('folder') || 'inbox';
-	const folder = folders.find((f) => f.key === key) || folders[0];
-	const opsPath = folder.virtual ? 'INBOX' : folder.path;
 	const page = Number(url.searchParams.get('page') || '1') || 1;
 	const q = url.searchParams.get('q') || '';
-
-	const list = await listMessages(creds, folder.path, { page, search: q });
-
 	const uidParam = url.searchParams.get('uid');
-	let message = null;
-	let thread: any[] = [];
-	if (uidParam) {
-		message = await getMessage(creds, opsPath, Number(uidParam)).catch(() => null);
-		if (message) {
-			thread = await getThread(creds, opsPath, message.subject, message.uid).catch(() => []);
-		}
-	}
+	const uid = uidParam ? Number(uidParam) : undefined;
+
+	const view = await loadView(creds, { key, page, q, uid });
 
 	return {
 		account,
-		folders,
-		folderKey: folder.key,
-		folderPath: opsPath,
-		messages: list.messages,
-		total: list.total,
-		page: list.page,
-		pages: list.pages,
+		folders: view.folders,
+		folderKey: view.folderKey,
+		folderPath: view.folderPath,
+		messages: view.list?.messages ?? [],
+		total: view.list?.total ?? 0,
+		page: view.list?.page ?? page,
+		pages: view.list?.pages ?? 1,
 		q,
-		message,
-		thread
+		message: view.message,
+		thread: view.thread
 	};
 };
 
