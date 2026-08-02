@@ -76,6 +76,7 @@
 	let selectMode = $state(false);
 	let refreshing = $state(false);
 	let readerMenuOpen = $state(false);
+	let readerSeen = $state(true);
 	let trashDismissed = $state(false);
 	// (aksi massal kini optimistik — tak perlu status sibuk terpisah)
 	let bgCount = $state(0);
@@ -211,6 +212,12 @@
 				}
 				prevTop = top;
 				live = d;
+				// realtime: bila semua aksi latar selesai, lepaskan override lokal → tampil status server
+				if (bgCount === 0) {
+					starOverride = {};
+					seenOverride = {};
+					hidden = new Set([...hidden].filter((u) => d.messages.some((m: any) => m.uid === u)));
+				}
 			}
 		} catch {
 			/* ignore */
@@ -336,6 +343,7 @@
 	async function openMessage(m: any) {
 		if (selectedUid === m.uid && selected) return;
 		selectedUid = m.uid;
+		readerSeen = true;
 		seenOverride = { ...seenOverride, [m.uid]: true };
 		loadingMsg = true;
 		selected = null;
@@ -383,11 +391,14 @@
 		starOverride = { ...starOverride, [m.uid]: !cur };
 		postAction('star', { uid: m.uid, folder_path: data.folderPath, on: !cur ? 1 : 0 });
 	}
-	function markUnread(m: any) {
-		seenOverride = { ...seenOverride, [m.uid]: false };
-		postAction('toggleRead', { uid: m.uid, folder_path: data.folderPath, seen: 0 });
-		closeReader();
-		toast('Ditandai belum dibaca');
+	// toggle baca/belum-dibaca untuk email yang dibuka
+	function toggleReaderRead() {
+		if (!selected) return;
+		const target = !readerSeen; // status seen tujuan
+		readerSeen = target;
+		seenOverride = { ...seenOverride, [selected.uid]: target };
+		postAction('toggleRead', { uid: selected.uid, folder_path: data.folderPath, seen: target ? 1 : 0 });
+		toast(target ? 'Ditandai sudah dibaca' : 'Ditandai belum dibaca');
 	}
 
 	// ── aksi baris (arsip/hapus) via form enhance ──
@@ -819,7 +830,9 @@
 								<button onclick={() => { doArchive([selected.uid]); readerMenuOpen = false; }}>
 									{#if inArchive}<ArchiveRestore size={17} /> Pindahkan ke Kotak Masuk{:else}<Archive size={17} /> Arsipkan{/if}
 								</button>
-								<button onclick={() => { markUnread(selected); readerMenuOpen = false; }}><MailIcon size={17} /> Tandai belum dibaca</button>
+								<button onclick={() => { toggleReaderRead(); readerMenuOpen = false; }}>
+									{#if readerSeen}<MailIcon size={17} /> Tandai belum dibaca{:else}<MailOpen size={17} /> Tandai sudah dibaca{/if}
+								</button>
 								<button class="danger" onclick={() => { doTrash([selected.uid]); readerMenuOpen = false; }}>
 									<Trash2 size={17} /> {inTrash ? 'Hapus permanen' : 'Pindahkan ke sampah'}
 								</button>
@@ -879,7 +892,9 @@
 			<div class="rd-actionbar">
 				<button class="pill primary" onclick={() => replyTo(selected)}><Reply size={16} /> Balas</button>
 				<button class="pill" onclick={() => forwardMsg(selected)}><Forward size={16} /> Teruskan</button>
-				<button class="pill only-desktop" onclick={() => markUnread(selected)}><MailIcon size={16} /> Tandai belum dibaca</button>
+				<button class="pill only-desktop" onclick={toggleReaderRead}>
+					{#if readerSeen}<MailIcon size={16} /> Tandai belum dibaca{:else}<MailOpen size={16} /> Tandai sudah dibaca{/if}
+				</button>
 			</div>
 		{:else}
 			<div class="empty">
