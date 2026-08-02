@@ -790,7 +790,7 @@
 			<div class="rd-actionbar">
 				<button class="pill primary" onclick={() => replyTo(selected)}><Reply size={16} /> Balas</button>
 				<button class="pill" onclick={() => forwardMsg(selected)}><Forward size={16} /> Teruskan</button>
-				<button class="pill ghost" onclick={() => markUnread(selected)}><MailIcon size={16} /> Tandai belum dibaca</button>
+				<button class="pill" onclick={() => markUnread(selected)}><MailIcon size={16} /> <span class="lbl-full">Tandai belum dibaca</span><span class="lbl-short">Belum dibaca</span></button>
 			</div>
 		{:else}
 			<div class="empty">
@@ -1778,6 +1778,9 @@
 		border-top: 1px solid #eef1f5;
 		flex: none;
 		flex-wrap: wrap;
+	}
+	.lbl-short {
+		display: none;
 	}
 	.pill {
 		display: inline-flex;
@@ -2970,6 +2973,24 @@
 		}
 		.rd-subject {
 			font-size: 1.25rem;
+		}
+		.rd-actionbar {
+			flex-wrap: nowrap;
+			gap: 8px;
+			padding: 10px 14px;
+		}
+		.rd-actionbar .pill {
+			flex: 1 1 0;
+			justify-content: center;
+			padding: 10px 8px;
+			font-size: 0.82rem;
+			gap: 6px;
+		}
+		.lbl-full {
+			display: none;
+		}
+		.lbl-short {
+			display: inline;
 		}
 		.composer,
 		.composer.full,
