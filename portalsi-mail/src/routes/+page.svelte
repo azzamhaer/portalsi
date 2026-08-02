@@ -721,7 +721,7 @@
 		{:else if selected}
 			<div class="rd-toolbar">
 				<div class="rd-nav">
-					<button class="back-btn only-mobile" onclick={closeReader}><ArrowLeft size={17} /></button>
+					<button class="back-btn only-mobile" onclick={closeReader}><ArrowLeft size={17} /> Kembali</button>
 					{#if selIndex >= 0}<span class="counter">{selIndex + 1} dari {data.total}</span>{/if}
 					<button class="icon-btn" disabled={selIndex <= 0} onclick={() => goRel(-1)} aria-label="Sebelumnya"><ChevronLeft size={18} /></button>
 					<button class="icon-btn" disabled={selIndex < 0 || selIndex >= data.messages.length - 1} onclick={() => goRel(1)} aria-label="Berikutnya"><ChevronRight size={18} /></button>
