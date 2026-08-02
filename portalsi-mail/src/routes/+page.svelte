@@ -75,6 +75,7 @@
 	let selectMode = $state(false);
 	let refreshing = $state(false);
 	let readerMenuOpen = $state(false);
+	let trashDismissed = $state(false);
 	// (aksi massal kini optimistik — tak perlu status sibuk terpisah)
 	let bgCount = $state(0);
 	let bgLabel = $state('');
@@ -123,6 +124,8 @@
 		hidden = new Set();
 		selectMode = false;
 		readerFull = false;
+		readerMenuOpen = false;
+		trashDismissed = false;
 		live = null;
 		prevTop = data.messages[0]?.uid ?? 0;
 	});
@@ -662,26 +665,29 @@
 		{#if bgCount > 0}
 			<div class="bgbar"><span class="spin dark"></span> {bgLabel}… {bgCount} tersisa</div>
 		{/if}
-		{#if data.folderKey === 'trash' && msgs.length}
+		{#if data.folderKey === 'trash' && msgs.length && !trashDismissed}
 			<div class="trash-notice">
-				<span><Trash2 size={15} /> Pesan di Sampah dihapus permanen setelah 30 hari.</span>
-				<form
-					method="POST"
-					action="?/emptyTrash"
-					use:enhance={({ cancel }) => {
-						if (typeof window !== 'undefined' && !window.confirm('Kosongkan Sampah sekarang? Semua pesan akan dihapus permanen dan tak bisa dikembalikan.')) {
-							cancel();
-							return;
-						}
-						return async ({ update }) => {
-							live = null;
-							await update();
-							toast('Sampah dikosongkan');
-						};
-					}}
-				>
-					<button class="tn-btn">Bersihkan sampah sekarang</button>
-				</form>
+				<div class="tn-text"><Trash2 size={15} /> Pesan di Sampah dihapus permanen setelah 30 hari.</div>
+				<div class="tn-actions">
+					<button class="tn-close" onclick={() => (trashDismissed = true)} aria-label="Tutup"><X size={15} /></button>
+					<form
+						method="POST"
+						action="?/emptyTrash"
+						use:enhance={({ cancel }) => {
+							if (typeof window !== 'undefined' && !window.confirm('Kosongkan Sampah sekarang? Semua pesan akan dihapus permanen dan tak bisa dikembalikan.')) {
+								cancel();
+								return;
+							}
+							return async ({ update }) => {
+								live = null;
+								await update();
+								toast('Sampah dikosongkan');
+							};
+						}}
+					>
+						<button class="tn-btn">Bersihkan sampah sekarang</button>
+					</form>
+				</div>
 			</div>
 		{/if}
 
@@ -2285,25 +2291,43 @@
 	/* pemberitahuan sampah */
 	.trash-notice {
 		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		flex-wrap: wrap;
-		gap: 8px;
+		flex-direction: column;
+		gap: 10px;
 		margin: 0 12px 8px;
-		padding: 10px 12px;
+		padding: 12px;
 		background: #fff4f4;
 		border: 1px solid #f6cbcb;
 		border-radius: 12px;
 	}
-	.trash-notice span {
-		display: inline-flex;
-		align-items: center;
+	.tn-text {
+		display: flex;
+		align-items: flex-start;
 		gap: 8px;
 		font-size: 0.8rem;
 		color: #a23b3b;
+		line-height: 1.4;
 	}
-	.trash-notice form {
-		margin: 0;
+	.tn-actions {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+	.tn-actions form {
+		margin: 0 0 0 auto;
+	}
+	.tn-close {
+		display: grid;
+		place-items: center;
+		width: 32px;
+		height: 32px;
+		border: 1px solid #e2b8b8;
+		border-radius: 8px;
+		background: #fff;
+		color: #a23b3b;
+		cursor: pointer;
+	}
+	.tn-close:hover {
+		background: #fdecec;
 	}
 	.tn-btn {
 		border: 1px solid #e0a0a0;
@@ -2507,6 +2531,15 @@
 		background: transparent;
 		border: 0;
 		z-index: 30;
+	}
+	.menu-backdrop {
+		position: fixed;
+		inset: 0;
+		background: transparent;
+		border: 0;
+		padding: 0;
+		z-index: 55;
+		cursor: default;
 	}
 	.s-results {
 		position: absolute;
@@ -2958,7 +2991,8 @@
 	:global(html.psdark) .trash-notice span {
 		color: #f0a3a3;
 	}
-	:global(html.psdark) .tn-btn {
+	:global(html.psdark) .tn-btn,
+	:global(html.psdark) .tn-close {
 		background: #161a20;
 		border-color: #5a2a2a;
 		color: #ff9b9b;
