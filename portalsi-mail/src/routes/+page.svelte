@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { invalidateAll } from '$app/navigation';
 	import { navigating } from '$app/stores';
-	import { tick } from 'svelte';
+	import { tick, onMount } from 'svelte';
 	import {
 		Menu,
 		Inbox,
@@ -19,6 +20,7 @@
 		X,
 		ChevronLeft,
 		ChevronRight,
+		ArrowLeft,
 		PenSquare,
 		MailOpen,
 		Mail as MailIcon,
@@ -70,6 +72,8 @@
 	let seenOverride = $state<Record<number, boolean>>({});
 	let checked = $state<Set<number>>(new Set());
 	let hidden = $state<Set<number>>(new Set());
+	let selectMode = $state(false);
+	let refreshing = $state(false);
 	// (aksi massal kini optimistik — tak perlu status sibuk terpisah)
 	let bgCount = $state(0);
 	let bgLabel = $state('');
@@ -116,6 +120,7 @@
 		seenOverride = {};
 		checked = new Set();
 		hidden = new Set();
+		selectMode = false;
 		readerFull = false;
 	});
 
@@ -167,6 +172,38 @@
 		darkMode = !darkMode;
 		if (typeof localStorage !== 'undefined') localStorage.setItem('ps_mail_dark', darkMode ? '1' : '0');
 	}
+
+	// ── refresh manual + otomatis ──
+	async function refresh() {
+		if (refreshing) return;
+		refreshing = true;
+		try {
+			await invalidateAll();
+		} catch {
+			/* ignore */
+		}
+		refreshing = false;
+	}
+	onMount(() => {
+		const id = setInterval(() => {
+			if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+			if (composeOpen || refreshing) return;
+			invalidateAll().catch(() => {});
+		}, 20000);
+		return () => clearInterval(id);
+	});
+	// deteksi email baru masuk (inbox, halaman 1) → toast
+	let prevTop = 0;
+	let prevFolderKey = '';
+	$effect(() => {
+		const top = data.messages[0]?.uid ?? 0;
+		const sameCtx = data.folderKey === 'inbox' && data.page === 1 && !data.q;
+		if (sameCtx && prevFolderKey === 'inbox' && prevTop && top > prevTop) {
+			toast('📬 Email baru masuk');
+		}
+		prevTop = top;
+		prevFolderKey = data.folderKey;
+	});
 
 	// ── live search ──
 	function onSearchInput() {
@@ -333,12 +370,13 @@
 	// ── seleksi massal ──
 	function toggleCheck(uid: number, e?: Event) {
 		e?.stopPropagation();
+		selectMode = true;
 		const s = new Set(checked);
 		s.has(uid) ? s.delete(uid) : s.add(uid);
 		checked = s;
 	}
-	function selectAll() {
-		checked = checked.size === filtered.length ? new Set() : new Set(filtered.map((m: any) => m.uid));
+	function checkAll() {
+		checked = allChecked && filtered.length ? new Set() : new Set(filtered.map((m: any) => m.uid));
 	}
 	// jalankan sekumpulan aksi di latar belakang + progress
 	async function runBg(label: string, promises: Promise<any>[]) {
@@ -540,14 +578,14 @@
 	<section class="listpane" class:hide-on-mobile={selected || loadingMsg}>
 		<div class="lp-head">
 			<button class="hamb only-mobile" onclick={toggleSidebar} aria-label="Menu"><Menu size={20} /></button>
-			<button class="chk head" class:on={allChecked} onclick={selectAll} aria-label="Pilih semua">
-				{#if allChecked}<span class="tick">✓</span>{/if}
+			<button class="chk head" class:on={selectMode} onclick={() => { selectMode = !selectMode; if (!selectMode) checked = new Set(); }} title="Pilih email" aria-label="Mode pilih">
+				{#if selectMode}<span class="tick">✓</span>{/if}
 			</button>
 			<div class="segs">
 				<button class:on={filter === 'all'} onclick={() => (filter = 'all')}>Semua</button>
 				<button class:on={filter === 'unread'} onclick={() => (filter = 'unread')}>Belum dibaca</button>
 			</div>
-			<a class="icon-btn" href="/?folder={data.folderKey}{qStr}" title="Muat ulang"><RefreshCw size={17} /></a>
+			<button class="icon-btn" class:spinning={refreshing} onclick={refresh} title="Muat ulang" aria-label="Muat ulang"><RefreshCw size={17} /></button>
 		</div>
 
 		<div class="lp-search-wrap">
@@ -586,13 +624,15 @@
 			{/if}
 		</div>
 
-		{#if checked.size}
+		{#if selectMode || checked.size}
 			<div class="bulkbar">
+				<button class="bb-close" onclick={() => { selectMode = false; checked = new Set(); }} aria-label="Selesai"><X size={16} /></button>
 				<span>{checked.size} dipilih</span>
+				<button class="bb-all" onclick={checkAll}>{allChecked && filtered.length ? 'Batalkan semua' : 'Pilih semua'}</button>
 				<div class="bulk-actions">
-					<button onclick={() => bulk('read')} title="Tandai dibaca"><MailCheck size={16} /></button>
-					<button onclick={() => bulk('archive')} title="Arsipkan"><Archive size={16} /></button>
-					<button onclick={() => bulk('trash')} title="Hapus"><Trash2 size={16} /></button>
+					<button onclick={() => bulk('read')} disabled={!checked.size} title="Tandai dibaca"><MailCheck size={16} /></button>
+					<button onclick={() => bulk('archive')} disabled={!checked.size} title="Arsipkan"><Archive size={16} /></button>
+					<button onclick={() => bulk('trash')} disabled={!checked.size} title="Hapus"><Trash2 size={16} /></button>
 				</div>
 			</div>
 		{/if}
@@ -633,7 +673,7 @@
 			</div>
 		{/snippet}
 
-		<div class="lp-scroll" class:compact={density === 'compact'}>
+		<div class="lp-scroll" class:compact={density === 'compact'} class:selmode={selectMode}>
 			{#if $navigating}
 				{#each Array(9) as _, i (i)}
 					<div class="sk-row">
@@ -681,7 +721,7 @@
 		{:else if selected}
 			<div class="rd-toolbar">
 				<div class="rd-nav">
-					<button class="icon-btn only-mobile" onclick={closeReader} aria-label="Kembali"><ChevronLeft size={20} /></button>
+					<button class="back-btn only-mobile" onclick={closeReader}><ArrowLeft size={17} /> Kembali</button>
 					{#if selIndex >= 0}<span class="counter">{selIndex + 1} dari {data.total}</span>{/if}
 					<button class="icon-btn" disabled={selIndex <= 0} onclick={() => goRel(-1)} aria-label="Sebelumnya"><ChevronLeft size={18} /></button>
 					<button class="icon-btn" disabled={selIndex < 0 || selIndex >= data.messages.length - 1} onclick={() => goRel(1)} aria-label="Berikutnya"><ChevronRight size={18} /></button>
@@ -1177,7 +1217,7 @@
 		flex-direction: column;
 		min-height: 0;
 		background: #fff;
-		border-radius: 16px 0 0 0;
+		border-radius: 16px 16px 0 0;
 		margin-top: 8px;
 		box-shadow: 0 0 0 1px #e6e9ef;
 		overflow: hidden;
@@ -1284,6 +1324,68 @@
 	}
 	.bulk-actions button:hover {
 		background: #d7e6ff;
+	}
+	.bulk-actions button:disabled {
+		opacity: 0.4;
+		pointer-events: none;
+	}
+	.bb-close {
+		display: grid;
+		place-items: center;
+		width: 28px;
+		height: 28px;
+		border: 0;
+		border-radius: 8px;
+		background: transparent;
+		color: #0b57d0;
+		cursor: pointer;
+	}
+	.bb-close:hover {
+		background: #d7e6ff;
+	}
+	.bb-all {
+		border: 1px solid #b9d3ff;
+		background: #fff;
+		color: #0b57d0;
+		font-size: 0.78rem;
+		font-weight: 700;
+		padding: 5px 12px;
+		border-radius: 999px;
+		cursor: pointer;
+	}
+	.bb-all:hover {
+		background: #eef4ff;
+	}
+	.bulkbar span {
+		flex: 1;
+	}
+	/* refresh berputar */
+	.icon-btn.spinning :global(svg) {
+		animation: spinbtn 0.8s linear infinite;
+	}
+	/* mode pilih: checkbox selalu tampak */
+	.lp-scroll.selmode .row .chk {
+		opacity: 1;
+	}
+	/* tombol kembali (reader) yang jelas */
+	.back-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		height: 34px;
+		padding: 0 12px 0 8px;
+		margin-right: 4px;
+		border: 1px solid #dbe0e7;
+		border-radius: 999px;
+		background: #f5f7fa;
+		color: #3c4043;
+		font-size: 0.84rem;
+		font-weight: 600;
+		cursor: pointer;
+		transition: background 0.13s;
+	}
+	.back-btn:hover {
+		background: #e9edf3;
 	}
 	.lp-scroll {
 		flex: 1;
@@ -2543,6 +2645,27 @@
 	}
 	:global(html.psdark) .icon-btn:hover {
 		background: #1b2029;
+	}
+	:global(html.psdark) .back-btn {
+		background: #1b2029;
+		border-color: #2c333d;
+		color: #dce2ea;
+	}
+	:global(html.psdark) .back-btn:hover {
+		background: #222831;
+	}
+	:global(html.psdark) .bulkbar {
+		background: #14202f;
+		border-color: #26436b;
+		color: #9cc2ff;
+	}
+	:global(html.psdark) .bb-all {
+		background: #161a20;
+		border-color: #26436b;
+		color: #9cc2ff;
+	}
+	:global(html.psdark) .bb-close {
+		color: #9cc2ff;
 	}
 	:global(html.psdark) .rd-toolbar,
 	:global(html.psdark) .rd-actionbar,
