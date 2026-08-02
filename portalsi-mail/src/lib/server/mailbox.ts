@@ -546,6 +546,20 @@ export async function archiveMessage(creds: Creds, folderPath: string, archivePa
 	});
 }
 
+/** Batal arsip: pindahkan kembali ke Kotak Masuk. */
+export async function unarchiveMessage(creds: Creds, folderPath: string, uid: number) {
+	const mailbox = folderPath === STARRED_PATH ? 'INBOX' : folderPath;
+	if (mailbox === 'INBOX') return;
+	return withClient(creds, async (c) => {
+		const lock = await c.getMailboxLock(mailbox);
+		try {
+			await c.messageMove({ uid: String(uid) }, 'INBOX', { uid: true });
+		} finally {
+			lock.release();
+		}
+	});
+}
+
 export async function moveToTrash(creds: Creds, folderPath: string, trashPath: string, uid: number) {
 	const mailbox = folderPath === STARRED_PATH ? 'INBOX' : folderPath;
 	return withClient(creds, async (c) => {

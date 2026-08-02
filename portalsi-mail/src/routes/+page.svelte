@@ -9,6 +9,7 @@
 		Send,
 		FileText,
 		Archive,
+		ArchiveRestore,
 		ShieldAlert,
 		Trash2,
 		Search,
@@ -413,7 +414,7 @@
 		toast(`${label} selesai`);
 	}
 	// hilangkan baris seketika, kerjakan di latar
-	function optimisticRemove(uids: number[], action: 'archive' | 'trash') {
+	function optimisticRemove(uids: number[], serverAction: string, label: string) {
 		const h = new Set(hidden);
 		uids.forEach((u) => h.add(u));
 		hidden = h;
@@ -423,21 +424,40 @@
 			persistPins();
 		}
 		runBg(
-			action === 'archive' ? 'Mengarsipkan' : 'Menghapus',
-			uids.map((uid) => postAction(action, { uid, folder_path: data.folderPath, folder_key: data.folderKey }))
+			label,
+			uids.map((uid) => postAction(serverAction, { uid, folder_path: data.folderPath, folder_key: data.folderKey }))
 		);
+	}
+	// aksi kontekstual sesuai folder
+	let inArchive = $derived(data.folderKey === 'archive');
+	let inTrash = $derived(data.folderKey === 'trash');
+	function doArchive(uids: number[]) {
+		if (inArchive) optimisticRemove(uids, 'unarchive', 'Memindahkan ke Kotak Masuk');
+		else optimisticRemove(uids, 'archive', 'Mengarsipkan');
+	}
+	function doTrash(uids: number[], confirmPurge = true) {
+		if (inTrash) {
+			if (confirmPurge && typeof window !== 'undefined' && !window.confirm('Hapus permanen email ini? Tidak bisa dikembalikan.')) return;
+			optimisticRemove(uids, 'trash', 'Menghapus permanen');
+		} else {
+			optimisticRemove(uids, 'trash', 'Memindahkan ke sampah');
+		}
 	}
 	function bulk(action: 'archive' | 'trash' | 'read') {
 		if (!checked.size) return;
 		const uids = [...checked];
+		if (action === 'trash' && inTrash && typeof window !== 'undefined' && !window.confirm(`Hapus permanen ${uids.length} email? Tidak bisa dikembalikan.`)) return;
 		checked = new Set();
 		if (action === 'read') {
 			const so = { ...seenOverride };
 			uids.forEach((u) => (so[u] = true));
 			seenOverride = so;
 			runBg('Menandai dibaca', uids.map((uid) => postAction('toggleRead', { uid, folder_path: data.folderPath, seen: 1 })));
+		} else if (action === 'archive') {
+			doArchive(uids);
 		} else {
-			optimisticRemove(uids, action);
+			// bulk hapus di sampah = permanen (tanpa konfirmasi per item)
+			doTrash(uids, false);
 		}
 	}
 
@@ -782,8 +802,10 @@
 					{#if data.folderKey === 'inbox'}
 						<button class="icon-btn only-desktop" class:pinon={isPinned(selected.uid)} onclick={() => togglePin(selected.uid)} aria-label="Sematkan"><Pin size={18} fill={isPinned(selected.uid) ? 'currentColor' : 'none'} /></button>
 					{/if}
-					<button class="icon-btn only-desktop" onclick={() => optimisticRemove([selected.uid], 'archive')} aria-label="Arsipkan"><Archive size={18} /></button>
-					<button class="icon-btn only-desktop" onclick={() => optimisticRemove([selected.uid], 'trash')} aria-label="Hapus"><Trash2 size={18} /></button>
+					<button class="icon-btn only-desktop" onclick={() => doArchive([selected.uid])} title={inArchive ? 'Batal arsip' : 'Arsipkan'} aria-label={inArchive ? 'Batal arsip' : 'Arsipkan'}>
+						{#if inArchive}<ArchiveRestore size={18} />{:else}<Archive size={18} />{/if}
+					</button>
+					<button class="icon-btn only-desktop" onclick={() => doTrash([selected.uid])} title={inTrash ? 'Hapus permanen' : 'Pindahkan ke sampah'} aria-label={inTrash ? 'Hapus permanen' : 'Hapus'}><Trash2 size={18} /></button>
 					<button class="icon-btn only-desktop" onclick={() => window.print()} aria-label="Cetak"><Printer size={18} /></button>
 					<button class="icon-btn only-desktop" onclick={() => (readerFull = !readerFull)} aria-label="Layar penuh">
 						{#if readerFull}<Minimize2 size={17} />{:else}<Maximize2 size={17} />{/if}
@@ -794,9 +816,13 @@
 							<button class="menu-backdrop" onclick={() => (readerMenuOpen = false)} aria-label="Tutup"></button>
 							<div class="rmenu">
 								<button onclick={() => { toggleStar(selected); readerMenuOpen = false; }}><Star size={17} fill={selected.flagged ? 'currentColor' : 'none'} /> {selected.flagged ? 'Hapus bintang' : 'Beri bintang'}</button>
-								<button onclick={() => { optimisticRemove([selected.uid], 'archive'); readerMenuOpen = false; }}><Archive size={17} /> Arsipkan</button>
+								<button onclick={() => { doArchive([selected.uid]); readerMenuOpen = false; }}>
+									{#if inArchive}<ArchiveRestore size={17} /> Pindahkan ke Kotak Masuk{:else}<Archive size={17} /> Arsipkan{/if}
+								</button>
 								<button onclick={() => { markUnread(selected); readerMenuOpen = false; }}><MailIcon size={17} /> Tandai belum dibaca</button>
-								<button class="danger" onclick={() => { optimisticRemove([selected.uid], 'trash'); readerMenuOpen = false; }}><Trash2 size={17} /> Hapus</button>
+								<button class="danger" onclick={() => { doTrash([selected.uid]); readerMenuOpen = false; }}>
+									<Trash2 size={17} /> {inTrash ? 'Hapus permanen' : 'Pindahkan ke sampah'}
+								</button>
 							</div>
 						{/if}
 					</div>

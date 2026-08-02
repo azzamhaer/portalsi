@@ -9,6 +9,7 @@ import {
 	sendMessage,
 	setSeen,
 	setStar,
+	unarchiveMessage,
 	type Creds,
 	type OutAttachment
 } from '$lib/server/mailbox';
@@ -135,6 +136,19 @@ export const actions: Actions = {
 		const folderPath = String(f.get('folder_path') ?? '');
 		try {
 			await moveToTrash(creds, folderPath, trashPath, uid);
+		} catch {
+			/* ignore */
+		}
+		return { ok: true };
+	},
+
+	unarchive: async ({ request, locals }) => {
+		const creds = await credsFrom(locals);
+		const f = await request.formData();
+		const uid = Number(f.get('uid'));
+		const folderPath = String(f.get('folder_path') ?? 'Archive');
+		try {
+			await unarchiveMessage(creds, folderPath, uid);
 		} catch {
 			/* ignore */
 		}
