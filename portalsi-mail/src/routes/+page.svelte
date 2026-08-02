@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { invalidateAll } from '$app/navigation';
 	import { navigating } from '$app/stores';
 	import { tick, onMount } from 'svelte';
 	import {
@@ -44,7 +43,8 @@
 		Sun,
 		KeyRound,
 		ShieldCheck,
-		UserRound
+		UserRound,
+		MoreVertical
 	} from '@lucide/svelte';
 
 	let { data, form } = $props();
@@ -74,6 +74,7 @@
 	let hidden = $state<Set<number>>(new Set());
 	let selectMode = $state(false);
 	let refreshing = $state(false);
+	let readerMenuOpen = $state(false);
 	// (aksi massal kini optimistik — tak perlu status sibuk terpisah)
 	let bgCount = $state(0);
 	let bgLabel = $state('');
@@ -122,6 +123,8 @@
 		hidden = new Set();
 		selectMode = false;
 		readerFull = false;
+		live = null;
+		prevTop = data.messages[0]?.uid ?? 0;
 	});
 
 	$effect(() => {
@@ -173,36 +176,54 @@
 		if (typeof localStorage !== 'undefined') localStorage.setItem('ps_mail_dark', darkMode ? '1' : '0');
 	}
 
-	// ── refresh manual + otomatis ──
-	async function refresh() {
-		if (refreshing) return;
-		refreshing = true;
+	// ── refresh di LATAR (tak mengganggu email yang sedang dibuka) ──
+	let live = $state<any>(null);
+	let prevTop = 0;
+	let folders = $derived(live?.folders ?? data.folders);
+	let msgs = $derived(live?.messages ?? data.messages);
+	let total = $derived(live?.total ?? data.total);
+	let pages = $derived(live?.pages ?? data.pages);
+	let curPage = $derived(live?.page ?? data.page);
+	let curFolder = $derived(folders.find((f: any) => f.key === data.folderKey));
+	let curLabel = $derived(curFolder?.label ?? 'Kotak Masuk');
+	let pageTitle = $derived(
+		(curFolder?.unseen ? `(${curFolder.unseen}) ` : '') + `${curLabel} — Portal SI Mail`
+	);
+
+	async function poll(manual = false) {
+		if (manual) {
+			if (refreshing) return;
+			refreshing = true;
+		}
 		try {
-			await invalidateAll();
+			const r = await fetch(
+				`/poll?folder=${encodeURIComponent(data.folderKey)}&page=${data.page}&q=${encodeURIComponent(data.q)}`
+			);
+			if (r.ok) {
+				const d = await r.json();
+				const top = d.messages?.[0]?.uid ?? 0;
+				if (data.folderKey === 'inbox' && data.page === 1 && !data.q && prevTop && top > prevTop) {
+					toast('Email baru masuk!');
+				}
+				prevTop = top;
+				live = d;
+			}
 		} catch {
 			/* ignore */
 		}
-		refreshing = false;
+		if (manual) refreshing = false;
+	}
+	function refresh() {
+		poll(true);
 	}
 	onMount(() => {
+		prevTop = data.messages[0]?.uid ?? 0;
 		const id = setInterval(() => {
 			if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
-			if (composeOpen || refreshing) return;
-			invalidateAll().catch(() => {});
-		}, 10000);
+			if (composeOpen) return;
+			poll();
+		}, 8000);
 		return () => clearInterval(id);
-	});
-	// deteksi email baru masuk (inbox, halaman 1) → toast
-	let prevTop = 0;
-	let prevFolderKey = '';
-	$effect(() => {
-		const top = data.messages[0]?.uid ?? 0;
-		const sameCtx = data.folderKey === 'inbox' && data.page === 1 && !data.q;
-		if (sameCtx && prevFolderKey === 'inbox' && prevTop && top > prevTop) {
-			toast('Email baru masuk!');
-		}
-		prevTop = top;
-		prevFolderKey = data.folderKey;
 	});
 
 	// ── live search ──
@@ -277,7 +298,7 @@
 	}
 
 	// ── daftar: filter + pin + kelompok tanggal ──
-	let visible = $derived(data.messages.filter((m: any) => !hidden.has(m.uid)));
+	let visible = $derived(msgs.filter((m: any) => !hidden.has(m.uid)));
 	let filtered = $derived(filter === 'unread' ? visible.filter((m: any) => !seenOf(m)) : visible);
 	let pinnedItems = $derived(data.folderKey === 'inbox' ? filtered.filter((m: any) => isPinned(m.uid)) : []);
 	let groups = $derived.by(() => {
@@ -345,10 +366,10 @@
 		}
 	}
 
-	let selIndex = $derived(data.messages.findIndex((m: any) => m.uid === selectedUid));
+	let selIndex = $derived(msgs.findIndex((m: any) => m.uid === selectedUid));
 	function goRel(delta: number) {
 		const i = selIndex + delta;
-		if (i >= 0 && i < data.messages.length) openMessage(data.messages[i]);
+		if (i >= 0 && i < msgs.length) openMessage(msgs[i]);
 	}
 
 	function toggleStar(m: any, e?: Event) {
@@ -528,6 +549,8 @@
 	let allChecked = $derived(filtered.length > 0 && checked.size === filtered.length);
 </script>
 
+<svelte:head><title>{pageTitle}</title></svelte:head>
+
 {#if $navigating}
 	<div class="topbar-progress"></div>
 {/if}
@@ -546,7 +569,7 @@
 		</button>
 
 		<nav class="folders">
-			{#each data.folders as f (f.key)}
+			{#each folders as f (f.key)}
 				{@const Icon = folderIcon[f.key] ?? Inbox}
 				<a href="/?folder={f.key}" class="fitem" class:active={f.key === data.folderKey} title={f.label} onclick={() => { if (typeof window !== 'undefined' && window.innerWidth <= 820) sidebarOpen = false; }}>
 					<span class="fico"><Icon size={19} /></span>
@@ -594,7 +617,7 @@
 				<input
 					name="q"
 					bind:value={sq}
-					placeholder="Cari email…"
+					placeholder={`Cari ${curLabel.toLowerCase()}…`}
 					oninput={onSearchInput}
 					onfocus={() => { if (sq.trim().length) searchOpen = true; }}
 				/>
@@ -638,6 +661,28 @@
 		{/if}
 		{#if bgCount > 0}
 			<div class="bgbar"><span class="spin dark"></span> {bgLabel}… {bgCount} tersisa</div>
+		{/if}
+		{#if data.folderKey === 'trash' && msgs.length}
+			<div class="trash-notice">
+				<span><Trash2 size={15} /> Pesan di Sampah dihapus permanen setelah 30 hari.</span>
+				<form
+					method="POST"
+					action="?/emptyTrash"
+					use:enhance={({ cancel }) => {
+						if (typeof window !== 'undefined' && !window.confirm('Kosongkan Sampah sekarang? Semua pesan akan dihapus permanen dan tak bisa dikembalikan.')) {
+							cancel();
+							return;
+						}
+						return async ({ update }) => {
+							live = null;
+							await update();
+							toast('Sampah dikosongkan');
+						};
+					}}
+				>
+					<button class="tn-btn">Bersihkan sampah sekarang</button>
+				</form>
+			</div>
 		{/if}
 
 		{#snippet rowEl(m)}
@@ -697,11 +742,11 @@
 				{/each}
 			{/if}
 
-			{#if data.pages > 1 && !$navigating}
+			{#if pages > 1 && !$navigating}
 				<div class="pager">
-					<a class="icon-btn" class:disabled={data.page <= 1} href="/?folder={data.folderKey}&page={data.page - 1}{qStr}"><ChevronLeft size={18} /></a>
-					<span>{data.page} / {data.pages}</span>
-					<a class="icon-btn" class:disabled={data.page >= data.pages} href="/?folder={data.folderKey}&page={data.page + 1}{qStr}"><ChevronRight size={18} /></a>
+					<a class="icon-btn" class:disabled={curPage <= 1} href="/?folder={data.folderKey}&page={curPage - 1}{qStr}"><ChevronLeft size={18} /></a>
+					<span>{curPage} / {pages}</span>
+					<a class="icon-btn" class:disabled={curPage >= pages} href="/?folder={data.folderKey}&page={curPage + 1}{qStr}"><ChevronRight size={18} /></a>
 				</div>
 			{/if}
 		</div>
@@ -722,21 +767,33 @@
 			<div class="rd-toolbar">
 				<div class="rd-nav">
 					<button class="back-btn" onclick={closeReader}><ArrowLeft size={17} /> Kembali</button>
-					{#if selIndex >= 0}<span class="counter">{selIndex + 1} dari {data.total}</span>{/if}
+					{#if selIndex >= 0}<span class="counter">{selIndex + 1} dari {total}</span>{/if}
 					<button class="icon-btn" disabled={selIndex <= 0} onclick={() => goRel(-1)} aria-label="Sebelumnya"><ChevronLeft size={18} /></button>
-					<button class="icon-btn" disabled={selIndex < 0 || selIndex >= data.messages.length - 1} onclick={() => goRel(1)} aria-label="Berikutnya"><ChevronRight size={18} /></button>
+					<button class="icon-btn" disabled={selIndex < 0 || selIndex >= msgs.length - 1} onclick={() => goRel(1)} aria-label="Berikutnya"><ChevronRight size={18} /></button>
 				</div>
 				<div class="rd-tools">
-					<button class="icon-btn" class:on={selected.flagged} onclick={() => toggleStar(selected)} aria-label="Bintang"><Star size={18} fill={selected.flagged ? 'currentColor' : 'none'} /></button>
+					<button class="icon-btn only-desktop" class:on={selected.flagged} onclick={() => toggleStar(selected)} aria-label="Bintang"><Star size={18} fill={selected.flagged ? 'currentColor' : 'none'} /></button>
 					{#if data.folderKey === 'inbox'}
-						<button class="icon-btn" class:pinon={isPinned(selected.uid)} onclick={() => togglePin(selected.uid)} aria-label="Sematkan"><Pin size={18} fill={isPinned(selected.uid) ? 'currentColor' : 'none'} /></button>
+						<button class="icon-btn only-desktop" class:pinon={isPinned(selected.uid)} onclick={() => togglePin(selected.uid)} aria-label="Sematkan"><Pin size={18} fill={isPinned(selected.uid) ? 'currentColor' : 'none'} /></button>
 					{/if}
-					<button class="icon-btn" onclick={() => optimisticRemove([selected.uid], 'archive')} aria-label="Arsipkan"><Archive size={18} /></button>
-					<button class="icon-btn" onclick={() => optimisticRemove([selected.uid], 'trash')} aria-label="Hapus"><Trash2 size={18} /></button>
+					<button class="icon-btn only-desktop" onclick={() => optimisticRemove([selected.uid], 'archive')} aria-label="Arsipkan"><Archive size={18} /></button>
+					<button class="icon-btn only-desktop" onclick={() => optimisticRemove([selected.uid], 'trash')} aria-label="Hapus"><Trash2 size={18} /></button>
 					<button class="icon-btn only-desktop" onclick={() => window.print()} aria-label="Cetak"><Printer size={18} /></button>
 					<button class="icon-btn only-desktop" onclick={() => (readerFull = !readerFull)} aria-label="Layar penuh">
 						{#if readerFull}<Minimize2 size={17} />{:else}<Maximize2 size={17} />{/if}
 					</button>
+					<div class="kebab only-mobile">
+						<button class="icon-btn" onclick={() => (readerMenuOpen = !readerMenuOpen)} aria-label="Aksi lain"><MoreVertical size={20} /></button>
+						{#if readerMenuOpen}
+							<button class="menu-backdrop" onclick={() => (readerMenuOpen = false)} aria-label="Tutup"></button>
+							<div class="rmenu">
+								<button onclick={() => { toggleStar(selected); readerMenuOpen = false; }}><Star size={17} fill={selected.flagged ? 'currentColor' : 'none'} /> {selected.flagged ? 'Hapus bintang' : 'Beri bintang'}</button>
+								<button onclick={() => { optimisticRemove([selected.uid], 'archive'); readerMenuOpen = false; }}><Archive size={17} /> Arsipkan</button>
+								<button onclick={() => { markUnread(selected); readerMenuOpen = false; }}><MailIcon size={17} /> Tandai belum dibaca</button>
+								<button class="danger" onclick={() => { optimisticRemove([selected.uid], 'trash'); readerMenuOpen = false; }}><Trash2 size={17} /> Hapus</button>
+							</div>
+						{/if}
+					</div>
 				</div>
 			</div>
 
@@ -790,7 +847,7 @@
 			<div class="rd-actionbar">
 				<button class="pill primary" onclick={() => replyTo(selected)}><Reply size={16} /> Balas</button>
 				<button class="pill" onclick={() => forwardMsg(selected)}><Forward size={16} /> Teruskan</button>
-				<button class="pill" onclick={() => markUnread(selected)}><MailIcon size={16} /> <span class="lbl-full">Tandai belum dibaca</span><span class="lbl-short">Belum dibaca</span></button>
+				<button class="pill only-desktop" onclick={() => markUnread(selected)}><MailIcon size={16} /> Tandai belum dibaca</button>
 			</div>
 		{:else}
 			<div class="empty">
@@ -1114,11 +1171,18 @@
 	}
 	.fitem .count {
 		margin-left: auto;
-		font-size: 0.76rem;
-		background: rgba(11, 87, 208, 0.12);
-		color: #0b57d0;
-		padding: 1px 8px;
-		border-radius: 10px;
+		min-width: 20px;
+		text-align: center;
+		font-size: 0.72rem;
+		font-weight: 700;
+		background: #e5484d;
+		color: #fff;
+		padding: 2px 7px;
+		border-radius: 999px;
+		box-shadow: 0 1px 3px rgba(229, 72, 77, 0.4);
+	}
+	.fitem.active .count {
+		background: #c62b30;
 	}
 	.sb-foot {
 		margin-top: auto;
@@ -2218,6 +2282,81 @@
 		color: #8a6d0f;
 		font-weight: 600;
 	}
+	/* pemberitahuan sampah */
+	.trash-notice {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		flex-wrap: wrap;
+		gap: 8px;
+		margin: 0 12px 8px;
+		padding: 10px 12px;
+		background: #fff4f4;
+		border: 1px solid #f6cbcb;
+		border-radius: 12px;
+	}
+	.trash-notice span {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		font-size: 0.8rem;
+		color: #a23b3b;
+	}
+	.trash-notice form {
+		margin: 0;
+	}
+	.tn-btn {
+		border: 1px solid #e0a0a0;
+		background: #fff;
+		color: #c0392b;
+		font-size: 0.78rem;
+		font-weight: 700;
+		padding: 7px 12px;
+		border-radius: 999px;
+		cursor: pointer;
+		white-space: nowrap;
+	}
+	.tn-btn:hover {
+		background: #fdecec;
+	}
+	/* kebab menu reader (mobile) */
+	.kebab {
+		position: relative;
+	}
+	.rmenu {
+		position: absolute;
+		top: 44px;
+		right: 0;
+		width: 210px;
+		background: #fff;
+		border: 1px solid #e6e9ef;
+		border-radius: 14px;
+		box-shadow: 0 18px 44px rgba(0, 0, 0, 0.18);
+		padding: 6px;
+		z-index: 60;
+		animation: menuin 0.14s ease;
+	}
+	.rmenu button {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		width: 100%;
+		padding: 11px 12px;
+		border: 0;
+		border-radius: 10px;
+		background: transparent;
+		color: #3c4043;
+		font: inherit;
+		font-size: 0.9rem;
+		cursor: pointer;
+		text-align: left;
+	}
+	.rmenu button:hover {
+		background: #f2f5f9;
+	}
+	.rmenu button.danger {
+		color: #c0392b;
+	}
 	.grp-h.pin {
 		display: flex;
 		align-items: center;
@@ -2582,8 +2721,8 @@
 		color: #7fb0ff;
 	}
 	:global(html.psdark) .fitem .count {
-		background: #1e2a3d;
-		color: #7fb0ff;
+		background: #e5484d;
+		color: #fff;
 	}
 	:global(html.psdark) .sb-foot {
 		border-top-color: #252b34;
@@ -2811,6 +2950,33 @@
 	:global(html.psdark) .sk {
 		background: linear-gradient(90deg, #1b2029 25%, #222831 37%, #1b2029 63%);
 		background-size: 400% 100%;
+	}
+	:global(html.psdark) .trash-notice {
+		background: #2a1618;
+		border-color: #5a2a2a;
+	}
+	:global(html.psdark) .trash-notice span {
+		color: #f0a3a3;
+	}
+	:global(html.psdark) .tn-btn {
+		background: #161a20;
+		border-color: #5a2a2a;
+		color: #ff9b9b;
+	}
+	:global(html.psdark) .rmenu {
+		background: #1b2029;
+		border-color: #2c333d;
+	}
+	:global(html.psdark) .rmenu button {
+		color: #dce2ea;
+	}
+	:global(html.psdark) .rmenu button:hover {
+		background: #222831;
+	}
+	:global(html.psdark) .bgbar {
+		background: #2a2410;
+		border-color: #5a4a1a;
+		color: #e6c96b;
 	}
 	.mail-toast {
 		position: fixed;

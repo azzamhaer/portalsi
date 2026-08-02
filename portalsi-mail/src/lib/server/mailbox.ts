@@ -181,20 +181,11 @@ function summaryFrom(m: any): MsgSummary {
 
 // ─────────────────────────── operasi pada satu client ───────────────────────────
 
-async function foldersOn(c: ImapFlow, withUnseen = true): Promise<Folder[]> {
+async function foldersOn(c: ImapFlow, withCounts = true): Promise<Folder[]> {
 	const list = await c.list();
 	const paths = detectFolders(list);
-	let inboxUnseen: number | undefined;
-	if (withUnseen) {
-		try {
-			const st = await c.status('INBOX', { unseen: true });
-			inboxUnseen = st.unseen;
-		} catch {
-			/* ignore */
-		}
-	}
-	return [
-		{ key: 'inbox', label: FOLDER_LABELS.inbox, path: paths.inbox, unseen: inboxUnseen },
+	const folders: Folder[] = [
+		{ key: 'inbox', label: FOLDER_LABELS.inbox, path: paths.inbox },
 		{ key: 'starred', label: FOLDER_LABELS.starred, path: STARRED_PATH, virtual: true },
 		{ key: 'sent', label: FOLDER_LABELS.sent, path: paths.sent },
 		{ key: 'drafts', label: FOLDER_LABELS.drafts, path: paths.drafts },
@@ -202,6 +193,40 @@ async function foldersOn(c: ImapFlow, withUnseen = true): Promise<Folder[]> {
 		{ key: 'junk', label: FOLDER_LABELS.junk, path: paths.junk },
 		{ key: 'trash', label: FOLDER_LABELS.trash, path: paths.trash }
 	];
+	if (withCounts) {
+		// badge: inbox & spam = belum dibaca; draf & sampah = total; lainnya tanpa badge
+		const rules: Record<string, 'unseen' | 'total'> = {
+			inbox: 'unseen',
+			junk: 'unseen',
+			drafts: 'total',
+			trash: 'total'
+		};
+		for (const f of folders) {
+			const mode = rules[f.key];
+			if (!mode || !f.path || f.virtual) continue;
+			try {
+				const st = await c.status(f.path, mode === 'unseen' ? { unseen: true } : { messages: true });
+				f.unseen = mode === 'unseen' ? st.unseen : st.messages;
+			} catch {
+				/* ignore */
+			}
+		}
+	}
+	return folders;
+}
+
+/** Kosongkan folder Sampah (hapus permanen semua isinya). */
+export async function emptyTrash(creds: Creds, trashPath: string): Promise<number> {
+	return withClient(creds, async (c) => {
+		const lock = await c.getMailboxLock(trashPath);
+		try {
+			const total = c.mailbox && typeof c.mailbox !== 'boolean' ? c.mailbox.exists : 0;
+			if (total > 0) await c.messageDelete('1:*');
+			return total;
+		} finally {
+			lock.release();
+		}
+	});
 }
 
 async function listOn(

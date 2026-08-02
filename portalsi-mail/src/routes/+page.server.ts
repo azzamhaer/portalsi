@@ -2,6 +2,7 @@ import { fail, redirect } from '@sveltejs/kit';
 import { forgotPassword, mailCredentials, mailStatus } from '$lib/server/portal';
 import {
 	archiveMessage,
+	emptyTrash,
 	listFolders,
 	loadView,
 	moveToTrash,
@@ -134,6 +135,18 @@ export const actions: Actions = {
 		const folderPath = String(f.get('folder_path') ?? '');
 		try {
 			await moveToTrash(creds, folderPath, trashPath, uid);
+		} catch {
+			/* ignore */
+		}
+		return { ok: true };
+	},
+
+	emptyTrash: async ({ locals }) => {
+		const creds = await credsFrom(locals);
+		const folders = await listFolders(creds);
+		const trashPath = folders.find((f) => f.key === 'trash')?.path || 'Trash';
+		try {
+			await emptyTrash(creds, trashPath);
 		} catch {
 			/* ignore */
 		}
