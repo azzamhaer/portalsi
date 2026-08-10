@@ -3164,8 +3164,8 @@
 			padding: 0 !important;
 		}
 		.htmlframe {
-			height: auto !important;
-			min-height: 900px !important;
+			height: 950px !important;
+			min-height: 0 !important;
 		}
 	}
 
