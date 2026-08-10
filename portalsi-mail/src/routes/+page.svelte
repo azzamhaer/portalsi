@@ -3109,6 +3109,66 @@
 		box-shadow: 0 8px 22px -4px rgba(31, 111, 235, 0.8);
 	}
 
+	/* ═══ CETAK (print): hanya isi email ═══ */
+	@media print {
+		:global(body) {
+			background: #fff !important;
+		}
+		:global(.top) {
+			display: none !important;
+		}
+		.topbar-progress,
+		.sb,
+		.sb-backdrop,
+		.fab,
+		.listpane,
+		.composer,
+		.modal-bg,
+		.mail-toast,
+		.rd-toolbar,
+		.rd-actionbar,
+		.thread {
+			display: none !important;
+		}
+		.app,
+		.app.collapsed {
+			display: block !important;
+			height: auto !important;
+			grid-template-columns: none !important;
+		}
+		.readpane {
+			position: static !important;
+			inset: auto !important;
+			display: block !important;
+			margin: 0 !important;
+			border-radius: 0 !important;
+			box-shadow: none !important;
+			background: #fff !important;
+			color: #000 !important;
+		}
+		.rd-scroll {
+			overflow: visible !important;
+			height: auto !important;
+			padding: 0 !important;
+		}
+		.rd-subject,
+		.rs-name,
+		.rs-addr,
+		.rs-date,
+		.rd-to,
+		.textbody {
+			color: #000 !important;
+		}
+		.rd-body {
+			background: #fff !important;
+			padding: 0 !important;
+		}
+		.htmlframe {
+			height: auto !important;
+			min-height: 900px !important;
+		}
+	}
+
 	/* ═══ RESPONSIVE ═══ */
 	@media (max-width: 1080px) {
 		.app {
