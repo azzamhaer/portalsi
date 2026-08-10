@@ -85,7 +85,7 @@
     body {
       font-family: var(--font-body); color: var(--ink);
       background:
-        linear-gradient(rgba(12,10,8,0.58), rgba(12,10,8,0.64)),
+        linear-gradient(rgba(10,8,6,0.72), rgba(10,8,6,0.78)),
         url('bg.webp') center center / cover no-repeat fixed,
         var(--cream);
       min-height: 100vh; display: flex; flex-direction: column;
@@ -244,7 +244,7 @@
     .portal-blue:hover .go-arrow   { background: var(--blue);   color: #fff; transform: translateX(3px); }
 
     /* ===== state: kartu aktif (mengembang menutupi grid) ===== */
-    .portal-card.active { z-index: 10; background: #fff; box-shadow: 0 40px 80px -30px rgba(26,23,20,0.45); }
+    .portal-card.active { z-index: 10; background: rgba(255,255,255,0.62); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); box-shadow: 0 40px 80px -30px rgba(26,23,20,0.45); }
     .portals.has-expanded .portal-card:not(.active) { opacity: 0; pointer-events: none; }
 
     .open-hint {
