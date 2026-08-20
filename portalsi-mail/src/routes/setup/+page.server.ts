@@ -1,4 +1,5 @@
 import { fail, redirect } from '@sveltejs/kit';
+import { env } from '$env/dynamic/private';
 import { mailCreateAccount, mailStatus } from '$lib/server/portal';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -7,7 +8,11 @@ export const load: PageServerLoad = async ({ locals }) => {
 	const status = await mailStatus(locals.token);
 	if (status.gate_enabled && !status.unlocked) throw redirect(302, '/gate');
 	if (status.has_account) throw redirect(302, '/');
-	return { domain: status.domain };
+	const aliasDomains = (env.MAIL_ALIAS_DOMAINS || '')
+		.split(',')
+		.map((s) => s.trim())
+		.filter(Boolean);
+	return { domain: status.domain, aliasDomains };
 };
 
 export const actions: Actions = {

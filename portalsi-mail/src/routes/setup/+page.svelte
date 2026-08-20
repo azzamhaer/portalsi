@@ -9,6 +9,8 @@
 
 	const clean = $derived((local || '').toLowerCase().trim());
 	const valid = $derived(/^[a-z][a-z0-9._-]{2,}$/.test(clean));
+	const allDomains = $derived([data.domain, ...(((data.aliasDomains as string[]) ?? []))]);
+	const hasAlias = $derived(allDomains.length > 1);
 
 	function askConfirm() {
 		if (!valid) return;
@@ -24,8 +26,9 @@
 	<div class="ico"><AtSign size={22} /></div>
 	<h1>Buat email kamu</h1>
 	<p class="sub">
-		Pilih nama untuk alamat email @{data.domain}. Minimal 3 karakter, huruf kecil/angka, diawali
-		huruf. Satu akun per pengguna dan <b>tidak bisa diganti</b> setelah dibuat.
+		Pilih nama untuk alamat emailmu. Minimal 3 karakter, huruf kecil/angka, diawali huruf.
+		{#if hasAlias}Kamu otomatis mendapat <b>{allDomains.length} alamat sekaligus</b> (satu kotak masuk).{/if}
+		Satu akun per pengguna dan <b>tidak bisa diganti</b> setelah dibuat.
 	</p>
 
 	{#if form?.message}<div class="err">{form.message}</div>{/if}
@@ -55,7 +58,10 @@
 				<span class="suffix">@{data.domain}</span>
 			</span>
 		</label>
-		<p class="preview">Alamat: <b>{clean || 'namamu'}@{data.domain}</b></p>
+		<div class="preview">
+			Alamat kamu:
+			{#each allDomains as d}<b class="pv-addr">{clean || 'namamu'}@{d}</b>{/each}
+		</div>
 		<button type="button" class="btn" onclick={askConfirm} disabled={submitting || !valid}>
 			{#if submitting}<span class="spin"></span>{:else}Buat email{/if}
 		</button>
@@ -66,8 +72,8 @@
 					<button class="cf-x" onclick={() => (confirmOpen = false)} aria-label="Tutup"><X size={16} /></button>
 					<div class="cf-ico"><ShieldAlert size={26} /></div>
 					<h2>Konfirmasi alamat email</h2>
-					<p>Kamu akan membuat:</p>
-					<div class="cf-addr">{clean}@{data.domain}</div>
+					<p>Kamu akan membuat{hasAlias ? ` ${allDomains.length} alamat (satu kotak masuk)` : ''}:</p>
+					{#each allDomains as d}<div class="cf-addr">{clean}@{d}</div>{/each}
 					<p class="cf-warn">Alamat ini <b>permanen</b> dan <b>tidak bisa diubah atau dihapus</b> setelahnya. Pastikan ejaannya benar.</p>
 					<div class="cf-actions">
 						<button type="button" class="cf-cancel" onclick={() => (confirmOpen = false)}>Periksa lagi</button>
@@ -133,6 +139,11 @@
 	}
 	.preview b {
 		color: #1a1714;
+	}
+	.pv-addr {
+		display: block;
+		color: #1f6feb;
+		margin-top: 3px;
 	}
 	:global(.btn:disabled) {
 		opacity: 0.6;
