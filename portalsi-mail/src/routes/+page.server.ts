@@ -1,4 +1,5 @@
 import { fail, redirect } from '@sveltejs/kit';
+import { env } from '$env/dynamic/private';
 import { forgotPassword, mailCredentials, mailStatus } from '$lib/server/portal';
 import {
 	archiveMessage,
@@ -17,6 +18,20 @@ import type { Actions, PageServerLoad } from './$types';
 
 // batas permintaan reset password: 3/hari per user (in-memory, cukup untuk beta)
 const resetCounts = new Map<string, { date: string; count: number }>();
+
+// domain alias tambahan (mis. "sekolahimpian.com"); user dapat alamat kedua otomatis
+function aliasDomains(): string[] {
+	return (env.MAIL_ALIAS_DOMAINS || '')
+		.split(',')
+		.map((s) => s.trim())
+		.filter(Boolean);
+}
+/** Semua alamat milik user: [primary@portalsi.com, local@aliasdomain, ...] */
+function addressesFor(email: string): string[] {
+	if (!email || !email.includes('@')) return email ? [email] : [];
+	const local = email.split('@')[0];
+	return [email, ...aliasDomains().map((d) => `${local}@${d}`)];
+}
 
 async function ensure(locals: App.Locals): Promise<{ token: string; creds: Creds; account: any }> {
 	if (!locals.user || !locals.token) throw redirect(302, '/login');
@@ -41,6 +56,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	return {
 		account,
 		user: locals.user,
+		addresses: addressesFor(account?.email || ''),
 		folders: view.folders,
 		folderKey: view.folderKey,
 		folderPath: view.folderPath,
@@ -75,6 +91,10 @@ export const actions: Actions = {
 		const inReplyTo = String(f.get('in_reply_to') ?? '') || undefined;
 		const references = String(f.get('references') ?? '') || undefined;
 		const fromName = String(f.get('from_name') ?? '').trim() || undefined;
+		// alamat pengirim yang dipilih (validasi hanya alamat milik user)
+		const requestedFrom = String(f.get('from_addr') ?? '').trim().toLowerCase();
+		const allowed = addressesFor(creds.email);
+		const fromAddr = allowed.includes(requestedFrom) ? requestedFrom : undefined;
 
 		if (!to) return fail(422, { sendError: 'Isi penerima (To) dulu.' });
 
@@ -89,7 +109,7 @@ export const actions: Actions = {
 		try {
 			await sendMessage(
 				creds,
-				{ to, cc, bcc, subject, text, html, inReplyTo, references, attachments, fromName },
+				{ to, cc, bcc, subject, text, html, inReplyTo, references, attachments, fromName, fromAddr },
 				sentPath
 			);
 		} catch (e: any) {

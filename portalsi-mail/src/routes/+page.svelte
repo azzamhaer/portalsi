@@ -109,6 +109,7 @@
 	const MAX_ATTACH_TOTAL = 20 * 1024 * 1024;
 
 	let compose = $state({ to: '', cc: '', bcc: '', subject: '', in_reply_to: '', references: '' });
+	let fromAddr = $state<string>((data.addresses && data.addresses[0]) || '');
 	let files = $state<File[]>([]);
 	let editorEl: HTMLDivElement | null = null;
 	let fileInput: HTMLInputElement | null = null;
@@ -492,8 +493,14 @@
 			editorEl.focus();
 		}
 	}
+	function pickFrom(recipients: string): string {
+		const list = data.addresses ?? [];
+		const low = (recipients || '').toLowerCase();
+		return list.find((a: string) => low.includes(a.toLowerCase())) || list[0] || '';
+	}
 	function newMail() {
 		compose = { to: '', cc: '', bcc: '', subject: '', in_reply_to: '', references: '' };
+		fromAddr = data.addresses?.[0] || fromAddr;
 		openComposer(sigHtml());
 	}
 	function replyTo(m: any) {
@@ -507,6 +514,7 @@
 			in_reply_to: m.messageId || '',
 			references: (m.references ? `${m.references} ` : '') + (m.messageId || '')
 		};
+		fromAddr = pickFrom(m.to);
 		openComposer(`${sigHtml()}<br><br>${quote}`);
 	}
 	function forwardMsg(m: any) {
@@ -949,6 +957,14 @@
 					};
 				}}
 			>
+				{#if data.addresses && data.addresses.length > 1}
+					<div class="cp-field">
+						<label>Dari</label>
+						<select class="cp-from" bind:value={fromAddr}>
+							{#each data.addresses as a}<option value={a}>{a}</option>{/each}
+						</select>
+					</div>
+				{/if}
 				<div class="cp-field">
 					<label>Ke</label>
 					<input name="to" bind:value={compose.to} placeholder="penerima@contoh.com" required />
@@ -985,6 +1001,7 @@
 				<input type="hidden" name="in_reply_to" value={compose.in_reply_to} />
 				<input type="hidden" name="references" value={compose.references} />
 				<input type="hidden" name="from_name" value={effName} />
+				<input type="hidden" name="from_addr" value={fromAddr} />
 				{#if (form as any)?.sendError}<p class="cp-err">{(form as any).sendError}</p>{/if}
 
 				<div class="cp-foot">
@@ -1032,8 +1049,10 @@
 				{#if !nameFollow}
 					<input class="mi" bind:value={displayName} placeholder="Tuliskan nama pengirim kustom..." />
 				{/if}
-				<label class="ml">Alamat email</label>
-				<input class="mi" value={data.account?.email} readonly />
+				<label class="ml">Alamat email{data.addresses && data.addresses.length > 1 ? ' (dua alamat, satu kotak masuk)' : ''}</label>
+				{#each data.addresses ?? [data.account?.email] as a}
+					<input class="mi" value={a} readonly />
+				{/each}
 				<p class="note">Alamat email tidak bisa diubah setelah dibuat.</p>
 				<div class="mf"><button class="cp-send" onclick={saveSettings}>Simpan</button></div>
 			{:else if settingsTab === 'keamanan'}
@@ -2128,6 +2147,16 @@
 		background: transparent;
 		color: inherit;
 	}
+	.cp-from {
+		flex: 1;
+		border: 0;
+		padding: 10px 0;
+		font: inherit;
+		outline: none;
+		background: transparent;
+		color: inherit;
+		cursor: pointer;
+	}
 	.cp-ccbtns {
 		display: flex;
 		gap: 8px;
@@ -3009,7 +3038,12 @@
 		border-color: #252b34;
 	}
 	:global(html.psdark) .cp-field input,
+	:global(html.psdark) .cp-from,
 	:global(html.psdark) .cp-editor {
+		color: #e6e9ef;
+	}
+	:global(html.psdark) .cp-from option {
+		background: #1b2029;
 		color: #e6e9ef;
 	}
 	:global(html.psdark) .cp-toolbar button,

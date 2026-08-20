@@ -589,11 +589,14 @@ export async function sendMessage(
 		references?: string;
 		attachments?: OutAttachment[];
 		fromName?: string;
+		fromAddr?: string;
 	},
 	sentPath?: string
 ): Promise<void> {
 	const composer = new MailComposer({
-		from: msg.fromName ? { name: msg.fromName, address: creds.email } : creds.email,
+		from: msg.fromName
+			? { name: msg.fromName, address: msg.fromAddr || creds.email }
+			: msg.fromAddr || creds.email,
 		to: msg.to,
 		cc: msg.cc || undefined,
 		bcc: msg.bcc || undefined,
@@ -623,7 +626,7 @@ export async function sendMessage(
 		...(msg.bcc ? msg.bcc.split(',').map((s) => s.trim()).filter(Boolean) : [])
 	];
 
-	await transporter.sendMail({ envelope: { from: creds.email, to: recipients }, raw });
+	await transporter.sendMail({ envelope: { from: msg.fromAddr || creds.email, to: recipients }, raw });
 
 	if (sentPath) {
 		try {
