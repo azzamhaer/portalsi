@@ -132,44 +132,6 @@
 		from { opacity: 0; transform: translateY(-6px); }
 		to { opacity: 1; transform: translateY(0); }
 	}
-	.menu-grid {
-		display: grid;
-		grid-template-columns: repeat(4, 1fr);
-		gap: 4px;
-	}
-	.mg-item {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 6px;
-		padding: 10px 4px;
-		border-radius: 12px;
-		text-decoration: none;
-		color: #3c4043;
-		font-size: 0.72rem;
-		font-weight: 600;
-		transition: background 0.12s;
-	}
-	.mg-item:hover {
-		background: #f2f5f9;
-	}
-	.mg-ico {
-		display: grid;
-		place-items: center;
-		width: 40px;
-		height: 40px;
-		border-radius: 12px;
-		color: #fff;
-	}
-	.mg-ico.app { background: #e86a17; }
-	.mg-ico.meet { background: #0b8043; }
-	.mg-ico.market { background: #e3b100; }
-	.mg-ico.web { background: #1f6feb; }
-	.menu-sep {
-		height: 1px;
-		background: #eef1f5;
-		margin: 8px 2px;
-	}
 	.menu-row {
 		display: flex;
 		align-items: center;
@@ -216,16 +178,11 @@
 		background: #1b2029;
 		border-color: #2c333d;
 	}
-	:global(html.psdark) .mg-item,
 	:global(html.psdark) .menu-row {
 		color: #c3ccd8;
 	}
-	:global(html.psdark) .mg-item:hover,
 	:global(html.psdark) .menu-row:hover {
 		background: #222831;
-	}
-	:global(html.psdark) .menu-sep {
-		background: #2c333d;
 	}
 	.main {
 		flex: 1;
