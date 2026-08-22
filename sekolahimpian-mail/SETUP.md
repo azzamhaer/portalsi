@@ -134,10 +134,16 @@ sudo -u sekim -H php artisan migrate --force
 # 2) storage publik untuk foto profil (disajikan via /storage/avatars/...)
 sudo -u sekim -H php artisan storage:link
 
-# 3) outbound email harus jalan (link verifikasi/reset). Pastikan .env:
-#    MAIL_MAILER=smtp  MAIL_HOST=127.0.0.1  MAIL_PORT=587 (Exim lokal → relay Brevo untuk sekolahimpian.com)
-#    MAIL_FROM_ADDRESS="noreply@sekolahimpian.com"  MAIL_FROM_NAME="SI Mail"
+# 3) outbound email (link verifikasi/reset) — kirim TERAUTENTIKASI sbg mailbox admin@sekolahimpian.com.
+#    Port 587 (submission) butuh auth; tanpa auth Exim menolak. .env:
+#    MAIL_MAILER=smtp  MAIL_HOST=127.0.0.1  MAIL_PORT=587  MAIL_ENCRYPTION=tls
+#    MAIL_USERNAME=admin@sekolahimpian.com  MAIL_PASSWORD='<password mailbox admin>'
+#    MAIL_FROM_ADDRESS="admin@sekolahimpian.com"  MAIL_FROM_NAME="SI Mail"
 #    APP_URL=https://mailapi.sekolahimpian.com   (WAJIB benar: dipakai untuk signed URL & URL foto)
+#    Cert Exim self-signed → nonaktifkan verifikasi TLS di config/mail.php (tambah 'verify_peer' => false di mailer smtp):
+#      sed -i "s/'transport' => 'smtp',/'transport' => 'smtp',\n            'verify_peer' => false,/" config/mail.php
+#    Mailbox admin dibuat di Hestia (bukan lewat app, krn 'admin' reserved):
+#      v-add-mail-account sekim sekolahimpian.com admin '<password>'   # atau v-change-mail-account-password ...
 
 # 4) (opsional) URL frontend untuk tautan email; default sudah https://mail.sekolahimpian.com.
 #    Kalau mau override, tambahkan di config/app.php: 'frontend_url' => env('FRONTEND_URL'),
