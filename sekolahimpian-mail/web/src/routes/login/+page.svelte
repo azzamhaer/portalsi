@@ -32,7 +32,7 @@
 			<button type="submit" class="resend-btn">Kirim ulang tautan verifikasi ke {form.email}</button>
 		</form>
 	{/if}
-	<form method="POST" onsubmit={() => (submitting = true)}>
+	<form method="POST" action="?/login" onsubmit={() => (submitting = true)}>
 		<AuthFields>
 			<label>
 				<span>Username atau email</span>
