@@ -1,0 +1,9 @@
+Letakkan 2 gambar berikut di folder ini (portalsi-mail/static/auth/):
+
+  login.webp     -> panel kiri halaman /login   (disarankan 1200x1600, potret, gelap/teduh)
+  register.webp  -> panel kiri halaman /register (disarankan 1200x1600, potret)
+
+Gambar tampil sebagai latar panel kiri (di-overlay gelap, opacity ~0.5).
+Sebelum gambar ada, panel tetap tampil rapi (latar biru gelap + kutipan).
+
+Logo header memakai favicon utama: https://portalsi.com/favicon.png (tak perlu file lokal).

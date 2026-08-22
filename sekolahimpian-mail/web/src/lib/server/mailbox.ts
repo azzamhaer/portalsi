@@ -1,0 +1,640 @@
+import { ImapFlow, type ListResponse } from 'imapflow';
+import nodemailer from 'nodemailer';
+import MailComposer from 'nodemailer/lib/mail-composer';
+import { simpleParser } from 'mailparser';
+import { env } from '$env/dynamic/private';
+
+export interface Creds {
+	email: string;
+	password: string;
+}
+
+export type FolderKey = 'inbox' | 'starred' | 'sent' | 'drafts' | 'archive' | 'junk' | 'trash';
+
+/** Sentinel path untuk tampilan virtual "Berbintang" (bukan folder IMAP asli). */
+export const STARRED_PATH = '__STARRED__';
+
+export interface Folder {
+	key: FolderKey;
+	label: string;
+	path: string;
+	unseen?: number;
+	virtual?: boolean;
+}
+
+export interface MsgSummary {
+	uid: number;
+	subject: string;
+	fromName: string;
+	fromAddr: string;
+	to: string;
+	date: string | null;
+	seen: boolean;
+	flagged: boolean;
+	answered: boolean;
+	attachments: boolean;
+}
+
+export interface Attachment {
+	index: number;
+	filename: string;
+	contentType: string;
+	size: number;
+	inline: boolean;
+}
+
+export interface FullMessage {
+	uid: number;
+	subject: string;
+	fromName: string;
+	fromAddr: string;
+	to: string;
+	cc: string;
+	date: string | null;
+	html: string | null;
+	text: string | null;
+	messageId: string | null;
+	references: string | null;
+	attachments: Attachment[];
+	flagged: boolean;
+}
+
+export interface OutAttachment {
+	filename: string;
+	content: Buffer;
+	contentType?: string;
+}
+
+export interface ListResult {
+	messages: MsgSummary[];
+	total: number;
+	page: number;
+	pages: number;
+}
+
+const IMAP_HOST = () => env.MAIL_IMAP_HOST || '127.0.0.1';
+const IMAP_PORT = () => Number(env.MAIL_IMAP_PORT || 993);
+const SMTP_HOST = () => env.MAIL_SMTP_HOST || '127.0.0.1';
+const SMTP_PORT = () => Number(env.MAIL_SMTP_PORT || 587);
+
+const FOLDER_LABELS: Record<FolderKey, string> = {
+	inbox: 'Kotak Masuk',
+	starred: 'Berbintang',
+	sent: 'Terkirim',
+	drafts: 'Draf',
+	archive: 'Arsip',
+	junk: 'Spam',
+	trash: 'Sampah'
+};
+
+function makeClient(creds: Creds): ImapFlow {
+	return new ImapFlow({
+		host: IMAP_HOST(),
+		port: IMAP_PORT(),
+		secure: IMAP_PORT() === 993,
+		auth: { user: creds.email, pass: creds.password },
+		logger: false,
+		tls: { rejectUnauthorized: false },
+		// hemat handshake berulang
+		disableAutoIdle: true
+	});
+}
+
+/** Buka SATU koneksi, jalankan semua operasi di dalamnya, lalu tutup. */
+async function withClient<T>(creds: Creds, fn: (c: ImapFlow) => Promise<T>): Promise<T> {
+	const c = makeClient(creds);
+	await c.connect();
+	try {
+		return await fn(c);
+	} finally {
+		await c.logout().catch(() => {
+			try {
+				c.close();
+			} catch {
+				/* ignore */
+			}
+		});
+	}
+}
+
+function detectFolders(list: ListResponse[]): Record<Exclude<FolderKey, 'starred'>, string> {
+	const map = {
+		inbox: 'INBOX',
+		sent: '',
+		drafts: '',
+		archive: '',
+		junk: '',
+		trash: ''
+	} as Record<Exclude<FolderKey, 'starred'>, string>;
+	const bySpecial = (use: string) => list.find((m) => m.specialUse === use)?.path;
+	const byName = (re: RegExp) => list.find((m) => re.test(m.name) || re.test(m.path))?.path;
+
+	map.sent = bySpecial('\\Sent') || byName(/^sent$|sent items/i) || 'Sent';
+	map.drafts = bySpecial('\\Drafts') || byName(/^drafts?$/i) || 'Drafts';
+	map.archive = bySpecial('\\Archive') || byName(/^archive$|^arsip$/i) || 'Archive';
+	map.junk = bySpecial('\\Junk') || byName(/^junk$|^spam$/i) || 'Junk';
+	map.trash = bySpecial('\\Trash') || byName(/^trash$|deleted/i) || 'Trash';
+	return map;
+}
+
+function addr(a?: { name?: string; address?: string }[] | null): { name: string; address: string } {
+	const first = a && a[0];
+	return { name: first?.name || '', address: first?.address || '' };
+}
+
+function addrList(a?: { name?: string; address?: string }[] | null): string {
+	if (!a || !a.length) return '';
+	return a.map((x) => x.name || x.address || '').join(', ');
+}
+
+function structureHasAttachments(node: any): boolean {
+	if (!node) return false;
+	if (node.disposition === 'attachment') return true;
+	if (Array.isArray(node.childNodes)) return node.childNodes.some(structureHasAttachments);
+	return false;
+}
+
+/** Normalisasi subjek untuk pengelompokan percakapan (buang Re:/Fwd:). */
+export function normalizeSubject(s?: string | null): string {
+	return (s || '')
+		.replace(/^(\s*(re|fw|fwd|balas|teruskan)\s*:\s*)+/gi, '')
+		.trim()
+		.toLowerCase();
+}
+
+function summaryFrom(m: any): MsgSummary {
+	const from = addr(m.envelope?.from);
+	const flags = m.flags || new Set<string>();
+	return {
+		uid: m.uid,
+		subject: m.envelope?.subject || '(tanpa subjek)',
+		fromName: from.name || from.address,
+		fromAddr: from.address,
+		to: addrList(m.envelope?.to),
+		date: m.envelope?.date ? new Date(m.envelope.date).toISOString() : null,
+		seen: flags.has('\\Seen'),
+		flagged: flags.has('\\Flagged'),
+		answered: flags.has('\\Answered'),
+		attachments: structureHasAttachments(m.bodyStructure)
+	};
+}
+
+// ─────────────────────────── operasi pada satu client ───────────────────────────
+
+async function foldersOn(c: ImapFlow, withCounts = true): Promise<Folder[]> {
+	const list = await c.list();
+	const paths = detectFolders(list);
+	const folders: Folder[] = [
+		{ key: 'inbox', label: FOLDER_LABELS.inbox, path: paths.inbox },
+		{ key: 'starred', label: FOLDER_LABELS.starred, path: STARRED_PATH, virtual: true },
+		{ key: 'sent', label: FOLDER_LABELS.sent, path: paths.sent },
+		{ key: 'drafts', label: FOLDER_LABELS.drafts, path: paths.drafts },
+		{ key: 'archive', label: FOLDER_LABELS.archive, path: paths.archive },
+		{ key: 'junk', label: FOLDER_LABELS.junk, path: paths.junk },
+		{ key: 'trash', label: FOLDER_LABELS.trash, path: paths.trash }
+	];
+	if (withCounts) {
+		// badge: inbox & spam = belum dibaca; draf & sampah = total; lainnya tanpa badge
+		const rules: Record<string, 'unseen' | 'total'> = {
+			inbox: 'unseen',
+			junk: 'unseen',
+			drafts: 'total',
+			trash: 'total'
+		};
+		for (const f of folders) {
+			const mode = rules[f.key];
+			if (!mode || !f.path || f.virtual) continue;
+			try {
+				const st = await c.status(f.path, mode === 'unseen' ? { unseen: true } : { messages: true });
+				f.unseen = mode === 'unseen' ? st.unseen : st.messages;
+			} catch {
+				/* ignore */
+			}
+		}
+	}
+	return folders;
+}
+
+/** Kosongkan folder Sampah (hapus permanen semua isinya). */
+export async function emptyTrash(creds: Creds, trashPath: string): Promise<number> {
+	return withClient(creds, async (c) => {
+		const lock = await c.getMailboxLock(trashPath);
+		try {
+			const total = c.mailbox && typeof c.mailbox !== 'boolean' ? c.mailbox.exists : 0;
+			if (total > 0) await c.messageDelete('1:*');
+			return total;
+		} finally {
+			lock.release();
+		}
+	});
+}
+
+async function listOn(
+	c: ImapFlow,
+	folderPath: string,
+	opts: { page?: number; pageSize?: number; search?: string } = {}
+): Promise<ListResult> {
+	const page = Math.max(1, opts.page || 1);
+	const pageSize = opts.pageSize || 25;
+	const isStarred = folderPath === STARRED_PATH;
+	const mailbox = isStarred ? 'INBOX' : folderPath;
+	const query = { envelope: true, flags: true, uid: true, bodyStructure: true } as const;
+
+	const lock = await c.getMailboxLock(mailbox);
+	try {
+		const total = c.mailbox && typeof c.mailbox !== 'boolean' ? c.mailbox.exists : 0;
+		let uidList: number[] | null = null;
+
+		if (isStarred) {
+			uidList = (await c.search({ flagged: true }, { uid: true })) || [];
+		} else if (opts.search && opts.search.trim()) {
+			const q = opts.search.trim();
+			uidList =
+				(await c.search(
+					{ or: [{ header: { subject: q } }, { from: q }, { to: q }, { body: q }] },
+					{ uid: true }
+				)) || [];
+		}
+
+		let seqs: string | number[];
+		let effectiveTotal: number;
+
+		if (uidList) {
+			effectiveTotal = uidList.length;
+			const startIdx = Math.max(0, uidList.length - pageSize * page);
+			const endIdx = uidList.length - pageSize * (page - 1);
+			const arr = uidList.slice(startIdx, endIdx);
+			if (!arr.length)
+				return { messages: [], total: effectiveTotal, page, pages: Math.max(1, Math.ceil(effectiveTotal / pageSize)) };
+			seqs = arr;
+		} else {
+			effectiveTotal = total;
+			if (total === 0) return { messages: [], total: 0, page, pages: 1 };
+			const end = total - (page - 1) * pageSize;
+			const start = Math.max(1, end - pageSize + 1);
+			if (end < 1) return { messages: [], total, page, pages: Math.ceil(total / pageSize) };
+			seqs = `${start}:${end}`;
+		}
+
+		const out: MsgSummary[] = [];
+		const iter = typeof seqs === 'string' ? c.fetch(seqs, query) : c.fetch(seqs, query, { uid: true });
+		for await (const m of iter) out.push(summaryFrom(m));
+		out.reverse();
+		return {
+			messages: out,
+			total: effectiveTotal,
+			page,
+			pages: Math.max(1, Math.ceil(effectiveTotal / pageSize))
+		};
+	} finally {
+		lock.release();
+	}
+}
+
+/** Ganti referensi cid: pada HTML dengan data URI dari lampiran inline. */
+function inlineCidImages(html: string, attachments: any[]): string {
+	if (!html) return html;
+	let out = html;
+	for (const a of attachments) {
+		const cid = (a.cid || a.contentId || '').replace(/[<>]/g, '');
+		if (!cid || !a.content) continue;
+		const dataUri = `data:${a.contentType || 'application/octet-stream'};base64,${a.content.toString('base64')}`;
+		out = out.split(`cid:${cid}`).join(dataUri);
+	}
+	return out;
+}
+
+async function messageOn(
+	c: ImapFlow,
+	mailbox: string,
+	uid: number,
+	markSeen = true
+): Promise<FullMessage | null> {
+	const real = mailbox === STARRED_PATH ? 'INBOX' : mailbox;
+	const lock = await c.getMailboxLock(real);
+	try {
+		const msg = await c.fetchOne(String(uid), { source: true, uid: true, flags: true }, { uid: true });
+		if (!msg || !msg.source) return null;
+		const parsed = await simpleParser(msg.source as Buffer);
+
+		if (markSeen) {
+			try {
+				await c.messageFlagsAdd({ uid: String(uid) }, ['\\Seen'], { uid: true });
+			} catch {
+				/* ignore */
+			}
+		}
+
+		const parsedAtt = parsed.attachments || [];
+		const html = parsed.html ? inlineCidImages(parsed.html, parsedAtt) : null;
+		const attachments: Attachment[] = parsedAtt.map((a, i) => ({
+			index: i,
+			filename: a.filename || `lampiran-${i + 1}`,
+			contentType: a.contentType || 'application/octet-stream',
+			size: a.size || 0,
+			inline: a.contentDisposition === 'inline' || !!a.cid
+		}));
+
+		const from = parsed.from?.value?.[0];
+		const flags = (msg.flags as Set<string>) || new Set<string>();
+		return {
+			uid,
+			subject: parsed.subject || '(tanpa subjek)',
+			fromName: from?.name || from?.address || '',
+			fromAddr: from?.address || '',
+			to: (parsed.to && ('text' in parsed.to ? parsed.to.text : '')) || '',
+			cc: (parsed.cc && ('text' in parsed.cc ? parsed.cc.text : '')) || '',
+			date: parsed.date ? parsed.date.toISOString() : null,
+			html,
+			text: parsed.text || null,
+			messageId: parsed.messageId || null,
+			references: Array.isArray(parsed.references) ? parsed.references.join(' ') : parsed.references || null,
+			attachments,
+			flagged: flags.has('\\Flagged')
+		};
+	} finally {
+		lock.release();
+	}
+}
+
+async function threadOn(
+	c: ImapFlow,
+	mailbox: string,
+	subject: string,
+	excludeUid: number
+): Promise<MsgSummary[]> {
+	const real = mailbox === STARRED_PATH ? 'INBOX' : mailbox;
+	const norm = normalizeSubject(subject);
+	const core = subject.replace(/^(\s*(re|fw|fwd|balas|teruskan)\s*:\s*)+/gi, '').trim();
+	if (!norm || !core || core === '(tanpa subjek)') return [];
+	const lock = await c.getMailboxLock(real);
+	try {
+		const uids = (await c.search({ header: { subject: core } }, { uid: true })) || [];
+		const pick = uids.filter((u) => u !== excludeUid).slice(-20);
+		if (!pick.length) return [];
+		const out: MsgSummary[] = [];
+		for await (const m of c.fetch(pick, { envelope: true, flags: true, uid: true, bodyStructure: true }, { uid: true })) {
+			if (normalizeSubject(m.envelope?.subject) === norm) out.push(summaryFrom(m));
+		}
+		out.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+		return out;
+	} finally {
+		lock.release();
+	}
+}
+
+// ─────────────────────────── API publik ───────────────────────────
+
+export interface ViewResult {
+	folders: Folder[];
+	folderKey: FolderKey;
+	folderPath: string;
+	message: FullMessage | null;
+	thread: MsgSummary[];
+	list: ListResult | null;
+}
+
+/**
+ * Muat folder + daftar (dan pesan bila uid ada) dalam SATU koneksi IMAP.
+ * Untuk layout 3-panel, daftar selalu dimuat agar panel kiri tetap terisi.
+ */
+export async function loadView(
+	creds: Creds,
+	p: { key: string; page: number; q: string; uid?: number }
+): Promise<ViewResult> {
+	return withClient(creds, async (c) => {
+		const folders = await foldersOn(c);
+		const folder = folders.find((f) => f.key === p.key) || folders[0];
+		const opsPath = folder.virtual ? 'INBOX' : folder.path;
+
+		const list = await listOn(c, folder.path, { page: p.page, search: p.q });
+
+		let message: FullMessage | null = null;
+		let thread: MsgSummary[] = [];
+		if (p.uid) {
+			message = await messageOn(c, opsPath, p.uid).catch(() => null);
+			if (message) thread = await threadOn(c, opsPath, message.subject, message.uid).catch(() => []);
+		}
+		return { folders, folderKey: folder.key, folderPath: opsPath, message, thread, list };
+	});
+}
+
+/** Muat satu pesan + thread-nya (untuk buka pesan client-side tanpa reload daftar). */
+export async function loadMessage(
+	creds: Creds,
+	opsPath: string,
+	uid: number
+): Promise<{ message: FullMessage | null; thread: MsgSummary[] }> {
+	return withClient(creds, async (c) => {
+		const message = await messageOn(c, opsPath, uid).catch(() => null);
+		let thread: MsgSummary[] = [];
+		if (message) thread = await threadOn(c, opsPath, message.subject, message.uid).catch(() => []);
+		return { message, thread };
+	});
+}
+
+export async function listFolders(creds: Creds): Promise<Folder[]> {
+	return withClient(creds, (c) => foldersOn(c, false));
+}
+
+/** Pencarian cepat untuk dropdown live (subjek/pengirim/isi), terbaru dulu, dibatasi. */
+export async function searchPreview(
+	creds: Creds,
+	folderPath: string,
+	q: string,
+	limit = 12
+): Promise<MsgSummary[]> {
+	if (!q.trim()) return [];
+	const mailbox = folderPath === STARRED_PATH ? 'INBOX' : folderPath;
+	return withClient(creds, async (c) => {
+		const lock = await c.getMailboxLock(mailbox);
+		try {
+			const term = q.trim();
+			const uids =
+				(await c.search(
+					{ or: [{ header: { subject: term } }, { from: term }, { to: term }, { body: term }] },
+					{ uid: true }
+				)) || [];
+			const pick = uids.slice(-limit);
+			if (!pick.length) return [];
+			const out: MsgSummary[] = [];
+			for await (const m of c.fetch(
+				pick,
+				{ envelope: true, flags: true, uid: true, bodyStructure: true },
+				{ uid: true }
+			))
+				out.push(summaryFrom(m));
+			out.sort((a, b) => b.uid - a.uid);
+			return out;
+		} finally {
+			lock.release();
+		}
+	});
+}
+
+export async function getAttachment(
+	creds: Creds,
+	folderPath: string,
+	uid: number,
+	index: number
+): Promise<{ filename: string; contentType: string; content: Buffer } | null> {
+	const mailbox = folderPath === STARRED_PATH ? 'INBOX' : folderPath;
+	return withClient(creds, async (c) => {
+		const lock = await c.getMailboxLock(mailbox);
+		try {
+			const msg = await c.fetchOne(String(uid), { source: true, uid: true }, { uid: true });
+			if (!msg || !msg.source) return null;
+			const parsed = await simpleParser(msg.source as Buffer);
+			const a = (parsed.attachments || [])[index];
+			if (!a) return null;
+			return {
+				filename: a.filename || `lampiran-${index + 1}`,
+				contentType: a.contentType || 'application/octet-stream',
+				content: a.content as Buffer
+			};
+		} finally {
+			lock.release();
+		}
+	});
+}
+
+export async function setSeen(creds: Creds, folderPath: string, uid: number, seen: boolean) {
+	const mailbox = folderPath === STARRED_PATH ? 'INBOX' : folderPath;
+	return withClient(creds, async (c) => {
+		const lock = await c.getMailboxLock(mailbox);
+		try {
+			if (seen) await c.messageFlagsAdd({ uid: String(uid) }, ['\\Seen'], { uid: true });
+			else await c.messageFlagsRemove({ uid: String(uid) }, ['\\Seen'], { uid: true });
+		} finally {
+			lock.release();
+		}
+	});
+}
+
+export async function setStar(creds: Creds, folderPath: string, uid: number, on: boolean) {
+	const mailbox = folderPath === STARRED_PATH ? 'INBOX' : folderPath;
+	return withClient(creds, async (c) => {
+		const lock = await c.getMailboxLock(mailbox);
+		try {
+			if (on) await c.messageFlagsAdd({ uid: String(uid) }, ['\\Flagged'], { uid: true });
+			else await c.messageFlagsRemove({ uid: String(uid) }, ['\\Flagged'], { uid: true });
+		} finally {
+			lock.release();
+		}
+	});
+}
+
+async function ensureMailbox(c: ImapFlow, path: string) {
+	try {
+		await c.mailboxCreate(path);
+	} catch {
+		/* sudah ada */
+	}
+}
+
+export async function archiveMessage(creds: Creds, folderPath: string, archivePath: string, uid: number) {
+	const mailbox = folderPath === STARRED_PATH ? 'INBOX' : folderPath;
+	if (mailbox === archivePath) return;
+	return withClient(creds, async (c) => {
+		await ensureMailbox(c, archivePath);
+		const lock = await c.getMailboxLock(mailbox);
+		try {
+			await c.messageMove({ uid: String(uid) }, archivePath, { uid: true });
+		} finally {
+			lock.release();
+		}
+	});
+}
+
+/** Batal arsip: pindahkan kembali ke Kotak Masuk. */
+export async function unarchiveMessage(creds: Creds, folderPath: string, uid: number) {
+	const mailbox = folderPath === STARRED_PATH ? 'INBOX' : folderPath;
+	if (mailbox === 'INBOX') return;
+	return withClient(creds, async (c) => {
+		const lock = await c.getMailboxLock(mailbox);
+		try {
+			await c.messageMove({ uid: String(uid) }, 'INBOX', { uid: true });
+		} finally {
+			lock.release();
+		}
+	});
+}
+
+export async function moveToTrash(creds: Creds, folderPath: string, trashPath: string, uid: number) {
+	const mailbox = folderPath === STARRED_PATH ? 'INBOX' : folderPath;
+	return withClient(creds, async (c) => {
+		const lock = await c.getMailboxLock(mailbox);
+		try {
+			if (mailbox === trashPath) {
+				await c.messageDelete({ uid: String(uid) }, { uid: true });
+			} else {
+				await c.messageMove({ uid: String(uid) }, trashPath, { uid: true });
+			}
+		} finally {
+			lock.release();
+		}
+	});
+}
+
+export async function sendMessage(
+	creds: Creds,
+	msg: {
+		to: string;
+		cc?: string;
+		bcc?: string;
+		subject: string;
+		text?: string;
+		html?: string;
+		inReplyTo?: string;
+		references?: string;
+		attachments?: OutAttachment[];
+		fromName?: string;
+		fromAddr?: string;
+	},
+	sentPath?: string
+): Promise<void> {
+	const composer = new MailComposer({
+		from: msg.fromName
+			? { name: msg.fromName, address: msg.fromAddr || creds.email }
+			: msg.fromAddr || creds.email,
+		to: msg.to,
+		cc: msg.cc || undefined,
+		bcc: msg.bcc || undefined,
+		subject: msg.subject,
+		text: msg.text || undefined,
+		html: msg.html || undefined,
+		inReplyTo: msg.inReplyTo || undefined,
+		references: msg.references || undefined,
+		attachments: msg.attachments?.length
+			? msg.attachments.map((a) => ({ filename: a.filename, content: a.content, contentType: a.contentType }))
+			: undefined
+	});
+	const raw: Buffer = await composer.compile().build();
+
+	const transporter = nodemailer.createTransport({
+		host: SMTP_HOST(),
+		port: SMTP_PORT(),
+		secure: SMTP_PORT() === 465,
+		requireTLS: SMTP_PORT() === 587,
+		auth: { user: creds.email, pass: creds.password },
+		tls: { rejectUnauthorized: false }
+	});
+
+	const recipients = [
+		...msg.to.split(',').map((s) => s.trim()).filter(Boolean),
+		...(msg.cc ? msg.cc.split(',').map((s) => s.trim()).filter(Boolean) : []),
+		...(msg.bcc ? msg.bcc.split(',').map((s) => s.trim()).filter(Boolean) : [])
+	];
+
+	await transporter.sendMail({ envelope: { from: msg.fromAddr || creds.email, to: recipients }, raw });
+
+	if (sentPath) {
+		try {
+			await withClient(creds, async (c) => {
+				await c.append(sentPath, raw, ['\\Seen']);
+			});
+		} catch {
+			/* biarkan; pengiriman tetap sukses walau append gagal */
+		}
+	}
+}
