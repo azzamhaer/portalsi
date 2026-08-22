@@ -6,7 +6,7 @@
 
 <main class="auth-shell">
 	<section class="auth-visual" aria-label="Tentang Sekolah Impian Mail">
-		<a class="brand" href="https://portalsi.com"><img src="https://sekolahimpian.com/favicon.png" alt="" /><span>Portal <b>SI</b></span></a>
+		<a class="brand" href="https://sekolahimpian.com"><img src="/favicon.png" alt="" /><span>SI <b>Mail</b></span></a>
 		<div class="visual-copy">
 			<span class="quote"><Quote size={22} fill="currentColor" /></span>
 			<p>
@@ -20,8 +20,8 @@
 	</section>
 
 	<section class="form-side">
-		<a class="back" href="https://portalsi.com"><ArrowLeft size={17} /> portalsi.com</a>
-		<div class="mobile-brand"><img src="https://sekolahimpian.com/favicon.png" alt="" /><b>Sekolah Impian Mail</b></div>
+		<a class="back" href="https://sekolahimpian.com"><ArrowLeft size={17} /> sekolahimpian.com</a>
+		<div class="mobile-brand"><img src="/favicon.png" alt="" /><b>SI Mail</b></div>
 		<div class="form-wrap">{@render children()}</div>
 	</section>
 </main>

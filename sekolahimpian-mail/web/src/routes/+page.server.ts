@@ -1,6 +1,13 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
-import { forgotPassword, mailCredentials, mailStatus } from '$lib/server/portal';
+import {
+	forgotPassword,
+	mailCredentials,
+	mailStatus,
+	requestEmailChange,
+	updateProfile,
+	uploadPhoto
+} from '$lib/server/portal';
 import {
 	archiveMessage,
 	emptyTrash,
@@ -190,7 +197,7 @@ export const actions: Actions = {
 	resetPassword: async ({ locals }) => {
 		if (!locals.user) throw redirect(302, '/login');
 		const email = (locals.user.email || '').trim();
-		if (!email) return fail(422, { pwError: 'Akunmu belum punya email untuk menerima tautan. Atur di app.portalsi.com.' });
+		if (!email) return fail(422, { pwError: 'Akunmu belum punya email pemulihan untuk menerima tautan.' });
 
 		const key = String(locals.user.user_id ?? email);
 		const today = new Date().toISOString().slice(0, 10);
@@ -204,6 +211,55 @@ export const actions: Actions = {
 			return { pwSent: true, pwMessage: r.message, pwLeft: 3 - (n + 1) };
 		} catch (e: any) {
 			return fail(e?.status && e.status < 500 ? 422 : 502, { pwError: e?.message || 'Gagal mengirim tautan.' });
+		}
+	},
+
+	updateProfile: async ({ request, locals }) => {
+		if (!locals.token) throw redirect(302, '/login');
+		const f = await request.formData();
+		const full_name = String(f.get('full_name') ?? '').trim();
+		const username = String(f.get('username') ?? '').trim();
+		if (!full_name || !username) return fail(422, { profileError: 'Nama dan username wajib diisi.' });
+		try {
+			const r = await updateProfile(locals.token, { full_name, username });
+			return { profileOk: true, profileMessage: r.message || 'Profil diperbarui.' };
+		} catch (e: any) {
+			return fail(e?.status && e.status < 500 ? 422 : 502, {
+				profileError: e?.message || 'Gagal memperbarui profil.'
+			});
+		}
+	},
+
+	uploadPhoto: async ({ request, locals }) => {
+		if (!locals.token) throw redirect(302, '/login');
+		const f = await request.formData();
+		const photo = f.get('photo');
+		if (!(photo instanceof File) || photo.size === 0)
+			return fail(422, { photoError: 'Pilih file gambar dulu.' });
+		if (photo.size > 2 * 1024 * 1024)
+			return fail(422, { photoError: 'Ukuran foto maksimal 2MB.' });
+		try {
+			const r = await uploadPhoto(locals.token, photo);
+			return { photoOk: true, profileMessage: r.message || 'Foto profil diperbarui.' };
+		} catch (e: any) {
+			return fail(e?.status && e.status < 500 ? 422 : 502, {
+				photoError: e?.message || 'Gagal mengunggah foto.'
+			});
+		}
+	},
+
+	changeEmail: async ({ request, locals }) => {
+		if (!locals.token) throw redirect(302, '/login');
+		const f = await request.formData();
+		const email = String(f.get('email') ?? '').trim();
+		if (!email) return fail(422, { emailError: 'Isi email baru dulu.' });
+		try {
+			const r = await requestEmailChange(locals.token, email);
+			return { emailReqOk: true, emailMessage: r.message };
+		} catch (e: any) {
+			return fail(e?.status && e.status < 500 ? 422 : 502, {
+				emailError: e?.message || 'Gagal mengirim tautan konfirmasi.'
+			});
 		}
 	},
 

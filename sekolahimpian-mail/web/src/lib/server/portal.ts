@@ -101,6 +101,77 @@ export async function forgotPassword(email: string): Promise<{ message?: string 
 	return { message: (d?.message as string) || 'Tautan ganti kata sandi telah dikirim ke email.' };
 }
 
+export async function resetPassword(
+	token: string,
+	email: string,
+	password: string
+): Promise<{ message?: string }> {
+	const d = await req('/reset-password', {
+		method: 'POST',
+		body: JSON.stringify({ token, email, password, password_confirmation: password })
+	});
+	return { message: (d?.message as string) || 'Kata sandi berhasil diganti.' };
+}
+
+export async function resendVerification(email: string): Promise<{ message?: string }> {
+	const d = await req('/resend-verification', { method: 'POST', body: JSON.stringify({ email }) });
+	return { message: (d?.message as string) || 'Tautan verifikasi baru telah dikirim.' };
+}
+
+// ── Profil ──
+export async function updateProfile(
+	token: string,
+	input: { full_name: string; username: string }
+): Promise<{ user: PortalUser; message?: string }> {
+	const d = await req('/profile', { method: 'POST', body: JSON.stringify(input) }, token);
+	return { user: d.user as PortalUser, message: d.message as string | undefined };
+}
+
+export async function requestEmailChange(
+	token: string,
+	email: string
+): Promise<{ message?: string }> {
+	const d = await req('/profile/email', { method: 'POST', body: JSON.stringify({ email }) }, token);
+	return { message: (d?.message as string) || 'Tautan konfirmasi telah dikirim ke email lama kamu.' };
+}
+
+export async function uploadPhoto(
+	token: string,
+	file: File
+): Promise<{ user: PortalUser; message?: string }> {
+	const fd = new FormData();
+	fd.append('photo', file, file.name);
+	const controller = new AbortController();
+	const timer = setTimeout(() => controller.abort(), timeoutMs());
+	try {
+		const res = await fetch(`${apiBase()}/profile/photo`, {
+			method: 'POST',
+			signal: controller.signal,
+			cache: 'no-store',
+			headers: { Accept: 'application/json', Authorization: `Bearer ${token}` },
+			body: fd
+		});
+		const text = await res.text();
+		let data: any = {};
+		try {
+			data = text ? JSON.parse(text) : {};
+		} catch {
+			data = { message: text };
+		}
+		if (!res.ok) {
+			// pesan validasi Laravel: { errors: { photo: [..] } }
+			const msg = data?.errors?.photo?.[0] || data.message || 'Gagal mengunggah foto.';
+			throw new PortalError(msg, res.status, data);
+		}
+		return { user: data.user as PortalUser, message: data.message as string | undefined };
+	} catch (e: any) {
+		if (e instanceof PortalError) throw e;
+		throw new PortalError('Server tidak dapat dihubungi. Coba lagi beberapa saat.', 503);
+	} finally {
+		clearTimeout(timer);
+	}
+}
+
 export async function getPortalUser(token: string): Promise<PortalUser> {
 	const d = await req('/user', { method: 'GET' }, token);
 	return (d.user ?? d) as PortalUser;

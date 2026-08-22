@@ -10,9 +10,9 @@ class User extends Authenticatable
 {
     use HasApiTokens, Notifiable;
 
-    protected $fillable = ['full_name', 'username', 'email', 'password', 'profile_picture_url'];
+    protected $fillable = ['full_name', 'username', 'email', 'password', 'profile_picture_url', 'pending_email', 'email_change_token'];
 
-    protected $hidden = ['password', 'remember_token'];
+    protected $hidden = ['password', 'remember_token', 'email_change_token'];
 
     protected $casts = [
         'email_verified_at' => 'datetime',

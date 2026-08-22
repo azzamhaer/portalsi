@@ -2,7 +2,7 @@
 	import { Eye, EyeOff, LoaderCircle, LockKeyhole, UserRound } from '@lucide/svelte';
 	import AuthFields from '$lib/components/auth/AuthFields.svelte';
 	import AuthShell from '$lib/components/auth/AuthShell.svelte';
-	let { form } = $props();
+	let { form, data } = $props();
 	let reveal = $state(false);
 	let loginValue = $state(form?.login ?? '');
 	let passwordValue = $state('');
@@ -17,7 +17,21 @@
 		<h1>Masuk ke Sekolah Impian Mail</h1>
 		<p>Buka email dan lanjutkan bisnismu.</p>
 	</div>
-	{#if form?.message}<div class="form-alert" role="alert">{form.message}</div>{/if}
+	{#if data?.verified === '1'}<div class="form-ok" role="status">Email berhasil diverifikasi. Silakan masuk.</div>{/if}
+	{#if data?.verified === '0'}<div class="form-alert" role="alert">Tautan verifikasi tidak valid atau kedaluwarsa. Coba masuk lalu kirim ulang tautannya.</div>{/if}
+	{#if data?.emailchanged === '1'}<div class="form-ok" role="status">Email pemulihan berhasil diganti.</div>{/if}
+	{#if data?.emailchanged === '0'}<div class="form-alert" role="alert">Tautan ganti email tidak valid atau kedaluwarsa.</div>{/if}
+	{#if form?.resent}
+		<div class="form-ok" role="status">{form.message || 'Tautan verifikasi baru telah dikirim. Cek email kamu.'}</div>
+	{:else if form?.message}
+		<div class="form-alert" role="alert">{form.message}</div>
+	{/if}
+	{#if form?.unverified && form?.email}
+		<form method="POST" action="?/resend" class="resend-form">
+			<input type="hidden" name="email" value={form.email} />
+			<button type="submit" class="resend-btn">Kirim ulang tautan verifikasi ke {form.email}</button>
+		</form>
+	{/if}
 	<form method="POST" onsubmit={() => (submitting = true)}>
 		<AuthFields>
 			<label>
@@ -118,6 +132,32 @@
 		border-radius: 11px;
 		color: var(--color-danger);
 		font-size: 0.82rem;
+	}
+	.form-ok {
+		margin-bottom: 16px;
+		padding: 11px 12px;
+		background: #e7f6ec;
+		border: 1px solid #b6e0c4;
+		border-radius: 11px;
+		color: #1a6b34;
+		font-size: 0.84rem;
+	}
+	.resend-form {
+		margin: -6px 0 16px;
+	}
+	.resend-btn {
+		width: 100%;
+		padding: 10px 12px;
+		background: #fff7e9;
+		border: 1px solid #f0d8a6;
+		border-radius: 11px;
+		color: #a15c00;
+		font-size: 0.82rem;
+		font-weight: 650;
+		cursor: pointer;
+	}
+	.resend-btn:hover {
+		background: #fdeecb;
 	}
 	:global(.button-spin) {
 		animation: auth-spin 0.8s linear infinite;

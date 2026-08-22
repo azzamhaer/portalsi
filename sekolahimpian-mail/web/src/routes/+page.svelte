@@ -88,6 +88,14 @@
 	let darkMode = $state(false);
 	let settingsTab = $state<'profil' | 'keamanan' | 'tampilan'>('profil');
 	let pwSending = $state(false);
+	// edit profil
+	let profFullName = $state(data.user?.full_name || '');
+	let profUsername = $state(data.user?.username || '');
+	let newEmail = $state('');
+	let savingProfile = $state(false);
+	let uploadingPhoto = $state(false);
+	let sendingEmail = $state(false);
+	let photoInput: HTMLInputElement | null = null;
 
 	// live search
 	let sq = $state('');
@@ -284,8 +292,8 @@
 		toast('Pengaturan disimpan');
 	}
 
-	// nama pengirim efektif (ikut akun atau kustom)
-	let effName = $derived(nameFollow ? (data.user?.full_name || '').trim() : displayName.trim());
+	// nama pengirim efektif (SELALU ikut nama akun — tidak bisa diubah terpisah)
+	let effName = $derived((data.user?.full_name || '').trim());
 
 	function starOf(m: any): boolean {
 		return m.uid in starOverride ? starOverride[m.uid] : m.flagged;
@@ -1037,30 +1045,54 @@
 					{/if}
 					<div class="pp-info">
 						<b>{data.user?.full_name || data.user?.username}</b>
-						<span class="muted">Foto profil akun</span>
-						<a class="pp-link" href="https://app.portalsi.com/profile/edit" target="_blank" rel="noopener"><Camera size={14} /> Ubah foto di app.portalsi.com</a>
+						<span class="muted">@{data.user?.username}</span>
+						<form method="POST" action="?/uploadPhoto" enctype="multipart/form-data" use:enhance={() => { uploadingPhoto = true; return async ({ update }) => { uploadingPhoto = false; await update(); if (photoInput) photoInput.value = ''; }; }}>
+							<input bind:this={photoInput} type="file" name="photo" accept="image/png,image/jpeg,image/webp" hidden onchange={(e) => (e.currentTarget as HTMLInputElement).form?.requestSubmit()} />
+							<button type="button" class="pp-link" onclick={() => photoInput?.click()} disabled={uploadingPhoto}>
+								{#if uploadingPhoto}<span class="spin dark"></span> Mengunggah…{:else}<Camera size={14} /> Ubah foto (maks 2MB){/if}
+							</button>
+						</form>
 					</div>
 				</div>
-				<label class="ml">Nama tampilan (di email keluar)</label>
-				<button class="dark-toggle" onclick={() => (nameFollow = !nameFollow)}>
-					<span class="dt-left"><UserRound size={16} /> Ikuti nama akun {#if data.user?.full_name} ({data.user.full_name}){/if}</span>
-					<span class="switch-ui" class:on={nameFollow}><span class="knob"></span></span>
-				</button>
-				{#if !nameFollow}
-					<input class="mi" bind:value={displayName} placeholder="Tuliskan nama pengirim kustom..." />
+				{#if (form as any)?.photoError}<p class="err-inline">{(form as any).photoError}</p>{/if}
+
+				<form method="POST" action="?/updateProfile" use:enhance={() => { savingProfile = true; return async ({ update }) => { savingProfile = false; await update(); }; }}>
+					<label class="ml">Nama lengkap</label>
+					<input class="mi" name="full_name" bind:value={profFullName} placeholder="Nama lengkap" />
+					<label class="ml">Username</label>
+					<input class="mi" name="username" bind:value={profUsername} placeholder="username" autocapitalize="off" spellcheck="false" />
+					{#if (form as any)?.profileError}<p class="err-inline">{(form as any).profileError}</p>{/if}
+					{#if (form as any)?.profileOk}<div class="ok-box">{(form as any).profileMessage}</div>{/if}
+
+					<label class="ml">Nama tampilan (di email keluar)</label>
+					<input class="mi" value={effName || data.user?.username} readonly />
+					<p class="note">Nama tampilan mengikuti nama akun — tidak bisa diubah terpisah.</p>
+
+					<label class="ml">Alamat email</label>
+					<input class="mi" value={data.account?.email || '—'} readonly />
+					<p class="note">Alamat @sekolahimpian.com tidak bisa diubah setelah dibuat.</p>
+
+					<div class="mf"><button class="cp-send" disabled={savingProfile}>{#if savingProfile}<span class="spin"></span>{:else}Simpan profil{/if}</button></div>
+				</form>
+
+				<div class="sec-div"></div>
+				<h3 class="sec-h sm"><MailIcon size={16} /> Ganti email pemulihan</h3>
+				<p class="note">Email sekarang: <b>{data.user?.email || '—'}</b>. Tautan konfirmasi dikirim ke email <b>lama</b>; setelah dikonfirmasi, email baru mendapat pemberitahuan sukses.</p>
+				{#if (form as any)?.emailReqOk}
+					<div class="ok-box">{(form as any).emailMessage}</div>
+				{:else}
+					<form method="POST" action="?/changeEmail" use:enhance={() => { sendingEmail = true; return async ({ update }) => { sendingEmail = false; await update(); }; }}>
+						<input class="mi" type="email" name="email" bind:value={newEmail} placeholder="email-baru@contoh.com" autocapitalize="off" spellcheck="false" />
+						{#if (form as any)?.emailError}<p class="err-inline">{(form as any).emailError}</p>{/if}
+						<div class="mf"><button class="cp-send" disabled={sendingEmail}>{#if sendingEmail}<span class="spin"></span>{:else}Kirim tautan konfirmasi{/if}</button></div>
+					</form>
 				{/if}
-				<label class="ml">Alamat email{data.addresses && data.addresses.length > 1 ? ' (dua alamat, satu kotak masuk)' : ''}</label>
-				{#each data.addresses ?? [data.account?.email] as a}
-					<input class="mi" value={a} readonly />
-				{/each}
-				<p class="note">Alamat email tidak bisa diubah setelah dibuat.</p>
-				<div class="mf"><button class="cp-send" onclick={saveSettings}>Simpan</button></div>
 			{:else if settingsTab === 'keamanan'}
 				<div class="sec-ico"><KeyRound size={22} /></div>
 				<h3 class="sec-h">Ganti kata sandi</h3>
 				<div class="warn-box">
 					<ShieldCheck size={18} />
-					<span>Ini kata sandi untuk akun Sekolah Impian Mail-mu.</span>
+					<span>Ini kata sandi untuk masuk & mengelola akun SI Mail (bukan kata sandi mailbox IMAP).</span>
 				</div>
 				{#if (form as any)?.pwSent}
 					<div class="ok-box">{(form as any).pwMessage || 'Tautan konfirmasi telah dikirim ke email. Cek kotak masuk (dan folder spam) untuk melanjutkan.'}</div>
@@ -2526,10 +2558,34 @@
 		align-items: center;
 		gap: 6px;
 		margin-top: 4px;
+		padding: 0;
+		background: transparent;
+		border: 0;
+		cursor: pointer;
 		font-size: 0.8rem;
 		color: #1f6feb;
 		text-decoration: none;
 		font-weight: 600;
+	}
+	.pp-link:disabled {
+		opacity: 0.6;
+		cursor: default;
+	}
+	.sec-div {
+		height: 1px;
+		background: #eceff3;
+		margin: 20px 0 14px;
+	}
+	.sec-h.sm {
+		display: flex;
+		align-items: center;
+		gap: 7px;
+		font-size: 0.95rem;
+		margin: 0 0 2px;
+	}
+	.spin.dark {
+		border-color: rgba(31, 111, 235, 0.3);
+		border-top-color: #1f6feb;
 	}
 	.mi {
 		width: 100%;

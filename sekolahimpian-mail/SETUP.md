@@ -14,11 +14,11 @@ v-add-database sekim mail 'sekimmail' 'PASSWORD_KUAT' mysql
 ```
 
 ## 2. Web domain untuk API (mailapi.sekolahimpian.com)
+DNS dulu: A record `mailapi.sekolahimpian.com` → IP server (**DNS only / abu-abu**), tunggu propagasi. Lalu:
 ```bash
 v-add-web-domain sekim mailapi.sekolahimpian.com
-v-add-web-domain-ssl sekim mailapi.sekolahimpian.com   # Let's Encrypt
+v-add-letsencrypt-domain sekim mailapi.sekolahimpian.com   # SSL otomatis (A record harus sudah resolve)
 ```
-DNS: A record `mailapi.sekolahimpian.com` → IP server (DNS only / abu-abu).
 
 ## 3. Scaffold Laravel + overlay file kita
 Jalankan sebagai user sekim (bukan root):
@@ -31,10 +31,17 @@ sudo -u sekim php artisan install:api      # pasang Sanctum + routes/api.php + m
 Lalu salin isi folder `sekolahimpian-mail/api/` dari repo ini menimpa hasil scaffold:
 `app/Models/{User,MailSetting,MailAccount}.php`, `app/Http/Controllers/{AuthController,MailController}.php`, `app/Services/HestiaMailClient.php`, `routes/api.php`, dan `database/migrations/*` (termasuk `0001_01_01_000000_create_users_table.php` yang MENIMPA bawaan).
 
-Arahkan docroot web domain ke `.../api/public` (symlink):
+**PENTING — open_basedir.** Pool php-fpm HestiaCP membatasi `open_basedir` ke `public_html`, `private`, dsb — TAPI **bukan** root domain. Jadi Laravel TIDAK boleh diletakkan di `.../api` (di luar open_basedir → `vendor/autoload.php` diblokir, 500). Taruh app di dalam `private/` lalu symlink `public_html` ke public-nya:
 ```bash
-ln -sfn /home/sekim/web/mailapi.sekolahimpian.com/api/public /home/sekim/web/mailapi.sekolahimpian.com/public_html
+D=/home/sekim/web/mailapi.sekolahimpian.com
+mv "$D/api" "$D/private/api"          # kalau tadinya di-scaffold di $D/api
+rm -f "$D/public_html"
+ln -sfn "$D/private/api/public" "$D/public_html"
+chown -h sekim:sekim "$D/public_html"
 ```
+`private` termasuk open_basedir bawaan template, jadi tahan `v-rebuild-web-domain` (cukup pasang ulang symlink `public_html` tiap rebuild). Docroot mode nginx+Apache: Apache yang eksekusi PHP; error 500 muncul di `/var/log/apache2/domains/<domain>.error.log`, bukan log nginx.
+
+> Scaffold composer & jalankan artisan dari path baru: `cd /home/sekim/web/mailapi.sekolahimpian.com/private/api`.
 
 ## 4. config/services.php — tambahkan blok hestia
 ```php
@@ -92,18 +99,20 @@ v-list-mail-domains sekim | grep -i sekolah || v-add-mail-domain sekim sekolahim
 > Catatan: folder `/etc/exim4/domains/sekolahimpian.com` mungkin sudah ada dari eksperimen alias. Kalau `v-add-mail-domain` menolak/aneh, cek pemilik lama & bersihkan dulu. DKIM/SPF/DMARC + relay Brevo untuk sekolahimpian.com sudah ada — biarkan.
 
 ## 8. Set master password gate (beta)
+`tinker` mati di HestiaCP (`shell_exec` disabled) → pakai artisan command bawaan:
 ```bash
-cd /home/sekim/web/mailapi.sekolahimpian.com/api
-sudo -u sekim php artisan tinker --execute="\App\Models\MailSetting::current()->update(['master_password'=>bcrypt('MASTER_RAHASIA')]);"
+cd /home/sekim/web/mailapi.sekolahimpian.com/private/api
+sudo -u sekim -H php artisan mail:master 'MASTER_RAHASIA'
+# nonaktifkan gate:  php artisan mail:master 'MASTER_RAHASIA' --disable-gate
 ```
-Nonaktifkan gate: `->update(['gate_enabled'=>false])`.
 
 ## 9. Webmail (SvelteKit) — mail.sekolahimpian.com
 - `.env` (dari `sekolahimpian-mail/web/.env.example`): `PORTALSI_API_URL=https://mailapi.sekolahimpian.com/api`, `MAIL_DOMAIN=sekolahimpian.com`, `ORIGIN=https://mail.sekolahimpian.com`, `PORT=3300`.
 - Web domain + service:
 ```bash
+# A record mail.sekolahimpian.com -> IP server (DNS only) dulu, lalu:
 v-add-web-domain sekim mail.sekolahimpian.com
-v-add-web-domain-ssl sekim mail.sekolahimpian.com
+v-add-letsencrypt-domain sekim mail.sekolahimpian.com
 cd /home/sekim/web/mail.sekolahimpian.com   # taruh folder web di sini (mis. subfolder 'app')
 sudo -u sekim npm install
 sudo -u sekim npm run build
@@ -114,6 +123,30 @@ sudo -u sekim npm run build
 - Buka `https://mail.sekolahimpian.com` → daftar akun baru → masukkan master password → buat mailbox `nama@sekolahimpian.com` → kirim/terima.
 - Karena akun TERPISAH, login di sini beda dari Portal SI.
 
+## 11. Fitur akun lanjutan (verifikasi email, reset, ganti email, edit profil)
+Ditambahkan: verifikasi email **wajib** saat daftar (link klik), reset kata sandi via link, ganti email pemulihan (link ke email lama → notif ke email baru), edit nama/username/foto profil.
+
+Yang perlu disiapkan di server API (`/home/sekim/web/mailapi.sekolahimpian.com/private/api`):
+```bash
+# 1) migrasi (menambah kolom pending_email & email_change_token via migrasi terpisah — aman, tak wipe data)
+sudo -u sekim -H php artisan migrate --force
+
+# 2) storage publik untuk foto profil (disajikan via /storage/avatars/...)
+sudo -u sekim -H php artisan storage:link
+
+# 3) outbound email harus jalan (link verifikasi/reset). Pastikan .env:
+#    MAIL_MAILER=smtp  MAIL_HOST=127.0.0.1  MAIL_PORT=587 (Exim lokal → relay Brevo untuk sekolahimpian.com)
+#    MAIL_FROM_ADDRESS="noreply@sekolahimpian.com"  MAIL_FROM_NAME="SI Mail"
+#    APP_URL=https://mailapi.sekolahimpian.com   (WAJIB benar: dipakai untuk signed URL & URL foto)
+
+# 4) (opsional) URL frontend untuk tautan email; default sudah https://mail.sekolahimpian.com.
+#    Kalau mau override, tambahkan di config/app.php: 'frontend_url' => env('FRONTEND_URL'),
+#    lalu set FRONTEND_URL di .env.
+
+sudo -u sekim -H php artisan optimize:clear
+sudo -u sekim -H php artisan config:cache && sudo -u sekim -H php artisan route:cache
+```
+Catatan open_basedir: `storage:link` membuat `public/storage → ../storage/app/public`; keduanya di dalam `private/api`, jadi lolos open_basedir. Foto disimpan di `storage/app/public/avatars`, maks 2MB.
+
 ### Belum termasuk (menyusul bila perlu)
-- Halaman reset kata sandi (link dari email) — endpoint `/forgot-password` sudah kirim email, tapi halaman reset di webmail belum ada.
-- Panel admin (enable/disable gate + ganti master password) — sementara lewat tinker (langkah 8).
+- Panel admin (enable/disable gate + ganti master password) — sementara lewat `php artisan mail:master`.
