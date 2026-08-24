@@ -638,3 +638,106 @@ export async function sendMessage(
 		}
 	}
 }
+
+export interface DraftInput {
+	to?: string;
+	cc?: string;
+	bcc?: string;
+	subject?: string;
+	text?: string;
+	html?: string;
+	fromName?: string;
+	fromAddr?: string;
+}
+
+/** Simpan draf: susun pesan lalu append ke folder Drafts dengan flag \Draft. */
+export async function appendDraft(creds: Creds, msg: DraftInput, draftsPath: string): Promise<void> {
+	const composer = new MailComposer({
+		from: msg.fromName
+			? { name: msg.fromName, address: msg.fromAddr || creds.email }
+			: msg.fromAddr || creds.email,
+		to: msg.to || undefined,
+		cc: msg.cc || undefined,
+		bcc: msg.bcc || undefined,
+		subject: msg.subject || '(tanpa subjek)',
+		text: msg.text || undefined,
+		html: msg.html || undefined
+	});
+	const raw: Buffer = await composer.compile().build();
+	await withClient(creds, async (c) => {
+		await c.append(draftsPath, raw, ['\\Draft', '\\Seen']);
+	});
+}
+
+/** Hapus permanen satu pesan dari sebuah folder (mis. draf lama yang sudah diedit). */
+export async function expungeMessage(creds: Creds, folderPath: string, uid: number): Promise<void> {
+	await withClient(creds, async (c) => {
+		const lock = await c.getMailboxLock(folderPath);
+		try {
+			await c.messageFlagsAdd({ uid: `${uid}` }, ['\\Deleted'], { uid: true });
+			if (typeof (c as any).messageDelete === 'function') {
+				await (c as any).messageDelete({ uid: `${uid}` }, { uid: true });
+			}
+		} finally {
+			lock.release();
+		}
+	});
+}
+
+export interface Contact {
+	name: string;
+	address: string;
+}
+
+/** Kumpulkan kontak dari interaksi terakhir: penerima di Terkirim + pengirim di Kotak Masuk. */
+export async function recentContacts(
+	creds: Creds,
+	sentPath: string | undefined,
+	inboxPath = 'INBOX',
+	perFolder = 80
+): Promise<Contact[]> {
+	const map = new Map<string, string>();
+	const add = (addr?: string | null, name?: string | null) => {
+		const a = (addr || '').trim().toLowerCase();
+		if (!a || !a.includes('@')) return;
+		if (a === creds.email.toLowerCase()) return;
+		const existing = map.get(a);
+		if (!existing || (!existing.trim() && (name || '').trim())) map.set(a, (name || '').trim());
+	};
+
+	await withClient(creds, async (c) => {
+		const scan = async (path: string, useTo: boolean) => {
+			const lock = await c.getMailboxLock(path);
+			try {
+				const status = c.mailbox && typeof c.mailbox === 'object' ? (c.mailbox as any).exists || 0 : 0;
+				if (!status) return;
+				const start = Math.max(1, status - perFolder + 1);
+				for await (const m of c.fetch(`${start}:*`, { envelope: true })) {
+					const env = m.envelope;
+					if (!env) continue;
+					if (useTo) {
+						for (const t of [...(env.to || []), ...(env.cc || [])]) add(t.address, t.name);
+					} else {
+						for (const f of env.from || []) add(f.address, f.name);
+					}
+				}
+			} finally {
+				lock.release();
+			}
+		};
+		if (sentPath) {
+			try {
+				await scan(sentPath, true);
+			} catch {
+				/* ignore */
+			}
+		}
+		try {
+			await scan(inboxPath, false);
+		} catch {
+			/* ignore */
+		}
+	});
+
+	return [...map.entries()].map(([address, name]) => ({ address, name })).slice(0, 200);
+}

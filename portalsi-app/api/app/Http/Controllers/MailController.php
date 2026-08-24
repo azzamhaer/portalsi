@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\MailAccount;
 use App\Models\MailSetting;
+use App\Models\User;
 use App\Services\HestiaMailClient;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -99,6 +100,40 @@ class MailController extends Controller
                 'created_at' => $account->created_at,
             ] : null,
         ]);
+    }
+
+    /** Peta email(@portalsi.com) → URL foto profil user, untuk avatar sesama pengguna. */
+    public function avatars(Request $request)
+    {
+        $emails = collect($request->input('emails', []))
+            ->filter()
+            ->map(fn ($e) => strtolower(trim((string) $e)))
+            ->unique()
+            ->take(300)
+            ->values();
+
+        if ($emails->isEmpty()) {
+            return response()->json(['avatars' => (object) []]);
+        }
+
+        $accounts = MailAccount::whereIn('email', $emails->all())->get(['user_id', 'email']);
+        $users = User::whereIn('id', $accounts->pluck('user_id')->unique()->all())
+            ->get(['id', 'profile_picture_url', 'profile_picture_thumb_url'])
+            ->keyBy('id');
+
+        $out = [];
+        foreach ($accounts as $a) {
+            $u = $users[$a->user_id] ?? null;
+            if (! $u || ! $u->getRawOriginal('profile_picture_url')) {
+                continue; // tanpa foto asli → biar frontend pakai inisial
+            }
+            $url = $u->profile_picture_thumb_url ?: $u->profile_picture_url;
+            if ($url) {
+                $out[$a->email] = $url;
+            }
+        }
+
+        return response()->json(['avatars' => (object) $out]);
     }
 
     /**

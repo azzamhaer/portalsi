@@ -2,8 +2,10 @@ import { fail, redirect } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
 import { forgotPassword, mailCredentials, mailStatus } from '$lib/server/portal';
 import {
+	appendDraft,
 	archiveMessage,
 	emptyTrash,
+	expungeMessage,
 	listFolders,
 	loadView,
 	moveToTrash,
@@ -115,7 +117,51 @@ export const actions: Actions = {
 		} catch (e: any) {
 			return fail(502, { sendError: e?.message || 'Gagal mengirim email.' });
 		}
+		const draftUid = Number(f.get('draft_uid') || 0);
+		if (draftUid) {
+			const draftsPath = folders.find((fo) => fo.key === 'drafts')?.path;
+			if (draftsPath) {
+				try {
+					await expungeMessage(creds, draftsPath, draftUid);
+				} catch {
+					/* ignore */
+				}
+			}
+		}
 		return { sent: true };
+	},
+
+	saveDraft: async ({ request, locals }) => {
+		const creds = await credsFrom(locals);
+		const folders = await listFolders(creds);
+		const draftsPath = folders.find((fo) => fo.key === 'drafts')?.path || 'Drafts';
+
+		const f = await request.formData();
+		const to = String(f.get('to') ?? '').trim();
+		const cc = String(f.get('cc') ?? '').trim();
+		const bcc = String(f.get('bcc') ?? '').trim();
+		const subject = String(f.get('subject') ?? '').trim();
+		const text = String(f.get('body') ?? '');
+		const html = String(f.get('html') ?? '') || undefined;
+		const fromName = String(f.get('from_name') ?? '').trim() || undefined;
+		const requestedFrom = String(f.get('from_addr') ?? '').trim().toLowerCase();
+		const allowed = addressesFor(creds.email);
+		const fromAddr = allowed.includes(requestedFrom) ? requestedFrom : undefined;
+
+		try {
+			await appendDraft(creds, { to, cc, bcc, subject, text, html, fromName, fromAddr }, draftsPath);
+			const draftUid = Number(f.get('draft_uid') || 0);
+			if (draftUid) {
+				try {
+					await expungeMessage(creds, draftsPath, draftUid);
+				} catch {
+					/* ignore */
+				}
+			}
+		} catch (e: any) {
+			return fail(502, { draftError: e?.message || 'Gagal menyimpan draf.' });
+		}
+		return { draftSaved: true };
 	},
 
 	star: async ({ request, locals }) => {

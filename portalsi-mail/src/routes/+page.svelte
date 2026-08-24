@@ -108,7 +108,15 @@
 	let signature = $state('');
 	const MAX_ATTACH_TOTAL = 20 * 1024 * 1024;
 
-	let compose = $state({ to: '', cc: '', bcc: '', subject: '', in_reply_to: '', references: '' });
+	let compose = $state<{
+		to: string;
+		cc: string;
+		bcc: string;
+		subject: string;
+		in_reply_to: string;
+		references: string;
+		draftUid: number | null;
+	}>({ to: '', cc: '', bcc: '', subject: '', in_reply_to: '', references: '', draftUid: null });
 	let fromAddr = $state<string>((data.addresses && data.addresses[0]) || '');
 	let files = $state<File[]>([]);
 	let editorEl: HTMLDivElement | null = null;
@@ -342,6 +350,10 @@
 
 	// ── buka pesan tanpa reload ──
 	async function openMessage(m: any) {
+		if (data.folderKey === 'drafts') {
+			openDraft(m);
+			return;
+		}
 		if (selectedUid === m.uid && selected) return;
 		selectedUid = m.uid;
 		readerSeen = true;
@@ -499,8 +511,9 @@
 		return list.find((a: string) => low.includes(a.toLowerCase())) || list[0] || '';
 	}
 	function newMail() {
-		compose = { to: '', cc: '', bcc: '', subject: '', in_reply_to: '', references: '' };
+		compose = { to: '', cc: '', bcc: '', subject: '', in_reply_to: '', references: '', draftUid: null };
 		fromAddr = data.addresses?.[0] || fromAddr;
+		loadContacts();
 		openComposer(sigHtml());
 	}
 	function replyTo(m: any) {
@@ -512,9 +525,11 @@
 			bcc: '',
 			subject: m.subject?.startsWith('Re:') ? m.subject : `Re: ${m.subject}`,
 			in_reply_to: m.messageId || '',
-			references: (m.references ? `${m.references} ` : '') + (m.messageId || '')
+			references: (m.references ? `${m.references} ` : '') + (m.messageId || ''),
+			draftUid: null
 		};
 		fromAddr = pickFrom(m.to);
+		loadContacts();
 		openComposer(`${sigHtml()}<br><br>${quote}`);
 	}
 	function forwardMsg(m: any) {
@@ -526,8 +541,10 @@
 			bcc: '',
 			subject: m.subject?.startsWith('Fwd:') ? m.subject : `Fwd: ${m.subject}`,
 			in_reply_to: '',
-			references: ''
+			references: '',
+			draftUid: null
 		};
+		loadContacts();
 		openComposer(`${sigHtml()}<br><br>${header}<br>${original}`);
 	}
 	function exec(cmd: string, val?: string) {
@@ -549,6 +566,113 @@
 	}
 	function removeFile(i: number) {
 		files = files.filter((_, idx) => idx !== i);
+	}
+
+	// ── avatar sesama @portalsi.com ──
+	let avatars = $state<Record<string, string | null>>({});
+	async function ensureAvatars(addrs: (string | undefined | null)[]) {
+		const need = [...new Set(addrs.map((a) => (a || '').toLowerCase()).filter((a) => a && a.includes('@')))].filter(
+			(a) => !(a in avatars)
+		);
+		if (!need.length) return;
+		const pending = { ...avatars };
+		need.forEach((a) => (pending[a] = null));
+		avatars = pending;
+		try {
+			const r = await fetch('/avatars', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ emails: need })
+			});
+			if (r.ok) {
+				const d = await r.json();
+				const merged = { ...avatars };
+				for (const [k, v] of Object.entries(d.avatars || {})) merged[k.toLowerCase()] = v as string;
+				avatars = merged;
+			}
+		} catch {
+			/* ignore */
+		}
+	}
+	function avatarUrl(addr?: string | null): string | null {
+		return addr ? avatars[addr.toLowerCase()] || null : null;
+	}
+	$effect(() => {
+		const addrs: (string | undefined)[] = [];
+		for (const m of msgs) addrs.push(m?.fromAddr);
+		if (selected?.fromAddr) addrs.push(selected.fromAddr);
+		for (const t of thread) addrs.push(t?.fromAddr);
+		if (addrs.length) ensureAvatars(addrs);
+	});
+
+	// ── saran penerima (kontak dari interaksi terakhir) ──
+	let contacts = $state<{ name: string; address: string }[]>([]);
+	let contactsLoaded = $state(false);
+	let toSuggest = $state<{ name: string; address: string }[]>([]);
+	let toSuggestOpen = $state(false);
+	async function loadContacts() {
+		if (contactsLoaded) return;
+		contactsLoaded = true;
+		try {
+			const r = await fetch('/contacts');
+			if (r.ok) contacts = (await r.json()).contacts ?? [];
+		} catch {
+			/* ignore */
+		}
+	}
+	function lastToken(s: string): string {
+		const parts = s.split(',');
+		return parts[parts.length - 1].trim().toLowerCase();
+	}
+	function onToInput() {
+		const term = lastToken(compose.to);
+		if (term.length < 1) {
+			toSuggestOpen = false;
+			return;
+		}
+		const chosen = compose.to
+			.split(',')
+			.slice(0, -1)
+			.map((s) => s.trim().toLowerCase());
+		toSuggest = contacts
+			.filter(
+				(c) =>
+					!chosen.includes(c.address.toLowerCase()) &&
+					(c.address.toLowerCase().includes(term) || c.name.toLowerCase().includes(term))
+			)
+			.slice(0, 6);
+		toSuggestOpen = toSuggest.length > 0;
+	}
+	function pickContact(c: { name: string; address: string }) {
+		const parts = compose.to.split(',');
+		parts[parts.length - 1] = ' ' + c.address;
+		compose.to = parts.join(',').replace(/^[\s,]+/, '') + ', ';
+		toSuggestOpen = false;
+	}
+
+	// ── draf ──
+	let savingDraft = $state(false);
+	async function openDraft(m: any) {
+		try {
+			const r = await fetch(`/message?folder=${encodeURIComponent(data.folderPath)}&uid=${m.uid}`);
+			const d = r.ok ? await r.json() : null;
+			const msg = d?.message;
+			compose = {
+				to: (msg?.to || m.to || '').trim(),
+				cc: '',
+				bcc: '',
+				subject: msg?.subject || m.subject || '',
+				in_reply_to: '',
+				references: '',
+				draftUid: m.uid
+			};
+			fromAddr = data.addresses?.[0] || fromAddr;
+			loadContacts();
+			const html = msg?.html || (msg?.text ? `<div>${escapeHtml(msg.text).replace(/\n/g, '<br>')}</div>` : '');
+			await openComposer(html);
+		} catch {
+			toast('Gagal membuka draf.');
+		}
 	}
 
 	// ── format ──
@@ -592,6 +716,14 @@
 </script>
 
 <svelte:head><title>{pageTitle}</title></svelte:head>
+
+{#snippet avat(addr: string | undefined | null, name: string, cls: string)}
+	{#if avatarUrl(addr)}
+		<img class="avatar {cls}" src={avatarUrl(addr)} alt="" />
+	{:else}
+		<span class="avatar {cls}" style="background:{avColor(addr || '')}">{initial(name)}</span>
+	{/if}
+{/snippet}
 
 {#if $navigating}
 	<div class="topbar-progress"></div>
@@ -676,7 +808,7 @@
 					{:else}
 						{#each searchResults as m (m.uid)}
 							<button class="s-item" onclick={() => openSearchResult(m)}>
-								<span class="avatar sm" style="background:{avColor(m.fromAddr)}">{initial(m.fromName)}</span>
+								{@render avat(m.fromAddr, m.fromName, 'sm')}
 								<span class="s-body">
 									<span class="s-line1"><b class="s-who">{m.fromName}</b><span class="s-date">{fmtDate(m.date)}</span></span>
 									<span class="s-subj">{m.subject}{#if m.attachments}<Paperclip size={12} class="clip" />{/if}</span>
@@ -747,10 +879,10 @@
 				<button class="star" class:on={starOf(m)} onclick={(e) => toggleStar(m, e)} aria-label="Bintang">
 					<Star size={16} fill={starOf(m) ? 'currentColor' : 'none'} />
 				</button>
-				<span class="avatar" style="background:{avColor(m.fromAddr)}">{initial(m.fromName)}</span>
+				{@render avat(m.fromAddr, m.fromName, '')}
 				<div class="rbody">
 					<div class="rline1">
-						<span class="who">{data.folderKey === 'sent' ? m.to : m.fromName}</span>
+						<span class="who">{data.folderKey === 'sent' || data.folderKey === 'drafts' ? m.to || '(tanpa penerima)' : m.fromName}</span>
 						<span class="date">{fmtDate(m.date)}</span>
 					</div>
 					<div class="rline2">
@@ -853,7 +985,7 @@
 			<div class="rd-scroll">
 				<h1 class="rd-subject">{selected.subject}</h1>
 				<div class="rd-sender">
-					<span class="avatar lg" style="background:{avColor(selected.fromAddr)}">{initial(selected.fromName)}</span>
+					{@render avat(selected.fromAddr, selected.fromName, 'lg')}
 					<div class="rs-info">
 						<div class="rs-name">{selected.fromName} <BadgeCheck size={15} class="verified" /></div>
 						<div class="rs-addr">{selected.fromAddr}</div>
@@ -888,7 +1020,7 @@
 						<div class="thread-h">Percakapan ini ({thread.length + 1})</div>
 						{#each thread as t (t.uid)}
 							<button class="thread-item" onclick={() => openMessage(t)}>
-								<span class="avatar sm" style="background:{avColor(t.fromAddr)}">{initial(t.fromName)}</span>
+								{@render avat(t.fromAddr, t.fromName, 'sm')}
 								<span class="ti-who">{t.fromName}</span>
 								<span class="ti-date">{fmtDate(t.date)}</span>
 							</button>
@@ -939,18 +1071,27 @@
 				method="POST"
 				action="?/send"
 				enctype="multipart/form-data"
-				use:enhance={({ formData, cancel }) => {
-					if (!compose.to.trim()) { cancel(); return; }
+				use:enhance={({ formData, cancel, submitter }) => {
+						const isDraft = (submitter as HTMLButtonElement)?.formAction?.includes('saveDraft') ?? false;
+					if (!isDraft && !compose.to.trim()) { cancel(); return; }
 					formData.set('html', editorEl?.innerHTML ?? '');
 					formData.set('body', editorEl?.innerText ?? '');
-					for (const file of files) formData.append('files', file);
-					sending = true;
+					if (!isDraft) for (const file of files) formData.append('files', file);
+					if (isDraft) savingDraft = true; else sending = true;
 					return async ({ result, update }) => {
-						sending = false;
+						sending = false; savingDraft = false;
 						if (result.type === 'success' && (result.data as any)?.sent) {
 							composeOpen = false;
 							files = [];
-							toast('Email terkirim');
+							compose.draftUid = null;
+								poll();
+								toast('Email terkirim');
+							} else if (result.type === 'success' && (result.data as any)?.draftSaved) {
+								composeOpen = false;
+								files = [];
+								compose.draftUid = null;
+								poll();
+								toast('Draf disimpan');
 						} else {
 							await update({ reset: false });
 						}
@@ -967,7 +1108,18 @@
 				{/if}
 				<div class="cp-field">
 					<label>Ke</label>
-					<input name="to" bind:value={compose.to} placeholder="penerima@contoh.com" required />
+					<input name="to" bind:value={compose.to} placeholder="penerima@contoh.com" required autocomplete="off" oninput={onToInput} onfocus={onToInput} />
+						{#if toSuggestOpen}
+							<button type="button" class="to-backdrop" onclick={() => (toSuggestOpen = false)} aria-label="Tutup"></button>
+							<div class="to-suggest">
+								{#each toSuggest as c (c.address)}
+									<button type="button" class="to-item" onclick={() => pickContact(c)}>
+										{@render avat(c.address, c.name || c.address, 'sm')}
+										<span class="to-info"><b>{c.name || c.address}</b><span>{c.address}</span></span>
+									</button>
+								{/each}
+							</div>
+						{/if}
 					<div class="cp-ccbtns">
 						{#if !showCc}<button type="button" onclick={() => (showCc = true)}>Cc</button>{/if}
 						{#if !showBcc}<button type="button" onclick={() => (showBcc = true)}>Bcc</button>{/if}
@@ -1002,11 +1154,15 @@
 				<input type="hidden" name="references" value={compose.references} />
 				<input type="hidden" name="from_name" value={effName} />
 				<input type="hidden" name="from_addr" value={fromAddr} />
+				<input type="hidden" name="draft_uid" value={compose.draftUid ?? ''} />
 				{#if (form as any)?.sendError}<p class="cp-err">{(form as any).sendError}</p>{/if}
 
 				<div class="cp-foot">
 					<button class="cp-send" disabled={sending}>
 						{#if sending}<span class="spin"></span>{:else}<Send size={16} /> Kirim{/if}
+					</button>
+					<button type="submit" formaction="?/saveDraft" formnovalidate class="cp-icon" title="Simpan draf" disabled={savingDraft || sending}>
+						{#if savingDraft}<span class="spin dark"></span>{:else}<FileText size={17} />{/if}
 					</button>
 					<button type="button" class="cp-icon" title="Lampirkan" onclick={() => fileInput?.click()}><Paperclip size={17} /></button>
 					<button type="button" class="cp-icon" title="Sisipkan gambar" onclick={() => fileInput?.click()}><ImageIcon size={17} /></button>
@@ -1595,6 +1751,9 @@
 		font-weight: 700;
 		flex: none;
 	}
+	img.avatar {
+		object-fit: cover;
+	}
 	.avatar.sm {
 		width: 32px;
 		height: 32px;
@@ -2157,6 +2316,76 @@
 		color: inherit;
 		cursor: pointer;
 	}
+	.cp-field {
+		position: relative;
+	}
+	.to-backdrop {
+		position: fixed;
+		inset: 0;
+		background: transparent;
+		border: 0;
+		z-index: 30;
+		cursor: default;
+	}
+	.to-suggest {
+		position: absolute;
+		top: 100%;
+		left: 40px;
+		right: 0;
+		z-index: 40;
+		margin-top: 4px;
+		background: #fff;
+		border: 1px solid #e6e9ef;
+		border-radius: 12px;
+		box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
+		padding: 4px;
+		max-height: 240px;
+		overflow-y: auto;
+	}
+	.to-item {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		width: 100%;
+		padding: 7px 9px;
+		border: 0;
+		border-radius: 9px;
+		background: transparent;
+		cursor: pointer;
+		text-align: left;
+	}
+	.to-item:hover {
+		background: #f2f5f9;
+	}
+	.to-info {
+		display: flex;
+		flex-direction: column;
+		min-width: 0;
+		line-height: 1.25;
+	}
+	.to-info b {
+		font-size: 0.85rem;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.to-info span {
+		font-size: 0.76rem;
+		color: #80868b;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	:global(html.psdark) .to-suggest {
+		background: #1b2029;
+		border-color: #2c333d;
+	}
+	:global(html.psdark) .to-item:hover {
+		background: #222831;
+	}
+	:global(html.psdark) .to-info b {
+		color: #e6e9ef;
+	}
 	.cp-ccbtns {
 		display: flex;
 		gap: 8px;
@@ -2473,6 +2702,8 @@
 	/* settings tabs */
 	.modal.wide {
 		width: min(94vw, 520px);
+		max-height: 88vh;
+		overflow-y: auto;
 	}
 	.tabs {
 		display: flex;

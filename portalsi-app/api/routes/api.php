@@ -557,6 +557,7 @@ Route::middleware(['auth:sanctum', 'notBanned'])->prefix('mail')->group(function
     Route::get('/account', [\App\Http\Controllers\MailController::class, 'account']);
     Route::post('/account', [\App\Http\Controllers\MailController::class, 'createAccount']);
     Route::get('/credentials', [\App\Http\Controllers\MailController::class, 'credentials']);
+    Route::post('/avatars', [\App\Http\Controllers\MailController::class, 'avatars']);
 });
 
 // ═══════════════════════════════════════════

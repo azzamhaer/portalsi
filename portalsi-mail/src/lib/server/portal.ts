@@ -146,3 +146,16 @@ export interface MailboxCreds {
 export async function mailCredentials(token: string): Promise<MailboxCreds> {
 	return (await req('/mail/credentials', { method: 'GET' }, token)) as MailboxCreds;
 }
+
+export async function mailAvatars(
+	token: string,
+	emails: string[]
+): Promise<Record<string, string>> {
+	if (!emails.length) return {};
+	try {
+		const d = await req('/mail/avatars', { method: 'POST', body: JSON.stringify({ emails }) }, token);
+		return (d?.avatars as Record<string, string>) || {};
+	} catch {
+		return {};
+	}
+}
