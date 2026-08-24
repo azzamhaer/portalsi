@@ -83,6 +83,35 @@ class MailController extends Controller
         return response()->json(['unlocked' => true]);
     }
 
+    /** Peta email(@domain) → URL foto profil, untuk avatar sesama pengguna. */
+    public function avatars(Request $request)
+    {
+        $emails = collect($request->input('emails', []))
+            ->filter()
+            ->map(fn ($e) => strtolower(trim((string) $e)))
+            ->unique()
+            ->take(300)
+            ->values();
+
+        if ($emails->isEmpty()) {
+            return response()->json(['avatars' => (object) []]);
+        }
+
+        $accounts = MailAccount::whereIn('email', $emails->all())->get(['user_id', 'email']);
+        $pics = \App\Models\User::whereIn('id', $accounts->pluck('user_id')->unique()->all())
+            ->pluck('profile_picture_url', 'id');
+
+        $out = [];
+        foreach ($accounts as $a) {
+            $url = $pics[$a->user_id] ?? null;
+            if ($url) {
+                $out[$a->email] = $url;
+            }
+        }
+
+        return response()->json(['avatars' => (object) $out]);
+    }
+
     public function account(Request $request)
     {
         $account = MailAccount::where('user_id', (int) $request->user()->getKey())->first();

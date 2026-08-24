@@ -33,5 +33,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/account', [MailController::class, 'account']);
         Route::post('/account', [MailController::class, 'createAccount']);
         Route::get('/credentials', [MailController::class, 'credentials']);
+        Route::post('/avatars', [MailController::class, 'avatars']);
     });
 });
