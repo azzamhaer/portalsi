@@ -610,7 +610,7 @@
 	<aside class="sb">
 		<div class="sb-head">
 			<button class="hamb" onclick={toggleSidebar} aria-label="Menu"><Menu size={20} /></button>
-			<span class="sb-brand">Sekolah <b>Impian</b> Mail</span>
+			<span class="sb-brand">SI <b>Mail</b></span>
 		</div>
 
 		<button class="compose" onclick={newMail}>
@@ -1046,7 +1046,7 @@
 					<div class="pp-info">
 						<b>{data.user?.full_name || data.user?.username}</b>
 						<span class="muted">@{data.user?.username}</span>
-						<form method="POST" action="?/uploadPhoto" enctype="multipart/form-data" use:enhance={() => { uploadingPhoto = true; return async ({ update }) => { uploadingPhoto = false; await update(); if (photoInput) photoInput.value = ''; }; }}>
+						<form method="POST" action="?/uploadPhoto" enctype="multipart/form-data" use:enhance={() => { uploadingPhoto = true; return async ({ update }) => { uploadingPhoto = false; await update({ reset: false }); if (photoInput) photoInput.value = ''; }; }}>
 							<input bind:this={photoInput} type="file" name="photo" accept="image/png,image/jpeg,image/webp" hidden onchange={(e) => (e.currentTarget as HTMLInputElement).form?.requestSubmit()} />
 							<button type="button" class="pp-link" onclick={() => photoInput?.click()} disabled={uploadingPhoto}>
 								{#if uploadingPhoto}<span class="spin dark"></span> Mengunggah…{:else}<Camera size={14} /> Ubah foto (maks 2MB){/if}
@@ -1056,7 +1056,7 @@
 				</div>
 				{#if (form as any)?.photoError}<p class="err-inline">{(form as any).photoError}</p>{/if}
 
-				<form method="POST" action="?/updateProfile" use:enhance={() => { savingProfile = true; return async ({ update }) => { savingProfile = false; await update(); }; }}>
+				<form method="POST" action="?/updateProfile" use:enhance={() => { savingProfile = true; return async ({ update }) => { savingProfile = false; await update({ reset: false }); }; }}>
 					<label class="ml">Nama lengkap</label>
 					<input class="mi" name="full_name" bind:value={profFullName} placeholder="Nama lengkap" />
 					<label class="ml">Username</label>
@@ -1081,7 +1081,7 @@
 				{#if (form as any)?.emailReqOk}
 					<div class="ok-box">{(form as any).emailMessage}</div>
 				{:else}
-					<form method="POST" action="?/changeEmail" use:enhance={() => { sendingEmail = true; return async ({ update }) => { sendingEmail = false; await update(); }; }}>
+					<form method="POST" action="?/changeEmail" use:enhance={() => { sendingEmail = true; return async ({ update }) => { sendingEmail = false; await update({ reset: false }); }; }}>
 						<input class="mi" type="email" name="email" bind:value={newEmail} placeholder="email-baru@contoh.com" autocapitalize="off" spellcheck="false" />
 						{#if (form as any)?.emailError}<p class="err-inline">{(form as any).emailError}</p>{/if}
 						<div class="mf"><button class="cp-send" disabled={sendingEmail}>{#if sendingEmail}<span class="spin"></span>{:else}Kirim tautan konfirmasi{/if}</button></div>
@@ -1092,7 +1092,7 @@
 				<h3 class="sec-h">Ganti kata sandi</h3>
 				<div class="warn-box">
 					<ShieldCheck size={18} />
-					<span>Ini kata sandi untuk masuk & mengelola akun SI Mail (bukan kata sandi mailbox IMAP).</span>
+					<span>Kata sandi ini dipakai untuk masuk ke akun SI Mail kamu.</span>
 				</div>
 				{#if (form as any)?.pwSent}
 					<div class="ok-box">{(form as any).pwMessage || 'Tautan konfirmasi telah dikirim ke email. Cek kotak masuk (dan folder spam) untuk melanjutkan.'}</div>

@@ -15,8 +15,9 @@ class MailLink
 {
     public static function frontend(): string
     {
-        // Jangan pakai env() di sini: setelah config:cache, env() runtime = null.
-        return rtrim((string) (config('app.frontend_url') ?: 'https://mail.sekolahimpian.com'), '/');
+        // Single-tenant: hardcode agar tautan email selalu ke domain webmail yang benar.
+        // (config('app.url') = domain API, jangan dipakai untuk link frontend.)
+        return 'https://mail.sekolahimpian.com';
     }
 
     /** Tautan verifikasi email pendaftaran (signed, 48 jam). */
@@ -66,8 +67,7 @@ class MailLink
                 'Setel ulang kata sandi',
                 '<p>Halo <b>' . e($user->full_name) . '</b>,</p>'
                 . '<p>Kami menerima permintaan untuk mengganti kata sandi akun <b>SI Mail</b> kamu. '
-                . 'Klik tombol di bawah untuk menyetel kata sandi baru.</p>'
-                . '<p style="color:#a15c00"><b>Catatan:</b> kata sandi ini adalah kata sandi akun SI Mail (untuk masuk & mengelola email), bukan kata sandi mailbox IMAP.</p>',
+                . 'Klik tombol di bawah untuk menyetel kata sandi baru.</p>',
                 'Setel Kata Sandi Baru',
                 $url,
                 'Tautan berlaku 60 menit. Abaikan email ini jika kamu tidak memintanya.'

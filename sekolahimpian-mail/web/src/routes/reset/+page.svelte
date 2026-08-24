@@ -27,7 +27,7 @@
 		<div class="form-alert" role="alert">Tautan reset tidak lengkap atau tidak valid. Silakan minta tautan baru dari halaman masuk.</div>
 		<p class="switch"><a href="/login">Ke halaman masuk</a></p>
 	{:else}
-		<div class="notice"><ShieldCheck size={16} /> <span>Ini kata sandi untuk masuk & mengelola SI Mail (bukan kata sandi mailbox IMAP).</span></div>
+		<div class="notice"><ShieldCheck size={16} /> <span>Kata sandi ini dipakai untuk masuk ke akun SI Mail kamu.</span></div>
 		{#if form?.message}<div class="form-alert" role="alert">{form.message}</div>{/if}
 		<form method="POST" onsubmit={() => (submitting = true)}>
 			<input type="hidden" name="token" value={data.token} />
