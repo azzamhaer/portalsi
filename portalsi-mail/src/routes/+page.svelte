@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { t, lang, setLang } from '$lib/i18n';
 	import { navigating } from '$app/stores';
 	import { tick, onMount } from 'svelte';
 	import {
@@ -1242,15 +1243,21 @@
 					</form>
 				{/if}
 			{:else}
-				<label class="ml">Mode tampilan</label>
+				<label class="ml">{$t('set.language')}</label>
+					<div class="lang-seg" role="group" aria-label={$t('set.language')}>
+						<button type="button" class:on={$lang === 'id'} onclick={() => setLang('id')}>Indonesia</button>
+						<button type="button" class:on={$lang === 'en'} onclick={() => setLang('en')}>English</button>
+					</div>
+					<p class="note">{$t('set.languageNote')}</p>
+					<label class="ml">{$t('set.displayMode')}</label>
 				<button class="dark-toggle" onclick={toggleDark}>
 					<span class="dt-left">
 						{#if darkMode}<Moon size={18} />{:else}<Sun size={18} />{/if}
-						{darkMode ? 'Mode gelap' : 'Mode terang'}
+						{darkMode ? $t('set.dark') : $t('set.light')}
 					</span>
 					<span class="switch-ui" class:on={darkMode}><span class="knob"></span></span>
 				</button>
-				<p class="note">Mode gelap berlaku di seluruh aplikasi Mail.</p>
+				<p class="note">{$t('set.darkNote')}</p>
 				<div class="mf"><button class="cp-send" onclick={saveSettings}>Simpan</button></div>
 			{/if}
 		</div>
@@ -2704,6 +2711,38 @@
 		width: min(94vw, 520px);
 		max-height: 88vh;
 		overflow-y: auto;
+	}
+	.lang-seg {
+		display: flex;
+		gap: 6px;
+		margin: 6px 0 2px;
+	}
+	.lang-seg button {
+		flex: 1;
+		padding: 10px;
+		border: 1px solid #d5dae2;
+		border-radius: 10px;
+		background: #fff;
+		font: inherit;
+		font-weight: 600;
+		color: #5f6368;
+		cursor: pointer;
+		transition: all 0.15s;
+	}
+	.lang-seg button.on {
+		border-color: #1f6feb;
+		background: #eaf1fe;
+		color: #1a57c2;
+	}
+	:global(html.psdark) .lang-seg button {
+		background: #1b2029;
+		border-color: #2c333d;
+		color: #c3ccd8;
+	}
+	:global(html.psdark) .lang-seg button.on {
+		background: #16305c;
+		border-color: #2f6fe0;
+		color: #cfe0ff;
 	}
 	.tabs {
 		display: flex;

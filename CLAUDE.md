@@ -281,3 +281,31 @@ unmount untuk membebaskan koneksi).
   + hard refresh. Sebutkan bila perlu deploy API juga / perlu migrasi.
 - Saat mengubah file besar Svelte: pakai anchor 1 baris untuk Edit; verifikasi keseimbangan
   `{#if}`/`{/if}` dan kurung `{`/`}` setelah edit (mis. via bash grep count).
+
+---
+
+## 11. Internasionalisasi (i18n ID/EN) — LINTAS APLIKASI
+
+Target: seluruh keluarga Portal SI dwibahasa **Indonesia (default) + English**, dengan tombol
+**toggle switch geser ID | EN** di tiap aplikasi (penempatan: App/Marketplace/Mail → halaman
+Setting; Meet → floating hideable; Landing → header).
+
+**Preferensi BERSAMA (paling penting):** satu cookie `portalsi_lang` dengan `Domain=.portalsi.com`
+→ terbagi otomatis ke SEMUA subdomain (`app/meet/marketplace/mail.portalsi.com` + landing).
+Ganti bahasa di satu app = semua ikut. Toggle di tiap Setting hanya untuk kemudahan; sumber
+kebenaran = cookie shared itu. (localStorage per-origin boleh dipakai sbg cache, tapi cookie yang
+menyinkronkan lintas subdomain.)
+- **sekolahimpian.com** domain berbeda → TIDAK bisa berbagi cookie dgn *.portalsi.com. Pakai cookie
+  sendiri `sim_lang` `Domain=.sekolahimpian.com` (tersinkron antar subdomain sekolahimpian saja).
+
+**Pola implementasi:**
+- Statis (landing): kamus JS `{id:{...},en:{...}}` + elemen `data-i18n`/`data-i18n-aria`, fungsi
+  `apply(lang)` menukar `textContent`/atribut; cookie shared. (SUDAH JADI — jadi template.)
+- SvelteKit (app/marketplace/mail): store `lang` + helper `t(key)` di `src/lib/i18n.ts`; baca cookie
+  di `+layout.server.ts` (hindari flicker) lalu init store; komponen pakai `t()`. Label folder mail
+  di-i18n-kan via `key` (inbox/sent/…), bukan label server.
+- Next.js (meet): dictionary + context/provider, toggle floating.
+
+**Status rollout:** Landing ✅. Berikutnya: Mail (portalsi-mail + sekolahimpian-mail, kode kembar →
+kerjakan sekali lalu salin), Meet, Marketplace, App. Terjemahan Inggris harus natural/rapi, bukan
+harfiah. Cookie nama: `portalsi_lang` (semua *.portalsi.com), `sim_lang` (sekolahimpian).

@@ -1,12 +1,14 @@
 <script lang="ts">
 	import { LogOut, LayoutGrid, Video, Store, Globe, MessageSquare, HelpCircle } from '@lucide/svelte';
 	import { page } from '$app/stores';
+	import { initLang, t } from '$lib/i18n';
 	let { data, children } = $props();
 	let path = $derived($page.url.pathname);
 	let isAuth = $derived(path === '/login' || path === '/register');
 	let isApp = $derived(path === '/');
 	let flush = $derived(isApp || isAuth);
 	let menuOpen = $state(false);
+	initLang(data.lang as 'id' | 'en' | undefined);
 </script>
 
 <svelte:head>
@@ -26,19 +28,19 @@
 			</a>
 			{#if data.user}
 				<div class="appswitch">
-					<button class="quick" class:active={menuOpen} onclick={() => (menuOpen = !menuOpen)} aria-label="Menu aplikasi" title="Aplikasi Portal SI"><LayoutGrid size={18} /></button>
+					<button class="quick" class:active={menuOpen} onclick={() => (menuOpen = !menuOpen)} aria-label={$t('menu.aria')} title={$t('menu.title')}><LayoutGrid size={18} /></button>
 					{#if menuOpen}
-						<button class="menu-backdrop" onclick={() => (menuOpen = false)} aria-label="Tutup"></button>
+						<button class="menu-backdrop" onclick={() => (menuOpen = false)} aria-label={$t('common.close')}></button>
 						<div class="menu">
 							<div class="menu-grid">
-								<a href="https://app.portalsi.com" target="_blank" rel="noopener" class="mg-item"><span class="mg-ico app"><MessageSquare size={20} /></span>App</a>
-								<a href="https://meet.portalsi.com" target="_blank" rel="noopener" class="mg-item"><span class="mg-ico meet"><Video size={20} /></span>Meet</a>
-								<a href="https://marketplace.portalsi.com" target="_blank" rel="noopener" class="mg-item"><span class="mg-ico market"><Store size={20} /></span>Market</a>
-								<a href="https://portalsi.com" target="_blank" rel="noopener" class="mg-item"><span class="mg-ico web"><Globe size={20} /></span>Beranda</a>
+								<a href="https://app.portalsi.com" target="_blank" rel="noopener" class="mg-item"><span class="mg-ico app"><MessageSquare size={20} /></span>{$t('menu.app')}</a>
+								<a href="https://meet.portalsi.com" target="_blank" rel="noopener" class="mg-item"><span class="mg-ico meet"><Video size={20} /></span>{$t('menu.meet')}</a>
+								<a href="https://marketplace.portalsi.com" target="_blank" rel="noopener" class="mg-item"><span class="mg-ico market"><Store size={20} /></span>{$t('menu.market')}</a>
+								<a href="https://portalsi.com" target="_blank" rel="noopener" class="mg-item"><span class="mg-ico web"><Globe size={20} /></span>{$t('menu.home')}</a>
 							</div>
 							<div class="menu-sep"></div>
-							<a href="https://wa.me/6281350880733?text=Assalamu%27alaikum%20wr.%20wb.%20%F0%9F%99%8F%0A%0ASaya%20ingin%20bertanya%20seputar%20layanan%20Portal%20SI.%20Boleh%20dibantu%3F%20Terima%20kasih%20sebelumnya." target="_blank" rel="noopener" class="menu-row"><HelpCircle size={16} /> Bantuan</a>
-							<form method="POST" action="/logout"><button class="menu-row danger" type="submit"><LogOut size={16} /> Keluar</button></form>
+							<a href="https://wa.me/6281350880733?text=Assalamu%27alaikum%20wr.%20wb.%20%F0%9F%99%8F%0A%0ASaya%20ingin%20bertanya%20seputar%20layanan%20Portal%20SI.%20Boleh%20dibantu%3F%20Terima%20kasih%20sebelumnya." target="_blank" rel="noopener" class="menu-row"><HelpCircle size={16} /> {$t('menu.help')}</a>
+							<form method="POST" action="/logout"><button class="menu-row danger" type="submit"><LogOut size={16} /> {$t('menu.logout')}</button></form>
 						</div>
 					{/if}
 				</div>

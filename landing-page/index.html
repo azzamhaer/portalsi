@@ -598,6 +598,8 @@
       }
       function save(lang) {
         try { localStorage.setItem(COOKIE, lang); } catch (e) {}
+        // domain induk agar preferensi TERBAGI ke semua subdomain *.portalsi.com
+        try { document.cookie = COOKIE + '=' + lang + ';path=/;max-age=31536000;samesite=lax;domain=.portalsi.com'; } catch (e) {}
         try { document.cookie = COOKIE + '=' + lang + ';path=/;max-age=31536000;samesite=lax'; } catch (e) {}
       }
       function apply(lang) {
