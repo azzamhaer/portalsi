@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Mic, MicOff, Video as VideoIcon, VideoOff, Loader2, TriangleAlert } from 'lucide-react';
+import { useT } from '@/lib/i18n';
 
 interface PreJoinResult {
   micEnabled: boolean;
@@ -16,6 +17,7 @@ export function PreJoinScreen({ roomId, name, onJoin, isWaiting, waitingStatus }
   isWaiting?: boolean;
   waitingStatus?: 'waiting' | 'rejected' | null;
 }) {
+  const { t } = useT();
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [micOn, setMicOn] = useState(false);
@@ -89,7 +91,7 @@ export function PreJoinScreen({ roomId, name, onJoin, isWaiting, waitingStatus }
           {!camOn && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#141418] text-white/20">
               <VideoOff className="h-12 w-12 mb-2 opacity-40" />
-              <p className="text-sm">Kamera mati</p>
+              <p className="text-sm">{t('pj.camOff')}</p>
             </div>
           )}
           {/* Name badge */}
@@ -109,35 +111,35 @@ export function PreJoinScreen({ roomId, name, onJoin, isWaiting, waitingStatus }
 
         {/* RIGHT: Join Panel */}
         <div className="w-full md:w-[40%] text-center md:text-left">
-          <h2 className="text-2xl font-bold text-white/90 mb-2">Siap bergabung?</h2>
+          <h2 className="text-2xl font-bold text-white/90 mb-2">{t('pj.ready')}</h2>
           <p className="text-sm text-white/40 mb-6 font-mono tracking-wider">Room: {roomId}</p>
 
           {isWaiting ? (
             <div className="space-y-4">
               {waitingStatus === 'rejected' ? (
                 <div className="bg-red-500/15 border border-red-500/20 rounded-2xl p-4 text-center">
-                  <p className="text-red-400 font-semibold">Permintaan Ditolak</p>
-                  <p className="text-sm text-white/40 mt-1">Host menolak akses Anda ke meeting ini.</p>
+                  <p className="text-red-400 font-semibold">{t('pj.rejected')}</p>
+                  <p className="text-sm text-white/40 mt-1">{t('pj.rejectedDesc')}</p>
                 </div>
               ) : (
                 <div className="bg-[#8ab4f8]/10 border border-[#8ab4f8]/20 rounded-2xl p-6 text-center">
                   <Loader2 className="h-8 w-8 animate-spin text-[#8ab4f8] mx-auto mb-3" />
-                  <p className="text-white/80 font-semibold">Menunggu persetujuan host...</p>
-                  <p className="text-sm text-white/30 mt-1">Host akan menerima Anda sebentar lagi</p>
+                  <p className="text-white/80 font-semibold">{t('pj.waiting')}</p>
+                  <p className="text-sm text-white/30 mt-1">{t('pj.waitingDesc')}</p>
                 </div>
               )}
             </div>
           ) : (
             <button onClick={() => onJoin({ micEnabled: micOn, camEnabled: camOn, hasMicError, hasCamError })}
               className="w-full py-4 rounded-2xl text-base font-bold bg-[#8ab4f8] hover:bg-[#aecbfa] text-black transition-all active:scale-95 shadow-[0_0_24px_rgba(138,180,248,0.3)]">
-              Gabung Sekarang
+              {t('pj.joinNow')}
             </button>
           )}
 
           {/* Device selectors */}
           <div className="mt-6 space-y-3">
-            <DevSel label="Mikrofon" devices={devices.audio} icon={<Mic className="h-3.5 w-3.5" />} />
-            <DevSel label="Kamera" devices={devices.video} icon={<VideoIcon className="h-3.5 w-3.5" />} />
+            <DevSel label={t('pj.mic')} devices={devices.audio} icon={<Mic className="h-3.5 w-3.5" />} />
+            <DevSel label={t('pj.camera')} devices={devices.video} icon={<VideoIcon className="h-3.5 w-3.5" />} />
           </div>
         </div>
       </div>
@@ -150,7 +152,7 @@ function DevSel({ label, devices, icon }: { label: string; devices: MediaDeviceI
     <div className="flex items-center gap-2">
       <span className="text-white/30">{icon}</span>
       <select className="flex-1 bg-white/[0.05] border border-white/[0.08] rounded-xl px-3 py-2 text-xs text-white/70 outline-none truncate appearance-none cursor-pointer">
-        {devices.length > 0 ? devices.map(d => <option key={d.deviceId} value={d.deviceId}>{d.label || label}</option>) : <option>Default {label}</option>}
+        {devices.length > 0 ? devices.map(d => <option key={d.deviceId} value={d.deviceId}>{d.label || label}</option>) : <option>{label}</option>}
       </select>
     </div>
   );

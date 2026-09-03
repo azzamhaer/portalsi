@@ -1,5 +1,7 @@
 <script lang="ts">
   import Icon from '$lib/components/Icon.svelte';
+  import { t } from '$lib/i18n';
+  import { get } from 'svelte/store';
   import LoginRequired from '$lib/components/LoginRequired.svelte';
   import AdminBlock from '$lib/components/AdminBlock.svelte';
   import { cart, auth, toast, confirmDialog } from '$lib/stores.svelte';
@@ -17,16 +19,16 @@
 
   function checkout() {
     if (!cart.items.some(i => i.checked)) { toast.warn('Pilih minimal 1 produk'); return; }
-    if (hasSelectedOutOfStock) { toast.warn('Ada produk stok habis. Hapus atau batal pilih produk tersebut sebelum checkout.'); return; }
+    if (hasSelectedOutOfStock) { toast.warn(get(t)('cart.outOfStockWarn')); return; }
     if (!auth.user) { goto('/login?next=/checkout'); return; }
     goto('/checkout');
   }
   async function clearSelected() {
-    const ok = await confirmDialog.ask({ title: 'Hapus item terpilih?', message: 'Produk yang dicentang akan dihapus dari keranjang.', confirmText: 'Hapus', tone: 'danger' });
+    const ok = await confirmDialog.ask({ title: get(t)('cart.removeSelectedTitle'), message: get(t)('cart.removeSelectedMsg'), confirmText: get(t)('cart.remove'), tone: 'danger' });
     if (ok) cart.clearChecked();
   }
   async function removeItem(key: string | number) {
-    const ok = await confirmDialog.ask({ title: 'Hapus produk?', message: 'Produk ini akan dihapus dari keranjang.', confirmText: 'Hapus', tone: 'danger' });
+    const ok = await confirmDialog.ask({ title: get(t)('cart.removeTitle'), message: get(t)('cart.removeMsg'), confirmText: get(t)('cart.remove'), tone: 'danger' });
     if (ok) cart.remove(key);
   }
 </script>
@@ -36,21 +38,21 @@
 {#if !auth.user}
   <LoginRequired
     icon="shopping-bag"
-    title="Login untuk melihat keranjang"
-    description="Masuk ke akun Anda untuk melihat dan checkout produk di keranjang."
+    title={$t('cart.loginToView')}
+    description={$t('cart.loginDesc')}
   />
 {:else if auth.user.role === 'ADMIN'}
-  <AdminBlock title="Admin tidak punya keranjang" description="Akun admin tidak bisa berbelanja. Gunakan akun pembeli." />
+  <AdminBlock title={$t('cart.adminNoCart')} description={$t('cart.adminDesc')} />
 {:else}
 <div class="container-x py-6 sm:py-8">
-  <h1 class="section-title mb-6 sm:mb-8">Keranjang</h1>
+  <h1 class="section-title mb-6 sm:mb-8">{$t('cart.title')}</h1>
 
   {#if cart.items.length === 0}
     <div class="text-center py-16 sm:py-20">
       <Icon name="shopping-bag" size={56} class="mx-auto text-ink-300 mb-4" />
-      <h3 class="text-lg font-semibold mb-1">Keranjang masih kosong</h3>
-      <p class="text-sm text-ink-500 mb-5">Mulai belanja produk pilihan Anda.</p>
-      <a href="/products" class="btn-primary btn-md">Mulai Belanja</a>
+      <h3 class="text-lg font-semibold mb-1">{$t('cart.empty')}</h3>
+      <p class="text-sm text-ink-500 mb-5">{$t('cart.emptyDesc')}</p>
+      <a href="/products" class="btn-primary btn-md">{$t('cart.startShopping')}</a>
     </div>
   {:else}
     <div class="grid lg:grid-cols-[1fr_360px] gap-6 lg:gap-8 items-start">
@@ -109,16 +111,16 @@
 
       <aside class="lg:sticky lg:top-24">
         <div class="card">
-          <h3 class="font-semibold mb-4">Ringkasan</h3>
+          <h3 class="font-semibold mb-4">{$t('cart.summary')}</h3>
           <div class="space-y-2 text-sm">
-            <div class="flex justify-between"><span class="text-ink-500">Subtotal</span><span>{fmtRp(cart.subtotal)}</span></div>
-            <div class="flex justify-between"><span class="text-ink-500">Estimasi ongkir</span><span>{ship === 0 ? 'GRATIS' : fmtRp(ship)}</span></div>
-            <div class="flex justify-between text-base font-semibold pt-3 border-t border-ink-100 mt-3"><span>Total</span><span>{fmtRp(total)}</span></div>
+            <div class="flex justify-between"><span class="text-ink-500">{$t('cart.subtotal')}</span><span>{fmtRp(cart.subtotal)}</span></div>
+            <div class="flex justify-between"><span class="text-ink-500">{$t('cart.estShipping')}</span><span>{ship === 0 ? 'GRATIS' : fmtRp(ship)}</span></div>
+            <div class="flex justify-between text-base font-semibold pt-3 border-t border-ink-100 mt-3"><span>{$t('cart.total')}</span><span>{fmtRp(total)}</span></div>
           </div>
           <button on:click={checkout} disabled={cart.subtotal === 0 || hasSelectedOutOfStock} class="btn-primary btn-lg w-full mt-5">
             Checkout <Icon name="arrow-right" size={16} />
           </button>
-          <a href="/products" class="btn-ghost btn-md w-full mt-2">Lanjut Belanja</a>
+          <a href="/products" class="btn-ghost btn-md w-full mt-2">{$t('cart.continue')}</a>
           <div class="flex items-start gap-2 mt-5 text-xs text-ink-500">
             <Icon name="shield-check" size={14} class="text-emerald-600 mt-0.5 shrink-0" />
             <span>Pembayaran dilindungi enkripsi & escrow.</span>

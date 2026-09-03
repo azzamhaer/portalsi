@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Loader2, ArrowRight, Eye, EyeOff, Video, Shield, Zap, Lock, LogOut, UserCircle } from 'lucide-react';
 import { normalizeRoomId, isValidRoomId } from '@/lib/room-id';
+import { useT } from '@/lib/i18n';
 
 interface PortalUser {
   user_id: number;
@@ -29,6 +30,7 @@ function responseError(data: any, fallback: string): string {
 
 export function HomeHero() {
   const router = useRouter();
+  const { t } = useT();
   const [mode, setMode] = useState<'create' | 'join'>('create');
   const [authUser, setAuthUser] = useState<PortalUser | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -87,7 +89,7 @@ export function HomeHero() {
 
     const login = loginValue.trim();
     if (!login || !loginPassword) {
-      setAuthError('Email/username dan password Portal SI wajib diisi.');
+      setAuthError(t('err.authRequired'));
       return;
     }
 
@@ -99,14 +101,14 @@ export function HomeHero() {
         body: JSON.stringify({ login, password: loginPassword }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(responseError(data, 'Login Portal SI gagal.'));
+      if (!res.ok) throw new Error(responseError(data, t('err.loginFail')));
 
       const user = data.user as PortalUser;
       setAuthUser(user);
       setName((current) => current || userDisplayName(user));
       setLoginPassword('');
     } catch (err: any) {
-      setAuthError(err?.message || 'Login Portal SI gagal.');
+      setAuthError(err?.message || t('err.loginFail'));
     } finally {
       setAuthBusy(false);
     }
@@ -121,15 +123,15 @@ export function HomeHero() {
     const email = registerEmail.trim().toLowerCase();
 
     if (!/^[a-z0-9._]+$/i.test(username)) {
-      setAuthError('Username hanya boleh berisi huruf, angka, titik, dan underscore.');
+      setAuthError(t('err.usernameChars'));
       return;
     }
     if (!fullName || !email || !registerPassword) {
-      setAuthError('Username, nama lengkap, email, dan password wajib diisi.');
+      setAuthError(t('err.regRequired'));
       return;
     }
     if (registerPassword.length < 6) {
-      setAuthError('Password minimal 6 karakter.');
+      setAuthError(t('err.pwMin'));
       return;
     }
 
@@ -141,7 +143,7 @@ export function HomeHero() {
         body: JSON.stringify({ username, fullName, email, password: registerPassword }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(responseError(data, 'Pendaftaran akun Portal SI gagal.'));
+      if (!res.ok) throw new Error(responseError(data, t('err.regFail')));
 
       // Tidak auto-login. Tampilkan layar "email verifikasi terkirim";
       // user harus verifikasi email dulu sebelum bisa login.
@@ -151,7 +153,7 @@ export function HomeHero() {
       setRegisterEmail('');
       setRegisterPassword('');
     } catch (err: any) {
-      setAuthError(err?.message || 'Pendaftaran akun Portal SI gagal.');
+      setAuthError(err?.message || t('err.regFail'));
     } finally {
       setAuthBusy(false);
     }
@@ -182,25 +184,25 @@ export function HomeHero() {
     setError(null);
 
     if (!authUser) {
-      setError('Login akun Portal SI dulu untuk membuat meeting.');
+      setError(t('err.loginToCreate'));
       return;
     }
 
     const hostName = name.trim() || userDisplayName(authUser);
     if (!hostName) {
-      setError('Nama host tidak boleh kosong.');
+      setError(t('err.hostEmpty'));
       return;
     }
 
     let scheduledFor: number | undefined;
     if (createMode === 'schedule') {
       if (!scheduledDate || !scheduledTime) {
-        setError('Pilih tanggal dan waktu rapat.');
+        setError(t('err.pickDateTime'));
         return;
       }
       scheduledFor = new Date(`${scheduledDate}T${scheduledTime}`).getTime();
       if (scheduledFor < Date.now()) {
-        setError('Waktu rapat tidak boleh di masa lalu.');
+        setError(t('err.pastTime'));
         return;
       }
     }
@@ -214,7 +216,7 @@ export function HomeHero() {
         body: JSON.stringify({ hostName, password: roomPassword, lobby: false, scheduledFor, mode: createMode }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Gagal membuat ruang.');
+      if (!res.ok) throw new Error(data.error || t('err.createRoomFail'));
 
       sessionStorage.setItem(`lk-${data.roomId}`, JSON.stringify({
         token: data.token,
@@ -246,11 +248,11 @@ export function HomeHero() {
     setError(null);
     const id = normalizeRoomId(roomId);
     if (!isValidRoomId(id)) {
-      setError('Room ID tidak valid.');
+      setError(t('err.roomIdInvalid'));
       return;
     }
     if (!name.trim()) {
-      setError('Nama tidak boleh kosong.');
+      setError(t('err.nameEmpty'));
       return;
     }
     sessionStorage.setItem(`lk-join-${id}`, JSON.stringify({ name: name.trim() }));
@@ -262,11 +264,11 @@ export function HomeHero() {
       <div className="grid lg:grid-cols-2 gap-16 lg:gap-20 items-center">
         <div>
           <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 leading-[1.15] tracking-tight">
-            Video meeting,<br />
-            <span className="hp-gradient-text">dibuat sesederhana mungkin.</span>
+            {t('hero.h1a')}<br />
+            <span className="hp-gradient-text">{t('hero.h1b')}</span>
           </h1>
           <p className="mt-5 text-lg text-gray-500 leading-relaxed max-w-md">
-            Setiap percakapan yang bermakna dimulai dengan cara yang sederhana. Buat ruang meeting dalam hitungan detik, lalu biarkan percakapan mengalir tanpa hambatan.
+            {t('hero.sub')}
           </p>
 
 
@@ -277,11 +279,11 @@ export function HomeHero() {
             <div className="flex border-b border-gray-100 mb-6">
               <button type="button" onClick={() => { setMode('create'); setError(null); }}
                 className={`flex-1 pb-3 text-sm font-semibold border-b-2 transition-colors ${mode === 'create' ? 'border-dove-green text-dove-green' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>
-                Buat Meeting
+                {t('hero.tabCreate')}
               </button>
               <button type="button" onClick={() => { setMode('join'); setError(null); }}
                 className={`flex-1 pb-3 text-sm font-semibold border-b-2 transition-colors ${mode === 'join' ? 'border-dove-orange text-dove-orange' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>
-                Gabung Meeting
+                {t('hero.tabJoin')}
               </button>
             </div>
 
@@ -292,10 +294,10 @@ export function HomeHero() {
                     <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-3">
                       <Shield className="h-6 w-6 text-green-600" />
                     </div>
-                    <h3 className="text-lg font-bold text-gray-900">Rapat Berhasil Dibuat</h3>
+                    <h3 className="text-lg font-bold text-gray-900">{t('hero.roomCreated')}</h3>
                     {createdRoomInfo.scheduledFor && (
                       <p className="text-sm text-gray-500 mt-1">
-                        Dijadwalkan untuk: {new Date(createdRoomInfo.scheduledFor).toLocaleDateString('id-ID', {
+                        {t('hero.scheduledFor')} {new Date(createdRoomInfo.scheduledFor).toLocaleDateString('id-ID', {
                           weekday: 'long',
                           year: 'numeric',
                           month: 'long',
@@ -308,11 +310,11 @@ export function HomeHero() {
                   </div>
 
                   <div>
-                    <label className="hp-label">Link Rapat (Bagikan ini)</label>
+                    <label className="hp-label">{t('hero.shareLink')}</label>
                     <div className="flex items-center mt-1">
                       <input type="text" readOnly value={createdRoomInfo.url} className="hp-input w-full flex-1 rounded-r-none border-r-0 text-sm font-mono text-gray-600" />
                       <button type="button" onClick={handleCopy} className="hp-btn hp-btn-green !w-auto !mt-0 rounded-l-none px-4 shrink-0 shadow-none h-[42px] sm:h-[46px] border border-dove-green min-w-[80px]">
-                        {copied ? 'Disalin!' : 'Copy'}
+                        {copied ? t('hero.copied') : t('hero.copy')}
                       </button>
                     </div>
                   </div>
@@ -324,23 +326,23 @@ export function HomeHero() {
                     </div>
                     {createdRoomInfo.password && (
                       <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
-                        <p className="text-[10px] text-gray-400 font-semibold uppercase">Password</p>
+                        <p className="text-[10px] text-gray-400 font-semibold uppercase">{t('hero.password')}</p>
                         <p className="text-sm font-bold text-gray-800 font-mono mt-0.5">{createdRoomInfo.password}</p>
                       </div>
                     )}
                   </div>
 
                   <div className="pt-4 flex gap-3">
-                    <button type="button" onClick={() => setCreatedRoomInfo(null)} className="flex-1 py-3 text-sm font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors">Buat Lainnya</button>
+                    <button type="button" onClick={() => setCreatedRoomInfo(null)} className="flex-1 py-3 text-sm font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors">{t('hero.createAnother')}</button>
                     {!createdRoomInfo.scheduledFor && (
-                      <button type="button" onClick={() => router.push(`/room/${createdRoomInfo.id}`)} className="flex-1 py-3 text-sm font-semibold text-white bg-dove-green hover:bg-dove-green/90 rounded-xl shadow-[0_4px_14px_rgba(16,185,129,0.3)] transition-all">Mulai Sekarang</button>
+                      <button type="button" onClick={() => router.push(`/room/${createdRoomInfo.id}`)} className="flex-1 py-3 text-sm font-semibold text-white bg-dove-green hover:bg-dove-green/90 rounded-xl shadow-[0_4px_14px_rgba(16,185,129,0.3)] transition-all">{t('hero.startNow')}</button>
                     )}
                   </div>
                 </div>
               ) : authLoading ? (
                 <div className="py-12 flex flex-col items-center justify-center gap-3 text-sm text-gray-500">
                   <Loader2 className="h-5 w-5 animate-spin text-dove-green" />
-                  Mengecek sesi Portal SI...
+                  {t('hero.checkingSession')}
                 </div>
               ) : !authUser ? (
                 <AuthPanel
@@ -380,7 +382,7 @@ export function HomeHero() {
                         <UserCircle className="h-5 w-5 shrink-0 text-dove-green" />
                       )}
                       <div className="min-w-0">
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-green-700">Akun Portal SI</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-green-700">{t('hero.accountLabel')}</p>
                         <p className="truncate text-sm font-semibold text-gray-800">{userDisplayName(authUser)}</p>
                       </div>
                     </div>
@@ -388,7 +390,7 @@ export function HomeHero() {
                       type="button"
                       onClick={handleLogout}
                       disabled={authBusy}
-                      aria-label="Keluar dari akun Portal SI"
+                      aria-label={t('hero.logoutAria')}
                       className="rounded-lg p-2 text-green-700 hover:bg-white disabled:opacity-60"
                     >
                       {authBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
@@ -396,28 +398,28 @@ export function HomeHero() {
                   </div>
 
                   <div className="flex bg-gray-50 p-1 rounded-xl mb-4 border border-gray-100">
-                    <button type="button" onClick={() => setCreateMode('instant')} className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${createMode === 'instant' ? 'bg-white shadow border border-gray-200 text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>Instan</button>
-                    <button type="button" onClick={() => setCreateMode('later')} className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${createMode === 'later' ? 'bg-white shadow border border-gray-200 text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>Buat Nanti</button>
-                    <button type="button" onClick={() => setCreateMode('schedule')} className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${createMode === 'schedule' ? 'bg-white shadow border border-gray-200 text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>Jadwalkan</button>
+                    <button type="button" onClick={() => setCreateMode('instant')} className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${createMode === 'instant' ? 'bg-white shadow border border-gray-200 text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>{t('hero.modeInstant')}</button>
+                    <button type="button" onClick={() => setCreateMode('later')} className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${createMode === 'later' ? 'bg-white shadow border border-gray-200 text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>{t('hero.modeLater')}</button>
+                    <button type="button" onClick={() => setCreateMode('schedule')} className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${createMode === 'schedule' ? 'bg-white shadow border border-gray-200 text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>{t('hero.modeSchedule')}</button>
                   </div>
 
                   <div>
-                    <label className="hp-label">Nama Host</label>
-                    <div className="hp-input flex items-center gap-2 bg-gray-50 text-sm text-gray-700 cursor-not-allowed" title="Nama mengikuti akun Portal SI yang login">
+                    <label className="hp-label">{t('hero.hostName')}</label>
+                    <div className="hp-input flex items-center gap-2 bg-gray-50 text-sm text-gray-700 cursor-not-allowed" title={t('hero.nameFollows')}>
                       <UserCircle className="h-4 w-4 shrink-0 text-gray-400" />
                       <span className="truncate">{userDisplayName(authUser)}</span>
                     </div>
-                    <p className="mt-1 text-[11px] text-gray-400">Nama mengikuti akun Portal SI yang login.</p>
+                    <p className="mt-1 text-[11px] text-gray-400">{t('hero.nameFollows')}</p>
                   </div>
 
                   {createMode === 'schedule' && (
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="hp-label">Tanggal</label>
+                        <label className="hp-label">{t('hero.date')}</label>
                         <input type="date" value={scheduledDate} onChange={e => setScheduledDate(e.target.value)} className="hp-input text-sm" required={createMode === 'schedule'} />
                       </div>
                       <div>
-                        <label className="hp-label">Waktu</label>
+                        <label className="hp-label">{t('hero.time')}</label>
                         <input type="time" value={scheduledTime} onChange={e => setScheduledTime(e.target.value)} className="hp-input text-sm" required={createMode === 'schedule'} />
                       </div>
                     </div>
@@ -426,18 +428,18 @@ export function HomeHero() {
                   <label className="flex items-center gap-3 cursor-pointer select-none py-2">
                     <input type="checkbox" checked={usePassword} onChange={e => setUsePassword(e.target.checked)}
                       className="h-4 w-4 rounded border-gray-300 text-dove-green focus:ring-dove-green/30 cursor-pointer" />
-                    <span className="text-sm text-gray-600">Buat password room</span>
+                    <span className="text-sm text-gray-600">{t('hero.usePassword')}</span>
                   </label>
 
                   {usePassword && (
-                    <PwField value={password} onChange={setPassword} showPw={showPw} toggle={() => setShowPw(v => !v)} placeholder="Buat password..." ignorePasswordManager />
+                    <PwField value={password} onChange={setPassword} showPw={showPw} toggle={() => setShowPw(v => !v)} placeholder={t('hero.pwPlaceholder')} ignorePasswordManager />
                   )}
 
                   {error && <ErrBox text={error} />}
 
                   <button type="submit" disabled={loading} className="hp-btn hp-btn-green mt-2">
-                    {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> {createMode === 'instant' ? 'Memulai...' : 'Membuat...'}</> : <>
-                      {createMode === 'instant' ? 'Mulai Rapat Instan' : (createMode === 'later' ? 'Dapatkan Info Rapat' : 'Jadwalkan Rapat')}
+                    {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> {createMode === 'instant' ? t('hero.starting') : t('hero.creating')}</> : <>
+                      {createMode === 'instant' ? t('hero.startInstant') : (createMode === 'later' ? t('hero.getInfo') : t('hero.schedule'))}
                       <ArrowRight className="h-4 w-4" />
                     </>}
                   </button>
@@ -445,19 +447,19 @@ export function HomeHero() {
               )
             ) : (
               <form onSubmit={handleJoin} className="space-y-4" autoComplete="off">
-                <Field label="Nama Anda" value={name} onChange={setName} placeholder="Masukkan nama" maxLength={40} autoFocus />
+                <Field label={t('hero.yourName')} value={name} onChange={setName} placeholder={t('hero.enterName')} maxLength={40} autoFocus />
 
                 <div>
-                  <label className="hp-label">Kode Meeting</label>
+                  <label className="hp-label">{t('hero.meetingCode')}</label>
                   <input type="text" value={roomId} onChange={e => setRoomId(e.target.value.replace(/[^a-zA-Z]/g, '').toUpperCase())}
-                    placeholder="Contoh: ABCDEF" maxLength={6} autoComplete="off"
+                    placeholder={t('hero.codeExample')} maxLength={6} autoComplete="off"
                     className="hp-input text-center uppercase tracking-[0.3em] font-semibold text-lg" />
                 </div>
 
                 {error && <ErrBox text={error} />}
 
                 <button type="submit" className="hp-btn hp-btn-orange">
-                  <ArrowRight className="h-4 w-4" /> Gabung Sekarang
+                  <ArrowRight className="h-4 w-4" /> {t('hero.joinNow')}
                 </button>
               </form>
             )}
@@ -519,6 +521,7 @@ function AuthPanel({
   onLogin: (e: React.FormEvent) => void;
   onRegister: (e: React.FormEvent) => void;
 }) {
+  const { t } = useT();
   if (verificationSentTo) {
     return (
       <div className="space-y-4 animate-scale-in text-center">
@@ -526,14 +529,13 @@ function AuthPanel({
           <UserCircle className="h-7 w-7 text-green-700" />
         </div>
         <div>
-          <p className="text-base font-semibold text-gray-800">Cek email kamu</p>
+          <p className="text-base font-semibold text-gray-800">{t('auth.checkEmail')}</p>
           <p className="mt-1 text-sm leading-relaxed text-gray-600">
-            Link verifikasi sudah dikirim ke <span className="font-semibold text-gray-800">{verificationSentTo}</span>.
-            Verifikasi email dulu, lalu masuk untuk mulai membuat meeting.
+            {t('auth.verifySent1')} <span className="font-semibold text-gray-800">{verificationSentTo}</span>{t('auth.verifySent2')}
           </p>
         </div>
         <button type="button" onClick={onBackToLogin} className="hp-btn hp-btn-green">
-          <UserCircle className="h-4 w-4" /> Kembali ke Masuk
+          <UserCircle className="h-4 w-4" /> {t('auth.backToLogin')}
         </button>
       </div>
     );
@@ -542,35 +544,35 @@ function AuthPanel({
   return (
     <div className="space-y-4 animate-scale-in">
       <div className="rounded-xl border border-green-100 bg-green-50 px-4 py-3">
-        <p className="text-sm font-semibold text-green-900">Login pakai akun Portal SI</p>
+        <p className="text-sm font-semibold text-green-900">{t('auth.loginWith')}</p>
         <p className="mt-1 text-xs leading-relaxed text-green-700">
-          Akun Portal SI wajib untuk membuat meeting. Peserta tetap bisa gabung dari tab sebelah cukup dengan nama dan kode meeting.
+          {t('auth.loginDesc')}
         </p>
       </div>
 
       <div className="flex bg-gray-50 p-1 rounded-xl border border-gray-100">
-        <button type="button" onClick={() => setMode('login')} className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${mode === 'login' ? 'bg-white shadow border border-gray-200 text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>Masuk</button>
-        <button type="button" onClick={() => setMode('register')} className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${mode === 'register' ? 'bg-white shadow border border-gray-200 text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>Daftar</button>
+        <button type="button" onClick={() => setMode('login')} className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${mode === 'login' ? 'bg-white shadow border border-gray-200 text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>{t('auth.tabLogin')}</button>
+        <button type="button" onClick={() => setMode('register')} className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${mode === 'register' ? 'bg-white shadow border border-gray-200 text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>{t('auth.tabRegister')}</button>
       </div>
 
       {mode === 'login' ? (
         <form onSubmit={onLogin} className="space-y-4" autoComplete="on">
-          <Field label="Email atau Username Portal SI" value={loginValue} onChange={setLoginValue} placeholder="username atau email" maxLength={120} autoFocus autoComplete="username" />
-          <PwField label="Password Portal SI" value={loginPassword} onChange={setLoginPassword} showPw={showLoginPw} toggle={() => setShowLoginPw(v => !v)} placeholder="Masukkan password..." autoComplete="current-password" />
+          <Field label={t('auth.loginId')} value={loginValue} onChange={setLoginValue} placeholder={t('auth.loginIdPlaceholder')} maxLength={120} autoFocus autoComplete="username" />
+          <PwField label={t('auth.pw')} value={loginPassword} onChange={setLoginPassword} showPw={showLoginPw} toggle={() => setShowLoginPw(v => !v)} placeholder={t('auth.pwPlaceholder')} autoComplete="current-password" />
           {error && <ErrBox text={error} />}
           <button type="submit" disabled={busy} className="hp-btn hp-btn-green mt-2">
-            {busy ? <><Loader2 className="h-4 w-4 animate-spin" /> Masuk...</> : <><UserCircle className="h-4 w-4" /> Masuk dan Buat Meeting</>}
+            {busy ? <><Loader2 className="h-4 w-4 animate-spin" /> {t('auth.loggingIn')}</> : <><UserCircle className="h-4 w-4" /> {t('auth.loginCreate')}</>}
           </button>
         </form>
       ) : (
         <form onSubmit={onRegister} className="space-y-4" autoComplete="on">
-          <Field label="Username Portal SI" value={registerUsername} onChange={setRegisterUsername} placeholder="contoh: ahmad.santri" maxLength={40} autoFocus autoComplete="username" />
-          <Field label="Nama Lengkap" value={registerFullName} onChange={setRegisterFullName} placeholder="Masukkan nama lengkap" maxLength={120} autoComplete="name" />
-          <Field label="Email" value={registerEmail} onChange={setRegisterEmail} placeholder="nama@email.com" maxLength={160} type="email" autoComplete="email" />
-          <PwField label="Password" value={registerPassword} onChange={setRegisterPassword} showPw={showRegisterPw} toggle={() => setShowRegisterPw(v => !v)} placeholder="Minimal 6 karakter" autoComplete="new-password" />
+          <Field label={t('auth.regUsername')} value={registerUsername} onChange={setRegisterUsername} placeholder={t('auth.regUsernamePlaceholder')} maxLength={40} autoFocus autoComplete="username" />
+          <Field label={t('auth.fullName')} value={registerFullName} onChange={setRegisterFullName} placeholder={t('auth.fullNamePlaceholder')} maxLength={120} autoComplete="name" />
+          <Field label={t('auth.email')} value={registerEmail} onChange={setRegisterEmail} placeholder={t('auth.emailPlaceholder')} maxLength={160} type="email" autoComplete="email" />
+          <PwField label={t('auth.regPw')} value={registerPassword} onChange={setRegisterPassword} showPw={showRegisterPw} toggle={() => setShowRegisterPw(v => !v)} placeholder={t('auth.regPwPlaceholder')} autoComplete="new-password" />
           {error && <ErrBox text={error} />}
           <button type="submit" disabled={busy} className="hp-btn hp-btn-green mt-2">
-            {busy ? <><Loader2 className="h-4 w-4 animate-spin" /> Mendaftar...</> : <><UserCircle className="h-4 w-4" /> Buat Akun Portal SI</>}
+            {busy ? <><Loader2 className="h-4 w-4 animate-spin" /> {t('auth.registering')}</> : <><UserCircle className="h-4 w-4" /> {t('auth.createAccount')}</>}
           </button>
         </form>
       )}

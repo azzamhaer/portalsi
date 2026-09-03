@@ -1,5 +1,6 @@
 <script lang="ts">
   import Hero from '$lib/components/Hero.svelte';
+  import { t } from '$lib/i18n';
   import HomeCategoryNav from '$lib/components/HomeCategoryNav.svelte';
   import SmartSearch from '$lib/components/SmartSearch.svelte';
   import ProductGrid from '$lib/components/ProductGrid.svelte';
@@ -62,7 +63,7 @@
     </section>
   {:then home}
     <section class="mx-auto max-w-3xl">
-      <SmartSearch placeholder="Cari produk, toko, brand, atau tag" />
+      <SmartSearch placeholder={$t('home.searchPlaceholder')} />
     </section>
 
     <HomeCategoryNav categories={home.categories ?? []} />
@@ -72,11 +73,11 @@
         <div class="flex items-end justify-between mb-6 sm:mb-8">
           <div>
             <div class="section-eyebrow text-amber-600 mb-2 flex items-center gap-2">
-              <Icon name="sparkles" size={12} /> Penawaran Terbatas
+              <Icon name="sparkles" size={12} /> {$t('home.flashEyebrow')}
             </div>
-            <h2 class="section-title">Penawaran terbaik hari ini</h2>
+            <h2 class="section-title">{$t('home.flashTitle')}</h2>
           </div>
-          <a href="/products?flash=1" class="hidden sm:flex items-center gap-1 text-sm text-ink-700 hover:text-ink-950">Lihat semua <Icon name="arrow-right" size={14} /></a>
+          <a href="/products?flash=1" class="hidden sm:flex items-center gap-1 text-sm text-ink-700 hover:text-ink-950">{$t('home.seeAll')} <Icon name="arrow-right" size={14} /></a>
         </div>
         <ProductGrid products={home.flashSale} />
       </section>
@@ -86,8 +87,8 @@
       <section>
         <div class="flex items-end justify-between mb-6 sm:mb-8">
           <div>
-            <div class="section-eyebrow mb-2">Toko Resmi</div>
-            <h2 class="section-title">Brand pilihan, terverifikasi</h2>
+            <div class="section-eyebrow mb-2">{$t('home.officialEyebrow')}</div>
+            <h2 class="section-title">{$t('home.officialTitle')}</h2>
           </div>
           <a href="/vendors?f=official" class="hidden sm:flex items-center gap-1 text-sm text-ink-700 hover:text-ink-950">Lihat semua <Icon name="arrow-right" size={14} /></a>
         </div>
@@ -109,8 +110,8 @@
       <section>
         <div class="flex items-end justify-between mb-6 sm:mb-8">
           <div>
-            <div class="section-eyebrow mb-2">Rekomendasi</div>
-            <h2 class="section-title">Produk pilihan untuk Anda</h2>
+            <div class="section-eyebrow mb-2">{$t('home.recoEyebrow')}</div>
+            <h2 class="section-title">{$t('home.recoTitle')}</h2>
           </div>
         </div>
         <ProductGrid products={home.recommended} />
@@ -121,10 +122,10 @@
       <section>
         <div class="flex items-end justify-between mb-5">
           <div>
-            <div class="section-eyebrow mb-2">Jelajahi</div>
-            <h2 class="section-title">Tag populer</h2>
+            <div class="section-eyebrow mb-2">{$t('home.exploreEyebrow')}</div>
+            <h2 class="section-title">{$t('home.tagsTitle')}</h2>
           </div>
-          <a href="/products" class="hidden sm:flex items-center gap-1 text-sm text-ink-700 hover:text-ink-950">Semua produk <Icon name="arrow-right" size={14} /></a>
+          <a href="/products" class="hidden sm:flex items-center gap-1 text-sm text-ink-700 hover:text-ink-950">{$t('home.allProducts')} <Icon name="arrow-right" size={14} /></a>
         </div>
         <div class="flex flex-wrap gap-2">
           {#each home.tags.slice(0, 10) as t}
@@ -139,9 +140,9 @@
 
   <section class="border-t border-ink-100 pt-12 sm:pt-16">
     <div class="grid sm:grid-cols-3 gap-8 text-center">
-      {#each [{ i:'shield', t:'Pembayaran terjamin', d:'Dana ditahan hingga barang Anda terima.' },
-              { i:'truck', t:'Pengiriman cepat', d:'kurir resmi, tracking real-time.' },
-              { i:'headphones', t:'Dukungan 24/7', d:'Tim siap membantu kapan saja.' }] as item}
+      {#each [{ i:'shield', t:$t('home.f1t'), d:$t('home.f1d') },
+              { i:'truck', t:$t('home.f2t'), d:$t('home.f2d') },
+              { i:'headphones', t:$t('home.f3t'), d:$t('home.f3d') }] as item}
         <div>
           <div class="w-12 h-12 mx-auto mb-3 rounded-2xl bg-ink-100 grid place-items-center">
             <Icon name={item.i} size={20} class="text-ink-950" />

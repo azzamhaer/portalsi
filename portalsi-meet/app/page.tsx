@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { HomeHero } from '@/components/HomeHero';
 import { FaqButton } from '@/components/FaqButton';
+import { MeetFooter } from '@/components/MeetFooter';
 
 export default function HomePage() {
   return (
@@ -33,18 +34,7 @@ export default function HomePage() {
       </div>
 
       {/* Footer */}
-      <footer className="w-full border-t border-gray-100">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <p className="text-xs text-gray-400">&copy; {new Date().getFullYear()} Portal SI Meet</p>
-          <div className="flex items-center gap-4 text-xs text-gray-400">
-            <span>Gratis</span>
-            <span className="text-gray-200">·</span>
-            <span>Aman</span>
-            <span className="text-gray-200">·</span>
-            <span>Portal SI Account Integrated</span>
-          </div>
-        </div>
-      </footer>
+      <MeetFooter />
     </main>
   );
 }

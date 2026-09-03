@@ -307,6 +307,9 @@ menyinkronkan lintas subdomain.)
 - Next.js (meet): dictionary + context/provider, toggle floating.
 
 **Status rollout:** Landing ✅. Mail ✅ (portalsi-mail + sekolahimpian-mail; store `src/lib/i18n.ts`
-+ `$t()`, toggle di Pengaturan→Tampilan, init lang dari cookie via `+layout.server.ts`). Berikutnya:
-Meet, Marketplace, App. Terjemahan Inggris harus natural/rapi, bukan harfiah.
++ `$t()`, toggle di Pengaturan→Tampilan). Meet ✅ (Next.js: `lib/i18n.tsx` = context `LangProvider`
++ hook `useT()` + komponen `LangToggle` floating hideable; init lang dari cookie via `cookies()` di
+`app/layout.tsx`; komponen client pakai `const { t } = useT()`). Berikutnya: **Marketplace** (~58 route)
+& **App** (~60 route) — keduanya besar, belum dikerjakan (+ App: fix bug bar user-online overflow
+kanan di desktop). Terjemahan Inggris harus natural/rapi, bukan harfiah.
 Cookie nama: `portalsi_lang` (semua *.portalsi.com), `sim_lang` (sekolahimpian).

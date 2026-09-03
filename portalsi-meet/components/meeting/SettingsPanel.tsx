@@ -1,5 +1,6 @@
 'use client';
 
+import { useT } from '@/lib/i18n';
 import { useState, useEffect } from 'react';
 import { X, Monitor, Sun, Volume2, Mic, Camera, AlertCircle, Shield, MessageSquare, ScreenShare, Smile, VolumeX, VideoOff, DoorOpen, Users, Pencil, PenTool, BarChart2 } from 'lucide-react';
 import type { RoomPerms } from '../MeetingRoom';
@@ -12,6 +13,7 @@ export function SettingsPanel({ onClose, enhanceLight, onToggleEnhanceLight, isH
   captionsOn?: boolean; onToggleCaptions?: () => void;
   videoQuality?: 'highest' | 'balanced' | 'lowest' | 'auto'; onVideoQualityChange?: (q: 'highest' | 'balanced' | 'lowest' | 'auto') => void;
 }) {
+  const { t } = useT();
   const [devices, setDevices] = useState<{ audio: MediaDeviceInfo[]; video: MediaDeviceInfo[] }>({ audio: [], video: [] });
 
   useEffect(() => {
@@ -44,7 +46,7 @@ export function SettingsPanel({ onClose, enhanceLight, onToggleEnhanceLight, isH
             <hr className="border-white/[0.06]" />
 
             <Toggle icon={<Users className="h-4 w-4 text-orange-400" />} title="Mode Lobi" desc="User baru harus menunggu persetujuan" active={perms.lobbyMode} onToggle={() => onPermsChange({ ...perms, lobbyMode: !perms.lobbyMode })} />
-            <Toggle icon={<Pencil className="h-4 w-4 text-cyan-400" />} title="Izinkan Ganti Nama" desc="Peserta bisa mengubah nama mereka" active={perms.allowRename} onToggle={() => onPermsChange({ ...perms, allowRename: !perms.allowRename })} />
+            <Toggle icon={<Pencil className="h-4 w-4 text-cyan-400" />} title={t('sp.allowRename')} desc="Peserta bisa mengubah nama mereka" active={perms.allowRename} onToggle={() => onPermsChange({ ...perms, allowRename: !perms.allowRename })} />
             <Toggle icon={<PenTool className="h-4 w-4 text-pink-400" />} title="Whiteboard Interaktif" desc="Aktifkan kanvas kolaborasi" active={perms.allowWhiteboard} onToggle={() => onPermsChange({ ...perms, allowWhiteboard: !perms.allowWhiteboard })} />
             <Toggle icon={<BarChart2 className="h-4 w-4 text-[#8ab4f8]" />} title="Izinkan Buat Polling" desc="Semua orang bisa membuat polling" active={perms.allowPolls} onToggle={() => onPermsChange({ ...perms, allowPolls: !perms.allowPolls })} />
 
@@ -76,9 +78,9 @@ export function SettingsPanel({ onClose, enhanceLight, onToggleEnhanceLight, isH
               <div className="space-y-2 pl-2 border-l-2 border-[#8ab4f8]/30 ml-2 animate-fade-in">
                 <label className="text-[11px] font-medium text-white/40 uppercase tracking-wider">Pilih Kualitas Manual</label>
                 <select value={videoQuality || 'balanced'} onChange={e => onVideoQualityChange(e.target.value as 'highest' | 'balanced' | 'lowest')} className="w-full bg-[#121218] border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-white/80 outline-none focus:border-[#8ab4f8]/40 appearance-none cursor-pointer">
-                  <option value="highest">Highest (HD, Lebih panas & boros baterai)</option>
-                  <option value="balanced">Balanced (Optimal)</option>
-                  <option value="lowest">Lowest (Hemat baterai & internet, tidak panas)</option>
+                  <option value="highest">{t('sp.qHighest')}</option>
+                  <option value="balanced">{t('sp.qBalanced')}</option>
+                  <option value="lowest">{t('sp.qLowest')}</option>
                 </select>
                 <p className="text-[10px] text-white/30 leading-relaxed px-1">Sesuaikan jika HP terasa panas atau koneksi lambat.</p>
               </div>

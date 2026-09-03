@@ -5,6 +5,7 @@ import { useTracks, useLocalParticipant, GridLayout, ParticipantTile, useSpeakin
 import { Track } from 'livekit-client';
 import Draggable from 'react-draggable';
 import { Maximize2 } from 'lucide-react';
+import { useT } from '@/lib/i18n';
 import type { ViewMode } from './BottomBar';
 
 export function VideoStage({ viewMode, hideSelf, enhanceLight, focusedIdentity, onFocusParticipant, globalPinnedIdentity, dominantSpeaker }: {
@@ -13,6 +14,7 @@ export function VideoStage({ viewMode, hideSelf, enhanceLight, focusedIdentity, 
   globalPinnedIdentity?: string | null;
   dominantSpeaker?: string | null;
 }) {
+  const { t } = useT();
   const { localParticipant } = useLocalParticipant();
 
   const tracks = useTracks(
@@ -96,7 +98,7 @@ export function VideoStage({ viewMode, hideSelf, enhanceLight, focusedIdentity, 
           {screenShareTrack && (
             <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm rounded-lg px-3 py-1.5 text-xs text-white/80 flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-              {mainTrack.participant.name || 'Peserta'} sedang berbagi layar
+              {mainTrack.participant.name || 'Peserta'} {t('vs.sharing')}
             </div>
           )}
         </div>

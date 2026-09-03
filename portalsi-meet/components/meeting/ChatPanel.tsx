@@ -1,5 +1,6 @@
 'use client';
 
+import { useT } from '@/lib/i18n';
 import { useState, useEffect, useRef } from 'react';
 import { MessageSquare, X, Send, MoreVertical, Pencil, Trash2, Reply, Paperclip, Lock, FileText, Download, Loader2, BarChart2, PlusCircle } from 'lucide-react';
 import { useParticipants } from '@livekit/components-react';
@@ -12,6 +13,7 @@ export function ChatPanel({ messages, localIdentity, localName, onSend, onEdit, 
   polls: Poll[]; isHost: boolean; pub: (d: any) => void; allowPolls?: boolean;
   onPollCreate?: (poll: Poll) => void; onPollVote?: (pollId: string, optionIds: string[]) => void; onPollDelete?: (pollId: string) => void; admins?: Set<string>;
 }) {
+  const { t } = useT();
   const isAdmin = isHost || (admins?.has(localIdentity));
   const [activeTab, setActiveTab] = useState<'chat' | 'polls'>('chat');
 
@@ -55,7 +57,7 @@ export function ChatPanel({ messages, localIdentity, localName, onSend, onEdit, 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 20 * 1024 * 1024) return alert("Ukuran file maksimal 20MB.");
+    if (file.size > 20 * 1024 * 1024) return alert(t('chat.fileMax'));
     
     setIsUploading(true);
     setUploadProgress(0);
@@ -76,7 +78,7 @@ export function ChatPanel({ messages, localIdentity, localName, onSend, onEdit, 
         try {
           const data = JSON.parse(xhr.responseText);
           if (data.success) {
-            onSend(input.trim() || 'Mengirim berkas', {
+            onSend(input.trim() || t('chat.sendingFile'), {
               fileUrl: data.url, fileName: data.name,
               replyToId: replyTo?.id, replyToText: replyTo?.text, replyToSender: replyTo?.sender,
               isPrivate: targetIdentity !== 'all', targetIdentity: targetIdentity !== 'all' ? targetIdentity : undefined
@@ -84,7 +86,7 @@ export function ChatPanel({ messages, localIdentity, localName, onSend, onEdit, 
             setInput(''); setReplyTo(null);
           } else { alert("Gagal: " + data.error); }
         } catch { alert("Error memproses respons."); }
-      } else { alert("Error mengunggah."); }
+      } else { alert(t('chat.uploadErr')); }
     };
     xhr.onerror = () => {
       setIsUploading(false);
@@ -168,7 +170,7 @@ export function ChatPanel({ messages, localIdentity, localName, onSend, onEdit, 
                       <button onClick={() => setMenuId(menuId === msg.id ? null : msg.id)} className="p-1 rounded-full hover:bg-white/10"><MoreVertical className="h-3.5 w-3.5 text-white/40" /></button>
                       {menuId === msg.id && (
                         <div className="absolute right-0 top-full mt-1 bg-[#121218] border border-white/[0.08] rounded-xl shadow-lg z-50 py-1 min-w-[140px] animate-scale-in">
-                          <button onClick={() => { setReplyTo({ id: msg.id, text: msg.text, sender: msg.senderName }); setEditingId(null); setMenuId(null); }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-white/70 hover:bg-white/[0.06]"><Reply className="h-3.5 w-3.5" /> Balas</button>
+                          <button onClick={() => { setReplyTo({ id: msg.id, text: msg.text, sender: msg.senderName }); setEditingId(null); setMenuId(null); }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-white/70 hover:bg-white/[0.06]"><Reply className="h-3.5 w-3.5" /> {t('chat.reply')}</button>
                           {isMe && (
                             <button onClick={() => { setEditingId(msg.id); setInput(msg.text); setReplyTo(null); setMenuId(null); }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-white/70 hover:bg-white/[0.06]"><Pencil className="h-3.5 w-3.5" /> Edit</button>
                           )}
@@ -205,7 +207,7 @@ export function ChatPanel({ messages, localIdentity, localName, onSend, onEdit, 
                       </div>
                     ) : <Paperclip className="w-5 h-5" />}
                   </button>
-                  <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSend())} placeholder="Ketik pesan..." className="flex-1 bg-white/[0.05] border border-white/[0.08] rounded-2xl px-4 py-2.5 text-sm text-white placeholder:text-white/25 outline-none focus:border-[#8ab4f8]/30 transition-all" />
+                  <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSend())} placeholder={t('chat.typePlaceholder')} className="flex-1 bg-white/[0.05] border border-white/[0.08] rounded-2xl px-4 py-2.5 text-sm text-white placeholder:text-white/25 outline-none focus:border-[#8ab4f8]/30 transition-all" />
                   <button onClick={handleSend} disabled={!input.trim() && !isUploading} className={`p-2.5 rounded-full transition-all ${input.trim() ? 'bg-[#8ab4f8] text-black' : 'bg-white/[0.05] text-white/20'}`}><Send className="h-4 w-4" /></button>
                 </div>
               </div>
@@ -270,7 +272,7 @@ export function ChatPanel({ messages, localIdentity, localName, onSend, onEdit, 
                   <div key={poll.id} className="bg-white/[0.04] border border-white/10 p-4 rounded-xl relative group">
                     {(isCreator || isAdmin) && (
                       <button onClick={() => {
-                        if (window.confirm('Apakah Anda yakin ingin menghapus polling ini?')) {
+                        if (window.confirm(t('chat.deletePoll'))) {
                           if (onPollDelete) onPollDelete(poll.id);
                           else pub({ type: 'poll_delete', pollId: poll.id });
                         }

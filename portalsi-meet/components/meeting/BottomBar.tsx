@@ -9,6 +9,7 @@ import {
   Mic, MicOff, Video, VideoOff, RefreshCcw, ZoomIn, ZoomOut, Disc, PenTool, Timer, TriangleAlert
 } from 'lucide-react';
 import { Tooltip } from './Tooltip';
+import { useT } from '@/lib/i18n';
 import type { PanelType } from './types';
 import type { RoomPerms } from '../MeetingRoom';
 
@@ -32,6 +33,7 @@ export function BottomBar({
   onTimerClick?: () => void; timerActive?: boolean;
   hasMicError?: boolean; hasCamError?: boolean;
 }) {
+  const { t } = useT();
   const [time, setTime] = useState(() => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
   const [copied, setCopied] = useState(false);
   const [showReactions, setShowReactions] = useState(false);
@@ -101,7 +103,7 @@ export function BottomBar({
         await track.mediaStreamTrack.applyConstraints({ advanced: [{ zoom: newZoom }] } as any);
         setIsZoomed(newZoom > 1.5);
       } else {
-        alert("Zoom tidak didukung oleh perangkat ini.");
+        alert(t('bar.zoomUnsupported'));
       }
     } catch (e) {
       console.error('Failed to zoom camera', e);
@@ -181,7 +183,7 @@ export function BottomBar({
         {/* CENTER — custom mic/cam/share buttons */}
         <div className="flex items-center gap-1.5 sm:gap-2" onClick={e => e.stopPropagation()}>
           {/* Mic */}
-          <Tooltip text={hasMicError ? 'Mic tidak terdeteksi' : isMicOn ? `Matikan Mic${isMobile ? '' : ' (Ctrl+D)'}` : `Nyalakan Mic${isMobile ? '' : ' (Ctrl+D)'}`}>
+          <Tooltip text={hasMicError ? t('bar.micNotFound') : isMicOn ? `${t('bar.micOff')}${isMobile ? '' : ' (Ctrl+D)'}` : `${t('bar.micOn')}${isMobile ? '' : ' (Ctrl+D)'}`}>
             <button onClick={toggleMic} disabled={hasMicError}
               className={`glass-button rounded-full h-12 w-12 flex items-center justify-center ${hasMicError ? '!bg-yellow-500/20 !border-yellow-500/30 !text-yellow-400 opacity-80 cursor-not-allowed' : !isMicOn ? '!bg-red-500/20 !border-red-500/30 !text-red-400' : ''}`}>
               {hasMicError ? <TriangleAlert className="h-5 w-5" /> : isMicOn ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
@@ -189,7 +191,7 @@ export function BottomBar({
           </Tooltip>
 
           {/* Cam */}
-          <Tooltip text={hasCamError ? 'Kamera tidak terdeteksi' : isCamOn ? `Matikan Kamera${isMobile ? '' : ' (Ctrl+E)'}` : `Nyalakan Kamera${isMobile ? '' : ' (Ctrl+E)'}`}>
+          <Tooltip text={hasCamError ? t('bar.camNotFound') : isCamOn ? `${t('bar.camOff')}${isMobile ? '' : ' (Ctrl+E)'}` : `${t('bar.camOn')}${isMobile ? '' : ' (Ctrl+E)'}`}>
             <button onClick={toggleCam} disabled={hasCamError}
               className={`glass-button rounded-full h-12 w-12 flex items-center justify-center ${hasCamError ? '!bg-yellow-500/20 !border-yellow-500/30 !text-yellow-400 opacity-80 cursor-not-allowed' : !isCamOn ? '!bg-red-500/20 !border-red-500/30 !text-red-400' : ''}`}>
               {hasCamError ? <TriangleAlert className="h-5 w-5" /> : isCamOn ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
@@ -198,7 +200,7 @@ export function BottomBar({
 
           {/* Screen share — desktop */}
           <div className="hidden md:block">
-            <Tooltip text={canShare ? (isSharing ? 'Stop Share' : 'Share Layar') : 'Screen share dinonaktifkan'}>
+            <Tooltip text={canShare ? (isSharing ? t('bar.stopShare') : t('bar.share')) : t('bar.shareDisabled')}>
               <button onClick={canShare ? toggleShare : undefined} disabled={!canShare}
                 className={`glass-button rounded-full h-12 w-12 flex items-center justify-center ${!canShare ? 'opacity-30 cursor-not-allowed' : isSharing ? '!bg-green-500/20 !border-green-500/30 !text-green-400' : ''}`}>
                 {isSharing ? <ScreenShareOff className="h-5 w-5" /> : <ScreenShare className="h-5 w-5" />}
@@ -208,7 +210,7 @@ export function BottomBar({
 
           {/* Reactions desktop */}
           <div className="hidden md:block">
-            <Tooltip text={canReact ? 'Reaksi' : 'Reaksi dinonaktifkan'}>
+            <Tooltip text={canReact ? t('bar.react') : t('bar.reactDisabled')}>
               <button onClick={canReact ? () => setShowReactions(v => !v) : undefined} disabled={!canReact}
                 className={`glass-button rounded-full h-12 w-12 flex items-center justify-center ${!canReact ? 'opacity-30 cursor-not-allowed' : showReactions ? 'active' : ''}`}>
                 <Smile className="h-5 w-5" />
@@ -221,7 +223,7 @@ export function BottomBar({
 
           {/* Hand desktop */}
           <div className="hidden md:block">
-            <Tooltip text={handRaised ? 'Turunkan Tangan' : 'Angkat Tangan'}>
+            <Tooltip text={handRaised ? t('bar.lowerHand') : t('bar.raiseHand')}>
               <button onClick={onToggleHand}
                 className={`glass-button rounded-full h-12 w-12 flex items-center justify-center ${handRaised ? 'active !bg-yellow-500/20 !border-yellow-500/30 !text-yellow-400' : ''}`}>
                 <Hand className="h-5 w-5" />
@@ -232,7 +234,7 @@ export function BottomBar({
           {/* Record desktop */}
           {onRecordToggle && (
             <div className="hidden md:block">
-              <Tooltip text={isRecording ? 'Hentikan Rekaman' : 'Mulai Rekaman'}>
+              <Tooltip text={isRecording ? t('bar.stopRec') : t('bar.startRec')}>
                 <button onClick={onRecordToggle}
                   className={`glass-button rounded-full h-12 w-12 flex items-center justify-center ${isRecording ? '!bg-red-500/20 !border-red-500/30 !text-red-400 animate-pulse' : ''}`}>
                   <Disc className="h-5 w-5" />

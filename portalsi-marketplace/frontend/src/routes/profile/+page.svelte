@@ -5,6 +5,7 @@
   import { auth, cart, wishlist, toast, confirmDialog } from '$lib/stores.svelte';
   import { apiEndpoints, setToken } from '$lib/api';
   import { fmtRp } from '$lib/utils';
+  import { t, lang, setLang } from '$lib/i18n';
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
 
@@ -143,7 +144,16 @@
 <svelte:head><title>Profil</title></svelte:head>
 
 <div class="container-x py-6 sm:py-8">
-  <h1 class="section-title mb-6 sm:mb-8">Profil</h1>
+  <h1 class="section-title mb-6 sm:mb-8">{$t('nav.profile')}</h1>
+
+  <div class="card mb-6">
+    <h3 class="font-semibold mb-3 flex items-center gap-2"><Icon name="globe" size={16} /> {$t('set.language')}</h3>
+    <div class="flex gap-2">
+      <button type="button" on:click={() => setLang('id')} class="px-4 py-2 rounded-lg text-sm font-semibold border {$lang === 'id' ? 'bg-black text-white border-black' : 'border-gray-300 text-gray-600'}">{$t('lang.id')}</button>
+      <button type="button" on:click={() => setLang('en')} class="px-4 py-2 rounded-lg text-sm font-semibold border {$lang === 'en' ? 'bg-black text-white border-black' : 'border-gray-300 text-gray-600'}">{$t('lang.en')}</button>
+    </div>
+    <p class="text-xs text-gray-500 mt-2">{$t('set.languageNote')}</p>
+  </div>
 
   {#if isAdmin}
     <!-- Admin: hanya panel profile, tanpa sidebar buyer -->

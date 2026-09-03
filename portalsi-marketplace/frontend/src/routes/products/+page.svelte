@@ -1,5 +1,6 @@
 <script lang="ts">
   import ProductGrid from '$lib/components/ProductGrid.svelte';
+  import { t } from '$lib/i18n';
   import ProductGridSkeleton from '$lib/components/ProductGridSkeleton.svelte';
   import Pagination from '$lib/components/Pagination.svelte';
   import ProductFilterPanel from '$lib/components/ProductFilterPanel.svelte';
@@ -9,13 +10,13 @@
   import { page } from '$app/stores';
   let { data } = $props();
   let filtersOpen = $state(false);
-  const sorts = [
-    ['popular', 'Terpopuler', 'flame'],
-    ['newest', 'Terbaru', 'sparkles'],
-    ['cheap', 'Termurah', 'arrow-down'],
-    ['exp', 'Termahal', 'arrow-up'],
-    ['rating', 'Rating', 'star'],
-  ];
+  const sorts = $derived([
+    ['popular', $t('prod.sortPopular'), 'flame'],
+    ['newest', $t('prod.sortNewest'), 'sparkles'],
+    ['cheap', $t('prod.sortCheapest'), 'arrow-down'],
+    ['exp', $t('prod.sortExpensive'), 'arrow-up'],
+    ['rating', $t('prod.sortRating'), 'star'],
+  ]);
   function absoluteAsset(url?: string) {
     if (!url) return '';
     if (/^data:/.test(url)) return '';
@@ -64,21 +65,21 @@
 
 <div class="container-x py-6 sm:py-8">
   <div class="mb-6 max-w-3xl">
-    <SmartSearch placeholder="Cari produk di katalog" />
+    <SmartSearch placeholder={$t('prod.searchInCatalog')} />
   </div>
 
   <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-4 sm:mb-6">
     <div>
-      <div class="section-eyebrow mb-2">Katalog</div>
-      <h1 class="section-title">{data.search ? `Hasil "${data.search}"` : data.tag ? `#${data.tag}` : 'Semua Produk'}</h1>
+      <div class="section-eyebrow mb-2">{$t('prod.catalog')}</div>
+      <h1 class="section-title">{data.search ? `Hasil "${data.search}"` : data.tag ? `#${data.tag}` : $t('prod.allProducts')}</h1>
       {#await data.streamed.result}
-        <p class="text-sm text-ink-500 mt-1">Memuat produk…</p>
+        <p class="text-sm text-ink-500 mt-1">{$t('prod.loading')}</p>
       {:then r}
-        <p class="text-sm text-ink-500 mt-1">{r.meta?.total ?? r.products.length} produk · halaman {r.meta?.current_page ?? 1} dari {r.meta?.last_page ?? 1}</p>
+        <p class="text-sm text-ink-500 mt-1">{r.meta?.total ?? r.products.length} {$t('prod.products')} · {$t('prod.page')} {r.meta?.current_page ?? 1} {$t('prod.of')} {r.meta?.last_page ?? 1}</p>
       {/await}
     </div>
     <div class="flex gap-2">
-      {#if data.tag}<button on:click={clearTag} class="btn-outline btn-sm">Hapus tag</button>{/if}
+      {#if data.tag}<button on:click={clearTag} class="btn-outline btn-sm">{$t('prod.removeTag')}</button>{/if}
     </div>
   </div>
 

@@ -6,6 +6,7 @@ import { Loader2, ArrowLeft, Video, Lock, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 import { MeetingRoom } from './MeetingRoom';
 import { PreJoinScreen } from './PreJoinScreen';
+import { useT } from '@/lib/i18n';
 
 interface ConnectionInfo { token: string; wsUrl: string; name: string; isHost: boolean; password?: string; initialMic?: boolean; initialCam?: boolean; hasMicError?: boolean; hasCamError?: boolean; }
 type State = 'loading' | 'need-name' | 'need-password' | 'joining' | 'pre-join' | 'waiting-lobby' | 'connected' | 'error' | 'not-found';
@@ -17,6 +18,7 @@ function getBrowserId(): string {
 }
 
 export function RoomClient({ roomId }: { roomId: string }) {
+  const { t } = useT();
   const router = useRouter();
   const searchParams = useSearchParams();
   const adminHandoffKey = searchParams.get('admin_handoff') || '';
@@ -64,12 +66,12 @@ export function RoomClient({ roomId }: { roomId: string }) {
         if (res.status === 401 && data.requiresPassword) {
           setRequiresPassword(true);
           setState('need-password');
-          setError(pw ? 'Password salah.' : null);
+          setError(pw ? t('rc.passwordWrong') : null);
           return;
         }
         if (res.status === 404) { setState('not-found'); return; }
-        if (res.status === 403) { setState('error'); setError(data.error || 'Akses ditolak.'); return; }
-        throw new Error(data.error || 'Gagal bergabung.');
+        if (res.status === 403) { setState('error'); setError(data.error || t('rc.accessDenied')); return; }
+        throw new Error(data.error || t('rc.joinFail'));
       }
       if (res.status === 202 && data.status === 'waiting') {
         setWaitingId(data.waitingId);
@@ -89,7 +91,7 @@ export function RoomClient({ roomId }: { roomId: string }) {
         try {
           const res = await fetch(`/api/admin/rooms/${roomId}/observer-handoff?key=${encodeURIComponent(adminHandoffKey)}`);
           const data = await res.json();
-          if (!res.ok) throw new Error(data.error || 'Link observer moderator tidak valid.');
+          if (!res.ok) throw new Error(data.error || t('rc.observerInvalid'));
           setConn({
             token: data.token,
             wsUrl: data.wsUrl,
@@ -101,7 +103,7 @@ export function RoomClient({ roomId }: { roomId: string }) {
           setName(data.name);
           setState('connected');
         } catch (e: any) {
-          setError(e.message || 'Gagal masuk sebagai moderator.');
+          setError(e.message || t('rc.modFail'));
           setState('error');
         }
       })();
@@ -133,7 +135,7 @@ export function RoomClient({ roomId }: { roomId: string }) {
         setRequiresPassword(Boolean(data.requiresPassword));
         setHostName(data.hostName);
         setState(data.requiresPassword ? 'need-password' : 'need-name');
-      } catch { setState('error'); setError('Tidak bisa memuat info ruang.'); }
+      } catch { setState('error'); setError(t('rc.roomInfoFail')); }
     })();
   }, [roomId, performJoin, adminHandoffKey]);
 
@@ -149,9 +151,9 @@ export function RoomClient({ roomId }: { roomId: string }) {
     setState('connected');
   }
 
-  if (state === 'loading' || state === 'joining') return <LoadingScreen label={state === 'joining' ? 'Menghubungkan…' : 'Memuat…'} />;
-  if (state === 'not-found') return <ErrorScreen title="Ruang tidak ditemukan" message="Room ID salah atau meeting sudah berakhir." />;
-  if (state === 'error') return <ErrorScreen title="Terjadi kesalahan" message={error || 'Unknown error.'} />;
+  if (state === 'loading' || state === 'joining') return <LoadingScreen label={state === 'joining' ? t('rc.connecting') : t('rc.loading')} />;
+  if (state === 'not-found') return <ErrorScreen title={t('rc.notFoundTitle')} message={t('rc.notFoundMsg')} />;
+  if (state === 'error') return <ErrorScreen title={t('rc.errorTitle')} message={error || t('rc.unknownError')} />;
   if (state === 'connected' && conn) return <MeetingRoom roomId={roomId} token={conn.token} wsUrl={conn.wsUrl} name={conn.name} isHost={conn.isHost} password={conn.password} onLeave={() => router.push('/')} initialMic={conn.initialMic} initialCam={conn.initialCam} hasMicError={conn.hasMicError} hasCamError={conn.hasCamError} />;
 
   if (state === 'pre-join') {

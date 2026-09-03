@@ -1,5 +1,6 @@
 <script lang="ts">
   import { settings } from '$lib/stores.svelte';
+  import { t } from '$lib/i18n';
 
   const defaultColumns = [
     { title: 'Belanja', links: [
@@ -61,7 +62,7 @@
 
     <div class="mt-10 pt-6 border-t border-ink-200 flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between text-xs text-ink-500">
       <span class="whitespace-pre-line">{bottom}</span>
-      <span>Pembayaran diamankan dengan enkripsi end-to-end</span>
+      <span>{$t('footer.securedPayment')}</span>
     </div>
   </div>
 </footer>

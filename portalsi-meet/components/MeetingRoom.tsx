@@ -43,6 +43,7 @@ const baseRoomOptions: RoomOptions = {
 };
 
 export function MeetingRoom({ roomId, token, wsUrl, name, isHost, password, onLeave, initialMic, initialCam, hasMicError, hasCamError }: MeetingProps) {
+  const { t } = useT();
   const [fatalError, setFatalError] = useState<string | null>(null);
   const [videoQuality, setVideoQuality] = useState<'highest' | 'balanced' | 'lowest' | 'auto'>(
     typeof window !== 'undefined' && window.innerWidth < 768 ? 'auto' : 'auto'
@@ -62,17 +63,17 @@ export function MeetingRoom({ roomId, token, wsUrl, name, isHost, password, onLe
     };
   }, [initialQuality]);
 
-  if (!wsUrl) return <ErrScr title="Konfigurasi Bermasalah" msg="NEXT_PUBLIC_LIVEKIT_URL belum diset." onLeave={onLeave} />;
-  if (fatalError) return <ErrScr title="Koneksi Terputus" msg={fatalError} onLeave={onLeave} />;
+  if (!wsUrl) return <ErrScr title={t('mr.configTitle')} msg={t('mr.configMsg')} onLeave={onLeave} />;
+  if (fatalError) return <ErrScr title={t('mr.disconnectedTitle')} msg={fatalError} onLeave={onLeave} />;
   return (
     <LiveKitRoom token={token} serverUrl={wsUrl} connect options={roomOptions}
       video={initialCam ?? true} audio={initialMic ?? true} data-lk-theme="default"
       onDisconnected={(r) => {
         if (manualDisconnectRef.current) return;
-        if (r === DisconnectReason.ROOM_DELETED) setFatalError('Rapat ini telah diakhiri oleh Host.');
-        else if (r === DisconnectReason.PARTICIPANT_REMOVED) setFatalError('Anda telah dikeluarkan dari rapat.');
-        else if (r === DisconnectReason.SERVER_SHUTDOWN) setFatalError('Koneksi terputus dari server.');
-        else setFatalError(`Terputus dari rapat. Alasan: ${r || 'Koneksi terputus'}`);
+        if (r === DisconnectReason.ROOM_DELETED) setFatalError(t('mr.endedByHost'));
+        else if (r === DisconnectReason.PARTICIPANT_REMOVED) setFatalError(t('mr.removed'));
+        else if (r === DisconnectReason.SERVER_SHUTDOWN) setFatalError(t('mr.serverLost'));
+        else setFatalError(`${t('mr.disconnectedReason')} ${r || t('mr.serverLost')}`);
       }}
       onError={(e) => setFatalError(`Terjadi kesalahan: ${e.message}`)}
       className="theme-meet h-dvh w-dvw overflow-hidden text-white flex flex-col" style={{ background: '#0a0a0f' }}>
@@ -105,6 +106,7 @@ function Shell({ roomId, isHost, password, onLeave, videoQuality, setVideoQualit
   const [subtitles, setSubtitles] = useState<Map<string, Subtitle>>(new Map());
   const [noiseSuppression, setNoiseSuppression] = useState(false);
   const [polls, setPolls] = useState<Poll[]>([]);
+  const { t } = useT();
   const [endMessage, setEndMessage] = useState<{ title: string, msg: string } | null>(null);
   const [globalPinnedIdentity, setGlobalPinnedIdentity] = useState<string | null>(null);
 
@@ -238,8 +240,8 @@ function Shell({ roomId, isHost, password, onLeave, videoQuality, setVideoQualit
           if (d.action === 'mute_all' && (!isAmIAdmin)) localParticipant.setMicrophoneEnabled(false);
           if (d.action === 'mute_video_all' && (!isAmIAdmin)) localParticipant.setCameraEnabled(false);
           if (d.action === 'stop_share' && d.target === localParticipant.identity) { const st = localParticipant.getTrackPublication(Track.Source.ScreenShare); if (st?.track) localParticipant.unpublishTrack(st.track); }
-          if (d.action === 'kick' && d.target === localParticipant.identity) { onManualDisconnect(); room.disconnect(); setEndMessage({ title: 'Akses Ditolak', msg: 'Anda telah dikeluarkan dari rapat.' }); }
-          if (d.action === 'kick_all' || d.action === 'end_meeting') { onManualDisconnect(); room.disconnect(); setEndMessage({ title: 'Rapat Selesai', msg: 'Rapat ini telah diakhiri oleh Host.' }); }
+          if (d.action === 'kick' && d.target === localParticipant.identity) { onManualDisconnect(); room.disconnect(); setEndMessage({ title: t('mr.accessDeniedTitle'), msg: t('mr.removed') }); }
+          if (d.action === 'kick_all' || d.action === 'end_meeting') { onManualDisconnect(); room.disconnect(); setEndMessage({ title: t('mr.meetingDoneTitle'), msg: t('mr.endedByHost') }); }
           if (d.action === 'promote') setAdmins(prev => new Set(prev).add(d.target));
           if (d.action === 'demote') setAdmins(prev => { const n = new Set(prev); n.delete(d.target); return n; });
           if (d.action === 'pin_global') setGlobalPinnedIdentity(d.target);
@@ -271,7 +273,7 @@ function Shell({ roomId, isHost, password, onLeave, videoQuality, setVideoQualit
     const onJoin = (p: any) => {
       setTimeout(() => { if (chatRef.current.length > 0) room.localParticipant.publishData(enc.current.encode(JSON.stringify({ type: 'chat_history', messages: chatRef.current })), { reliable: true, destinationIdentities: [p.identity] }); }, 1000);
       // Batched join notification
-      joinBatch.current.push(p.name || 'Anonim');
+      joinBatch.current.push(p.name || t('mr.anon'));
       clearTimeout(joinTimer.current);
       joinTimer.current = setTimeout(() => {
         const names = [...joinBatch.current]; joinBatch.current = [];
@@ -295,10 +297,10 @@ function Shell({ roomId, isHost, password, onLeave, videoQuality, setVideoQualit
 
   const addFloat = (emoji: string, name: string) => { const id = Date.now() + Math.random(); setFloats(p => [...p, { id, emoji, text: emoji, name }]); setTimeout(() => setFloats(p => p.filter(f => f.id !== id)), 3500); };
   const pub = useCallback((d: any, dests?: string[]) => room.localParticipant.publishData(enc.current.encode(JSON.stringify(d)), { reliable: true, destinationIdentities: dests }), [room]);
-  const sendChat = useCallback((text: string, opts?: Partial<ChatMsg>) => { const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6); const msg: ChatMsg = { id, text, senderName: localParticipant.name || 'Anonim', senderIdentity: localParticipant.identity, ts: Date.now(), ...opts }; setChatMsgs(p => [...p, msg]); pub({ type: 'chat', action: 'send', ...msg }, msg.isPrivate && msg.targetIdentity ? [msg.targetIdentity] : undefined); }, [pub, localParticipant]);
+  const sendChat = useCallback((text: string, opts?: Partial<ChatMsg>) => { const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6); const msg: ChatMsg = { id, text, senderName: localParticipant.name || t('mr.anon'), senderIdentity: localParticipant.identity, ts: Date.now(), ...opts }; setChatMsgs(p => [...p, msg]); pub({ type: 'chat', action: 'send', ...msg }, msg.isPrivate && msg.targetIdentity ? [msg.targetIdentity] : undefined); }, [pub, localParticipant]);
   const editChat = useCallback((id: string, text: string) => { const ts = Date.now(); setChatMsgs(p => p.map(m => m.id === id ? { ...m, text, edited: true, editedAt: ts } : m)); pub({ type: 'chat', action: 'edit', id, text, ts }); }, [pub]);
   const deleteChat = useCallback((id: string) => { const ts = Date.now(); setChatMsgs(p => p.map(m => m.id === id ? { ...m, deleted: true, deletedAt: ts } : m)); pub({ type: 'chat', action: 'delete', id, ts }); }, [pub]);
-  const sendReaction = useCallback((emoji: string) => { if (!isHost && !perms.allowReactions) return; const name = localParticipant.name || 'Anonim'; addFloat(emoji, name); pub({ type: 'reaction', emoji, name }); }, [pub, localParticipant, perms, isHost]);
+  const sendReaction = useCallback((emoji: string) => { if (!isHost && !perms.allowReactions) return; const name = localParticipant.name || t('mr.anon'); addFloat(emoji, name); pub({ type: 'reaction', emoji, name }); }, [pub, localParticipant, perms, isHost]);
 
   const handlePollCreate = useCallback((poll: Poll) => {
     setPolls(p => [...p, poll]);
@@ -330,7 +332,7 @@ function Shell({ roomId, isHost, password, onLeave, videoQuality, setVideoQualit
     if (!captionsOn) return;
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      alert("Browser Anda tidak mendukung Live Captions.");
+      alert(t('mr.captionsUnsupported'));
       setCaptionsOn(false);
       return;
     }
@@ -351,7 +353,7 @@ function Shell({ roomId, isHost, password, onLeave, videoQuality, setVideoQualit
       if (!text.trim() || !localParticipant.isMicrophoneEnabled) return;
       if (event.results[event.results.length - 1].isFinal || !lastId) lastId = Date.now().toString();
 
-      const payload = { type: 'transcription', id: lastId, identity: localParticipant.identity, name: localParticipant.name || 'Anonim', text: text.trim() };
+      const payload = { type: 'transcription', id: lastId, identity: localParticipant.identity, name: localParticipant.name || t('mr.anon'), text: text.trim() };
       setSubtitles(prev => { const next = new Map(prev); next.set(payload.identity, { ...payload, updatedAt: Date.now() }); return next; });
       pub(payload);
     };
@@ -378,7 +380,7 @@ function Shell({ roomId, isHost, password, onLeave, videoQuality, setVideoQualit
     return () => clearInterval(interval);
   }, [subtitles]);
 
-  const toggleHand = useCallback(() => { const r = !handRaisedRef.current; setHandRaised(r); const n = localParticipant.name || 'Anonim'; setRaisedHands(p => { const m = new Map(p); r ? m.set(localParticipant.identity, n) : m.delete(localParticipant.identity); return m; }); pub({ type: 'hand', raised: r, identity: localParticipant.identity, name: n }); }, [pub, localParticipant]);
+  const toggleHand = useCallback(() => { const r = !handRaisedRef.current; setHandRaised(r); const n = localParticipant.name || t('mr.anon'); setRaisedHands(p => { const m = new Map(p); r ? m.set(localParticipant.identity, n) : m.delete(localParticipant.identity); return m; }); pub({ type: 'hand', raised: r, identity: localParticipant.identity, name: n }); }, [pub, localParticipant]);
 
   // Host actions — broadcast + persist to Redis
   const broadcastPerms = useCallback((p: RoomPerms) => {
@@ -427,14 +429,14 @@ function Shell({ roomId, isHost, password, onLeave, videoQuality, setVideoQualit
         const formData = new FormData();
         formData.append('file', blob, `Rekaman-${new Date().toISOString().replace(/:/g, '-')}.webm`);
         
-        addFloat('⏳', 'Mengunggah rekaman...');
+        addFloat('⏳', t('mr.uploadingRec'));
         try {
           const res = await fetch('/api/upload', { method: 'POST', body: formData });
           const data = await res.json();
           if (data.success) {
-            sendChat('Rekaman meeting telah tersedia.', { fileUrl: data.url, fileName: data.name });
-          } else { alert('Gagal mengunggah rekaman: ' + data.error); }
-        } catch (e) { console.error(e); alert('Terjadi kesalahan saat mengunggah rekaman.'); }
+            sendChat(t('mr.recAvailable'), { fileUrl: data.url, fileName: data.name });
+          } else { alert(t('mr.uploadRecFail') + data.error); }
+        } catch (e) { console.error(e); alert(t('mr.uploadRecErr')); }
       };
       
       mediaRecorder.start(1000);
@@ -445,7 +447,7 @@ function Shell({ roomId, isHost, password, onLeave, videoQuality, setVideoQualit
       };
     } catch (err) {
       console.error('Recording error:', err);
-      alert('Gagal memulai rekaman. Pastikan Anda memberikan izin akses layar & audio sistem.');
+      alert(t('mr.recStartFail'));
     }
   };
 
@@ -574,7 +576,7 @@ function Shell({ roomId, isHost, password, onLeave, videoQuality, setVideoQualit
         body: JSON.stringify({ hostIdentity: localParticipant.identity }),
       });
     } catch {}
-    setEndMessage({ title: 'Rapat Selesai', msg: 'Anda telah mengakhiri rapat ini.' });
+    setEndMessage({ title: t('mr.meetingDoneTitle'), msg: t('mr.endedByYou') });
   };
 
   return (
@@ -639,7 +641,7 @@ function Shell({ roomId, isHost, password, onLeave, videoQuality, setVideoQualit
         {/* Chat always mounted */}
         <div style={{ display: activePanel === 'chat' ? undefined : 'none' }}
              className="fixed inset-0 z-50 md:relative md:inset-auto md:z-auto md:my-2 md:mr-2 md:shrink-0">
-          <ChatPanel messages={chatMsgs} localIdentity={localParticipant.identity} localName={localParticipant.name || 'Anonim'}
+          <ChatPanel messages={chatMsgs} localIdentity={localParticipant.identity} localName={localParticipant.name || t('mr.anon')}
             onSend={sendChat} onEdit={editChat} onDelete={deleteChat} onClose={() => setActivePanel(null)}
             disabled={!isAmIAdmin && !perms.allowChat}
             polls={polls} isHost={isAmIAdmin} pub={pub} allowPolls={perms.allowPolls} onPollCreate={handlePollCreate} onPollVote={handlePollVote} onPollDelete={handlePollDelete} admins={admins} />

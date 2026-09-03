@@ -11,8 +11,10 @@
   import { auth, settings, wishlist, applyPalette } from '$lib/stores.svelte';
   import { apiEndpoints, getToken } from '$lib/api';
   import { page } from '$app/stores';
+  import { initLang } from '$lib/i18n';
 
   let { data, children } = $props();
+  initLang(data?.lang as 'id' | 'en' | undefined);
 
   // Pages yang TIDAK perlu email verifikasi (selalu boleh diakses)
   const PUBLIC_PATHS = ['/login', '/register', '/forgot-password', '/reset-password', '/verify-email', '/confirm-email'];

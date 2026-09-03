@@ -1,6 +1,8 @@
 <script lang="ts">
   import Icon from '$lib/components/Icon.svelte';
   import { cart, auth, toast, confirmDialog } from '$lib/stores.svelte';
+  import { t } from '$lib/i18n';
+  import { get } from 'svelte/store';
   import { apiEndpoints } from '$lib/api';
   import { fmtRp } from '$lib/utils';
   import { goto } from '$app/navigation';
@@ -13,7 +15,7 @@
     { name: 'J&T Express', eta: '2-3 hari', cost: 14000 },
     { name: 'SiCepat REG', eta: '2-4 hari', cost: 11000 },
     { name: 'AnterAja', eta: '1-3 hari', cost: 13000 },
-    { name: 'GoSend Sameday', eta: 'Hari Ini', cost: 25000 },
+    { name: 'GoSend Sameday', eta: get(t)('co.today'), cost: 25000 },
     { name: 'Pos Indonesia', eta: '3-5 hari', cost: 9000 },
   ];
 
@@ -60,7 +62,7 @@
       const def = addresses.find((a) => a.is_default) || addresses[0];
       if (def) chooseAddress(String(def.id));
     } catch (e: any) {
-      toast.error(e.message || 'Gagal memuat alamat pengiriman');
+      toast.error(e.message || get(t)('co.loadAddrFail'));
     }
   });
 
@@ -91,10 +93,10 @@
       couriers = r.options?.length ? r.options : COURIERS;
       courier = couriers[0] ?? null;
       if (r.message) shippingError = r.message;
-      else if (r.source === 'manual' || !r.configured) shippingError = 'Menampilkan opsi pengiriman manual dari admin.';
+      else if (r.source === 'manual' || !r.configured) shippingError = get(t)('co.manualShipping');
     } catch (e: any) {
       await loadManualShippingOptions();
-      shippingError = e.message || 'Gagal memuat tarif ekspedisi otomatis. Menampilkan opsi pengiriman manual.';
+      shippingError = e.message || get(t)('co.autoRateFail');
     } finally {
       shippingLoading = false;
     }
@@ -129,7 +131,7 @@
   async function applyVoucher(it: any) {
     const code = voucherCodes[it.product_id]?.trim();
     clearVoucher(it.product_id);
-    if (!code) { toast.warn('Masukkan kode voucher'); return; }
+    if (!code) { toast.warn(get(t)('co.enterVoucher')); return; }
     voucherLoading[it.product_id] = true;
     try {
       const res: any = await apiEndpoints.applyVoucher({
@@ -141,7 +143,7 @@
       voucherCodes[it.product_id] = res.code;
       toast.success(`Voucher ${res.code} diterapkan`);
     } catch (e: any) {
-      voucherErrors[it.product_id] = e.message || 'Voucher tidak valid';
+      voucherErrors[it.product_id] = e.message || get(t)('co.voucherInvalid');
       toast.error(voucherErrors[it.product_id]);
     } finally {
       voucherLoading[it.product_id] = false;
@@ -150,19 +152,19 @@
 
   async function submit() {
     if (!ship.recipient || !ship.phone || !ship.province || !ship.city || !ship.district || !ship.village || !ship.full_address) {
-      toast.warn('Pilih alamat pengiriman dari profil');
+      toast.warn(get(t)('co.pickAddr'));
       return;
     }
     if (!hasCoords(ship)) {
       toast.warn('Alamat pengiriman belum punya pin lokasi. Lengkapi di halaman profil terlebih dahulu.');
       return;
     }
-    if (!pay) { toast.warn('Pilih metode pembayaran'); return; }
-    if (!courier) { toast.warn('Pilih ekspedisi pengiriman'); return; }
+    if (!pay) { toast.warn(get(t)('co.pickPayment')); return; }
+    if (!courier) { toast.warn(get(t)('co.pickCourier')); return; }
     const ok = await confirmDialog.ask({
-      title: 'Buat pesanan?',
-      message: 'Pesanan akan dibuat dengan status menunggu pembayaran. Stok baru dikurangi setelah pembayaran berhasil.',
-      confirmText: 'Buat pesanan',
+      title: get(t)('co.createOrderQ'),
+      message: get(t)('co.createOrderMsg'),
+      confirmText: get(t)('co.createOrder'),
     });
     if (!ok) return;
     loading = true;
@@ -206,10 +208,10 @@
         payment_method: pay,
       });
       cart.clearChecked();
-      toast.success('Pesanan dibuat, silakan lanjutkan pembayaran');
+      toast.success(get(t)('co.orderCreated'));
       goto('/orders/' + res.order_id);
     } catch (e: any) {
-      checkoutError = e.message || 'Checkout gagal diproses';
+      checkoutError = e.message || get(t)('co.checkoutFail');
       toast.error(checkoutError);
       loading = false;
     }
@@ -219,7 +221,7 @@
 <svelte:head><title>Checkout - MPSI</title></svelte:head>
 
 <div class="container-x py-8">
-  <h1 class="section-title mb-8">Checkout</h1>
+  <h1 class="section-title mb-8">{$t('co.title')}</h1>
 
   <div class="grid lg:grid-cols-[1fr_400px] gap-8 items-start">
     <div class="space-y-6">
@@ -240,7 +242,7 @@
                   <div class="min-w-0">
                     <div class="flex flex-wrap items-center gap-2">
                       <b class="text-sm">{a.recipient}</b>
-                      {#if a.is_default}<span class="pill-green">Utama</span>{/if}
+                      {#if a.is_default}<span class="pill-green">{$t('co.primary')}</span>{/if}
                     </div>
                     <div class="mt-1 text-xs text-ink-500">{a.phone}</div>
                     <div class="mt-2 text-sm text-ink-700">{addressSubtitle(a)}</div>
@@ -275,7 +277,7 @@
             <div class="flex items-start gap-3">
               <Icon name="map-pin" size={18} class="mt-0.5 text-amber-700" />
               <div>
-                <h4 class="font-semibold text-amber-900">Belum ada alamat pengiriman</h4>
+                <h4 class="font-semibold text-amber-900">{$t('co.noAddr')}</h4>
                 <p class="mt-1 text-sm text-amber-800">Tambahkan alamat di profil dulu agar ongkir dan checkout bisa diproses dengan benar.</p>
                 <a href="/profile#addresses" class="btn-primary btn-sm mt-4"><Icon name="plus" size={14} /> Tambah alamat di profil</a>
               </div>
@@ -286,7 +288,7 @@
       </div>
 
       <div class="card">
-        <h3 class="font-semibold mb-4">Pengiriman</h3>
+        <h3 class="font-semibold mb-4">{$t('co.shipping')}</h3>
         {#if shippingLoading}
           <div class="rounded-xl bg-ink-50 px-3 py-2 text-xs text-ink-600 mb-3">Memuat tarif ekspedisi...</div>
         {/if}
@@ -304,7 +306,7 @@
       </div>
 
       <div class="card">
-        <h3 class="font-semibold mb-4">Metode Pembayaran</h3>
+        <h3 class="font-semibold mb-4">{$t('co.paymentMethod')}</h3>
         {#each Object.entries(grouped) as [g, ms]}
           <div class="mb-5">
             <h4 class="text-xs font-semibold uppercase tracking-widest text-ink-500 mb-2">{g}</h4>
@@ -337,12 +339,12 @@
               <div class="mt-2 flex max-w-md gap-2">
                 <input
                   class="input input-sm min-w-0 flex-1 !py-1.5 uppercase"
-                  placeholder="Kode voucher seller"
+                  placeholder={$t('co.voucherPlaceholder')}
                   bind:value={voucherCodes[it.product_id]}
                   on:input={() => clearVoucher(it.product_id)}
                 />
                 <button type="button" on:click={() => applyVoucher(it)} disabled={voucherLoading[it.product_id]} class="btn-outline btn-sm shrink-0">
-                  {voucherLoading[it.product_id] ? 'Cek...' : applied ? 'Ubah' : 'Apply'}
+                  {voucherLoading[it.product_id] ? $t('co.checking') : applied ? $t('co.change') : $t('co.apply')}
                 </button>
               </div>
               {#if voucherErrors[it.product_id]}
@@ -376,22 +378,22 @@
 
     <aside class="lg:sticky lg:top-24">
       <div class="card">
-        <h3 class="font-semibold mb-4">Ringkasan Pembayaran</h3>
+        <h3 class="font-semibold mb-4">{$t('co.paymentSummary')}</h3>
         <div class="space-y-2 text-sm">
-          <div class="flex justify-between"><span class="text-ink-500">Subtotal</span><span>{fmtRp(subtotal)}</span></div>
+          <div class="flex justify-between"><span class="text-ink-500">{$t('cart.subtotal')}</span><span>{fmtRp(subtotal)}</span></div>
           {#if discountTotal > 0}
-            <div class="flex justify-between text-emerald-700"><span>Promo voucher</span><span>-{fmtRp(discountTotal)}</span></div>
-            <div class="flex justify-between"><span class="text-ink-500">Subtotal setelah promo</span><span>{fmtRp(discountedSubtotal)}</span></div>
+            <div class="flex justify-between text-emerald-700"><span>{$t('co.promoVoucher')}</span><span>-{fmtRp(discountTotal)}</span></div>
+            <div class="flex justify-between"><span class="text-ink-500">{$t('co.subtotalAfter')}</span><span>{fmtRp(discountedSubtotal)}</span></div>
           {/if}
-          <div class="flex justify-between"><span class="text-ink-500">Ongkir</span><span>{courier ? fmtRp(courier.cost) : '-'}</span></div>
-          {#if insurance > 0}<div class="flex justify-between"><span class="text-ink-500">Asuransi</span><span>{fmtRp(insurance)}</span></div>{/if}
+          <div class="flex justify-between"><span class="text-ink-500">{$t('co.shippingCost')}</span><span>{courier ? fmtRp(courier.cost) : '-'}</span></div>
+          {#if insurance > 0}<div class="flex justify-between"><span class="text-ink-500">{$t('co.insurance')}</span><span>{fmtRp(insurance)}</span></div>{/if}
           <div class="flex justify-between"><span class="text-ink-500">Biaya admin{#if method}<span class="text-ink-400"> ({method.name})</span>{/if}</span><span>{method ? fmtRp(fee) : '-'}</span></div>
           <div class="flex justify-between text-base font-bold pt-3 border-t border-ink-100 mt-3">
-            <span>Total</span><span>{fmtRp(total)}</span>
+            <span>{$t('cart.total')}</span><span>{fmtRp(total)}</span>
           </div>
         </div>
         <button on:click={submit} disabled={loading || !pay || !selectedAddressId || !hasCoords(selectedAddress)} class="btn-primary btn-lg w-full mt-5">
-          <Icon name="lock" size={14} /> {loading ? 'Memproses...' : !selectedAddressId ? 'Pilih alamat pengiriman' : !hasCoords(selectedAddress) ? 'Lengkapi pin alamat' : pay ? `Bayar ${fmtRp(total)}` : 'Pilih metode pembayaran'}
+          <Icon name="lock" size={14} /> {loading ? $t('co.processing') : !selectedAddressId ? $t('co.pickAddrShort') : !hasCoords(selectedAddress) ? $t('co.completePin') : pay ? `${$t('co.pay')} ${fmtRp(total)}` : $t('co.pickPayment')}
         </button>
         {#if checkoutError}
           <div class="mt-4 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-700">

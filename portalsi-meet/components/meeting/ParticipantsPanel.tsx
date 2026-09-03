@@ -19,6 +19,7 @@ export function ParticipantsPanel({
   focusedIdentity?: string | null; onFocusParticipant?: (id: string | null) => void;
   superAdminIdentity?: string | null;
 }) {
+  const { t } = useT();
   const participants = useParticipants();
   const { localParticipant } = useLocalParticipant();
   const [search, setSearch] = useState('');
@@ -136,7 +137,7 @@ export function ParticipantsPanel({
       <div className="px-4 py-3">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/30" />
-          <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Cari peserta..."
+          <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder={t('pp.search')}
             className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl pl-9 pr-4 py-2.5 text-sm text-white placeholder:text-white/30 outline-none focus:border-[#8ab4f8]/40 transition-all" />
         </div>
       </div>
@@ -226,8 +227,8 @@ export function ParticipantsPanel({
             <h3 className="text-base font-bold text-white mb-2">Konfirmasi Tindakan</h3>
             <p className="text-sm text-white/70 mb-5">
               {confirmAction.type === 'promote' ? `Jadikan ${confirmAction.name} sebagai Admin?` :
-               confirmAction.type === 'demote' ? `Hapus status Admin dari ${confirmAction.name}?` :
-               `Keluarkan ${confirmAction.name} dari rapat ini?`}
+               confirmAction.type === 'demote' ? `${t('pp.demote')} ${confirmAction.name}?` :
+               `${t('pp.kick')} ${confirmAction.name} ${t('pp.kickSuffix')}`}
             </p>
             <div className="flex gap-2">
               <button onClick={() => setConfirmAction(null)} className="flex-1 py-2 rounded-xl text-xs font-semibold text-white/80 bg-white/[0.07] hover:bg-white/[0.12] transition-all">Batal</button>

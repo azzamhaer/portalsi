@@ -4,16 +4,17 @@
   import { apiEndpoints } from '$lib/api';
   import { onMount } from 'svelte';
   import Icon from './Icon.svelte';
+  import { t } from '$lib/i18n';
 
   let unreadNotifications = $state(0);
   let unreadChats = $state(0);
   let timer: any;
 
   const items = $derived([
-    { label: 'Beranda', href: '/', match: '/', icon: 'home', badge: 0 },
-    { label: 'Produk', href: '/products', match: '/products', icon: 'package-search', badge: 0 },
-    { label: 'Notifikasi', href: auth.user ? '/notifications' : '/login?next=/notifications', match: '/notifications', icon: 'bell', badge: unreadNotifications },
-    { label: 'Profil', href: auth.user ? '/profile' : '/login?next=/profile', match: '/profile', icon: 'user-round', badge: unreadChats },
+    { label: $t('nav.home'), href: '/', match: '/', icon: 'home', badge: 0 },
+    { label: $t('nav.products'), href: '/products', match: '/products', icon: 'package-search', badge: 0 },
+    { label: $t('nav.notifications'), href: auth.user ? '/notifications' : '/login?next=/notifications', match: '/notifications', icon: 'bell', badge: unreadNotifications },
+    { label: $t('nav.profile'), href: auth.user ? '/profile' : '/login?next=/profile', match: '/profile', icon: 'user-round', badge: unreadChats },
   ]);
 
   async function refreshBadges() {

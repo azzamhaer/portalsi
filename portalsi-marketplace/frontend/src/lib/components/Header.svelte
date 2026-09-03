@@ -1,5 +1,7 @@
 <script lang="ts">
   import Icon from '$lib/components/Icon.svelte';
+  import { t } from '$lib/i18n';
+  import { get } from 'svelte/store';
   import NotificationBell from '$lib/components/NotificationBell.svelte';
   import { afterNavigate, goto } from '$app/navigation';
   import { auth, cart, settings, wishlist, confirmDialog } from '$lib/stores.svelte';
@@ -55,9 +57,9 @@
 
   async function logout() {
     const ok = await confirmDialog.ask({
-      title: 'Keluar dari akun?',
-      message: 'Anda perlu login ulang untuk mengakses pesanan, chat, dan seller center.',
-      confirmText: 'Keluar',
+      title: get(t)('header.logoutTitle'),
+      message: get(t)('header.logoutMsg'),
+      confirmText: get(t)('nav.logout'),
       tone: 'danger'
     });
     if (!ok) return;
@@ -162,7 +164,7 @@
                     <Icon name="search" size={15} />
                   </span>
                   <span class="min-w-0 flex-1">
-                    <span class="block text-sm font-semibold">Cari kata kunci "{q.trim()}"</span>
+                    <span class="block text-sm font-semibold">{$t('header.searchKeyword')} "{q.trim()}"</span>
                     <span class="block text-xs text-ink-500">Lihat semua hasil yang cocok</span>
                   </span>
                 </button>
@@ -211,13 +213,13 @@
 
       <div class="hidden md:flex items-center gap-1 ml-2">
         {#if auth.user?.role !== 'ADMIN'}
-          <a href="/wishlist" class="relative w-10 h-10 grid place-items-center rounded-full hover:bg-ink-100 transition-colors" aria-label="Wishlist">
+          <a href="/wishlist" class="relative w-10 h-10 grid place-items-center rounded-full hover:bg-ink-100 transition-colors" aria-label={$t('nav.wishlist')}>
             <Icon name="heart" size={18} class="text-ink-700" />
             {#if auth.user && wishlist.ids.length > 0}
               <span class="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[10px] font-semibold rounded-full min-w-[18px] h-[18px] grid place-items-center px-1.5">{wishlist.ids.length > 99 ? '99+' : wishlist.ids.length}</span>
             {/if}
           </a>
-          <a href="/cart" class="w-10 h-10 grid place-items-center rounded-full hover:bg-ink-100 transition-colors relative" aria-label="Keranjang">
+          <a href="/cart" class="w-10 h-10 grid place-items-center rounded-full hover:bg-ink-100 transition-colors relative" aria-label={$t('nav.cart')}>
             <Icon name="shopping-bag" size={18} class="text-ink-700" />
             {#if auth.user && cart.count > 0}
               <span class="absolute -top-0.5 -right-0.5 bg-app-primary text-app-pfg text-[10px] font-semibold rounded-full min-w-[18px] h-[18px] grid place-items-center px-1.5">{cart.count}</span>
@@ -226,7 +228,7 @@
         {/if}
         <NotificationBell />
         {#if auth.user}
-          <a href="/chats" class="w-10 h-10 grid place-items-center rounded-full hover:bg-ink-100 transition-colors relative" aria-label="Chat">
+          <a href="/chats" class="w-10 h-10 grid place-items-center rounded-full hover:bg-ink-100 transition-colors relative" aria-label={$t('nav.chats')}>
             <Icon name="message-circle" size={18} class="text-ink-700" />
             {#if unreadChats > 0}
               <span class="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[10px] font-semibold rounded-full min-w-[18px] h-[18px] grid place-items-center px-1.5">{unreadChats > 99 ? '99+' : unreadChats}</span>
@@ -235,7 +237,7 @@
         {/if}
         {#if auth.user}
           <div class="relative" bind:this={userMenuRef}>
-            <button type="button" on:click|stopPropagation={() => userOpen = !userOpen} class="w-10 h-10 grid place-items-center rounded-full hover:bg-ink-100 transition-colors" aria-label="Akun" aria-expanded={userOpen}>
+            <button type="button" on:click|stopPropagation={() => userOpen = !userOpen} class="w-10 h-10 grid place-items-center rounded-full hover:bg-ink-100 transition-colors" aria-label={$t('nav.account')} aria-expanded={userOpen}>
               <Icon name="user" size={18} class="text-ink-700" />
             </button>
             {#if userOpen}
@@ -244,28 +246,28 @@
                   <div class="font-semibold text-sm">{auth.user.name}</div>
                   <div class="text-xs text-ink-500 truncate">{auth.user.email}</div>
                 </div>
-                <button type="button" on:click={() => nav('/profile')}  class="block w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-ink-50">Profil</button>
+                <button type="button" on:click={() => nav('/profile')}  class="block w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-ink-50">{$t('nav.profile')}</button>
                 {#if auth.user.role === 'ADMIN'}
-                  <button type="button" on:click={() => nav('/admin')} class="block w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-ink-50 text-accent-dark font-semibold">Admin Center</button>
+                  <button type="button" on:click={() => nav('/admin')} class="block w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-ink-50 text-accent-dark font-semibold">{$t('nav.adminCenter')}</button>
                 {:else}
-                  <button type="button" on:click={() => nav('/orders')}   class="block w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-ink-50">Pesanan</button>
-                  <button type="button" on:click={() => nav('/refunds')}  class="block w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-ink-50">Riwayat Refund</button>
-                  <button type="button" on:click={() => nav('/wishlist')} class="block w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-ink-50">Wishlist</button>
-                  <button type="button" on:click={() => nav('/chats')}    class="block w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-ink-50">Chat</button>
+                  <button type="button" on:click={() => nav('/orders')}   class="block w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-ink-50">{$t('nav.orders')}</button>
+                  <button type="button" on:click={() => nav('/refunds')}  class="block w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-ink-50">{$t('nav.refunds')}</button>
+                  <button type="button" on:click={() => nav('/wishlist')} class="block w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-ink-50">{$t('nav.wishlist')}</button>
+                  <button type="button" on:click={() => nav('/chats')}    class="block w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-ink-50">{$t('nav.chats')}</button>
                   {#if auth.user.vendor_id}
                     <button type="button" on:click={() => nav(auth.user.vendor_status === 'APPROVED' ? '/seller/dashboard' : '/seller/pending')} class="block w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-ink-50">
-                      {auth.user.vendor_status === 'APPROVED' ? 'Seller Center' : 'Status Toko'}
+                      {auth.user.vendor_status === 'APPROVED' ? $t('nav.sellerCenter') : $t('nav.storeStatus')}
                     </button>
                   {:else}
-                    <button type="button" on:click={() => nav('/seller/register')} class="block w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-ink-50">Buka Toko</button>
+                    <button type="button" on:click={() => nav('/seller/register')} class="block w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-ink-50">{$t('nav.openStore')}</button>
                   {/if}
                 {/if}
-                <button type="button" on:click={logout} class="block w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-ink-50 text-red-600">Keluar</button>
+                <button type="button" on:click={logout} class="block w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-ink-50 text-red-600">{$t('nav.logout')}</button>
               </div>
             {/if}
           </div>
         {:else}
-          <a href="/login" class="btn-primary btn-md ml-2">Masuk</a>
+          <a href="/login" class="btn-primary btn-md ml-2">{$t('nav.login')}</a>
         {/if}
       </div>
 
@@ -283,7 +285,7 @@
               <span class="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-app-primary px-1 text-[9px] font-bold text-app-pfg">{badgeText(cart.count)}</span>
             {/if}
           </a>
-          <a href={authedHref('/orders')} class="relative grid h-9 w-9 place-items-center rounded-full hover:bg-ink-100" aria-label="Pesanan">
+          <a href={authedHref('/orders')} class="relative grid h-9 w-9 place-items-center rounded-full hover:bg-ink-100" aria-label={$t('nav.orders')}>
             <Icon name="receipt-text" size={17} class="text-ink-700" />
             {#if activeOrders > 0}
               <span class="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-amber-500 px-1 text-[9px] font-bold text-white">{badgeText(activeOrders)}</span>
@@ -298,7 +300,7 @@
         {/if}
       </div>
 
-      <button on:click={() => mobileOpen = !mobileOpen} class="md:hidden w-10 h-10 grid place-items-center rounded-full hover:bg-ink-100" aria-label="Menu">
+      <button on:click={() => mobileOpen = !mobileOpen} class="md:hidden w-10 h-10 grid place-items-center rounded-full hover:bg-ink-100" aria-label={$t('nav.menu')}>
         <Icon name={mobileOpen ? 'x' : 'menu'} size={20} />
       </button>
     </div>
@@ -308,37 +310,37 @@
     {@const isAdmin = auth.user?.role === 'ADMIN'}
     {@const navItems = isAdmin
       ? [
-          ['Admin Center','/admin','layout-dashboard'],
-          ['Cari toko','/vendors','store'],
-          ['Opsi pembayaran','/payment-info','credit-card'],
-          ['FAQ','/help','circle-help'],
+          [$t('nav.adminCenter'),'/admin','layout-dashboard'],
+          [$t('nav.findStore'),'/vendors','store'],
+          [$t('nav.paymentOptions'),'/payment-info','credit-card'],
+          [$t('nav.faq'),'/help','circle-help'],
         ]
       : [
-          ['Cari toko','/vendors','store'],
-          ['Opsi pembayaran','/payment-info','credit-card'],
-          ['FAQ','/help','circle-help'],
+          [$t('nav.findStore'),'/vendors','store'],
+          [$t('nav.paymentOptions'),'/payment-info','credit-card'],
+          [$t('nav.faq'),'/help','circle-help'],
         ]}
     <div class="md:hidden border-t border-ink-100 bg-white animate-fadeIn max-h-[calc(100vh-64px)] overflow-y-auto overscroll-contain">
       <div class="container-x py-4 space-y-3 pb-8">
         <form on:submit={search} class="flex items-center gap-2 bg-ink-50 rounded-full pl-4 pr-1.5 py-1.5">
           <Icon name="search" size={16} class="text-ink-400" />
-          <input bind:value={q} on:input={onQueryInput} on:focus={() => { if (q.trim()) suggestOpen = true; }} type="text" placeholder="Cari produk" class="flex-1 bg-transparent text-sm outline-none" />
-          <button type="submit" class="text-xs bg-app-primary text-app-pfg px-3 py-1.5 rounded-full">Cari</button>
+          <input bind:value={q} on:input={onQueryInput} on:focus={() => { if (q.trim()) suggestOpen = true; }} type="text" placeholder={$t('header.searchProduct')} class="flex-1 bg-transparent text-sm outline-none" />
+          <button type="submit" class="text-xs bg-app-primary text-app-pfg px-3 py-1.5 rounded-full">{$t('header.searchBtn')}</button>
         </form>
         {#if suggestOpen && (suggestions.products.length || suggestions.vendors.length || suggestions.tags.length || suggestLoading || q.trim())}
           <div class="rounded-2xl border border-ink-100 bg-white p-2 shadow-soft">
             {#if suggestLoading}
-              <div class="p-3 text-xs text-ink-500">Mencari...</div>
+              <div class="p-3 text-xs text-ink-500">{$t('header.searching')}</div>
             {:else}
               <button type="button" on:click={search} class="mb-1 flex w-full items-center gap-2 rounded-xl px-2 py-2 text-left hover:bg-ink-50">
                 <span class="grid h-9 w-9 place-items-center rounded-xl bg-app-primary/10 text-app-primary"><Icon name="search" size={15} /></span>
                 <span class="min-w-0 flex-1">
-                  <span class="block text-sm font-semibold">Cari kata kunci "{q.trim()}"</span>
-                  <span class="block text-xs text-ink-500">Lihat hasil lengkap</span>
+                  <span class="block text-sm font-semibold">{$t('header.searchKeyword')} "{q.trim()}"</span>
+                  <span class="block text-xs text-ink-500">{$t('header.seeFull')}</span>
                 </span>
               </button>
               {#if suggestions.products.length}
-                <div class="px-3 py-1.5 text-[10px] uppercase tracking-widest text-ink-400">Produk</div>
+                <div class="px-3 py-1.5 text-[10px] uppercase tracking-widest text-ink-400">{$t('header.products')}</div>
                 {#each suggestions.products.slice(0, 4) as p}
                   <button type="button" on:click={() => pickSuggestion(`/product/${p.slug || p.id}`)} class="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-ink-50">
                     <img src={p.image} alt="" class="h-9 w-9 shrink-0 rounded-lg object-cover" />
@@ -350,7 +352,7 @@
                 {/each}
               {/if}
               {#if suggestions.vendors.length}
-                <div class="mt-1 px-3 py-1.5 text-[10px] uppercase tracking-widest text-ink-400">Toko</div>
+                <div class="mt-1 px-3 py-1.5 text-[10px] uppercase tracking-widest text-ink-400">{$t('header.stores')}</div>
                 {#each suggestions.vendors.slice(0, 3) as v}
                   <button type="button" on:click={() => pickSuggestion(v.username ? `/${v.username}` : `/vendors/${v.id}`)} class="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-ink-50">
                     <img src={v.avatar} alt="" class="h-9 w-9 shrink-0 rounded-full object-cover" />
@@ -362,7 +364,7 @@
                 {/each}
               {/if}
               {#if suggestions.tags.length}
-                <div class="mt-1 px-3 py-1.5 text-[10px] uppercase tracking-widest text-ink-400">Tag</div>
+                <div class="mt-1 px-3 py-1.5 text-[10px] uppercase tracking-widest text-ink-400">{$t('header.tag')}</div>
                 <div class="flex flex-wrap gap-1.5 px-2 pb-1">
                   {#each suggestions.tags.slice(0, 5) as t}
                     <button type="button" on:click={() => pickSuggestion(`/products?tag=${t.slug}`)} class="rounded-full bg-ink-100 px-2.5 py-1 text-xs hover:bg-app-primary hover:text-app-pfg">#{t.slug}</button>
@@ -384,21 +386,21 @@
               {#if auth.user.vendor_id}
                 <a href={auth.user.vendor_status === 'APPROVED' ? '/seller/dashboard' : '/seller/pending'} on:click={() => mobileOpen = false} class="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-ink-50">
                   <Icon name={auth.user.vendor_status === 'APPROVED' ? 'store' : 'clock'} size={16} class="text-ink-500" />
-                  <span>{auth.user.vendor_status === 'APPROVED' ? 'Seller Center' : 'Status Toko'}</span>
+                  <span>{auth.user.vendor_status === 'APPROVED' ? $t('nav.sellerCenter') : $t('nav.storeStatus')}</span>
                 </a>
               {:else}
                 <a href="/seller/register" on:click={() => mobileOpen = false} class="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-ink-50">
                   <Icon name="store" size={16} class="text-ink-500" />
-                  <span>Buka Toko</span>
+                  <span>{$t('nav.openStore')}</span>
                 </a>
               {/if}
             {/if}
             <button on:click={() => { logout(); mobileOpen = false; }} class="flex items-center gap-3 text-left px-3 py-2.5 rounded-lg hover:bg-ink-50 text-red-600">
               <Icon name="log-out" size={16} />
-              <span>Keluar</span>
+              <span>{$t('nav.logout')}</span>
             </button>
           {:else}
-            <a href="/login" on:click={() => mobileOpen = false} class="btn-primary btn-md mt-2">Masuk</a>
+            <a href="/login" on:click={() => mobileOpen = false} class="btn-primary btn-md mt-2">{$t('nav.login')}</a>
           {/if}
         </nav>
       </div>

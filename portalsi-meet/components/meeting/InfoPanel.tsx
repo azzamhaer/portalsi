@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useT } from '@/lib/i18n';
 import { useLocalParticipant } from '@livekit/components-react';
 import { ConnectionQuality } from 'livekit-client';
 import { X, Copy, Check, Eye, EyeOff, Clock, Shield, Pencil, Save, Trash2, Loader2 } from 'lucide-react';
 
 function SignalBars() {
+  const { t } = useT();
   const { localParticipant } = useLocalParticipant();
   const [quality, setQuality] = useState(localParticipant.connectionQuality);
 
@@ -125,7 +127,7 @@ export function InfoPanel({ roomId, isHost, password, startTime, onClose, allowR
         {isHost && (
           <div className="space-y-2">
             <label className="text-xs font-medium text-white/40 uppercase tracking-wider flex justify-between items-center">
-              <span>Password Room</span>
+              <span>{t('ip.roomPassword')}</span>
             </label>
             
             {editingPw ? (
@@ -188,7 +190,7 @@ export function InfoPanel({ roomId, isHost, password, startTime, onClose, allowR
             <div className="flex items-center gap-2">
               <div className="flex-1 bg-white/[0.05] border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-white/80">{localParticipant.name || 'Anonim'}</div>
               {canRename && (
-                <button onClick={() => { setNewName(localParticipant.name || ''); setEditing(true); }} className="glass-button rounded-xl p-2.5 shrink-0" title="Ganti Nama">
+                <button onClick={() => { setNewName(localParticipant.name || ''); setEditing(true); }} className="glass-button rounded-xl p-2.5 shrink-0" title={t('ip.rename')}>
                   <Pencil className="h-4 w-4 text-white/70" />
                 </button>
               )}
