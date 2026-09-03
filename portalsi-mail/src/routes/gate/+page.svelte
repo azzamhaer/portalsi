@@ -1,17 +1,15 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { KeyRound } from '@lucide/svelte';
+	import { t } from '$lib/i18n';
 	let { form } = $props();
 	let submitting = $state(false);
 </script>
 
 <div class="card">
 	<div class="lock"><KeyRound size={22} /></div>
-	<h1>Akses beta</h1>
-	<p class="sub">
-		Portal SI Mail masih tahap beta. Masukkan <b>master password</b> dari admin untuk melanjutkan
-		ke pembuatan email &amp; webmail.
-	</p>
+	<h1>{$t('gate.title')}</h1>
+	<p class="sub">{$t('gate.body')}</p>
 
 	{#if form?.message}<div class="err">{form.message}</div>{/if}
 
@@ -26,11 +24,11 @@
 		}}
 	>
 		<label class="field">
-			Master password
+			{$t('gate.placeholder')}
 			<input name="master_password" type="password" autocomplete="off" required autofocus />
 		</label>
 		<button class="btn" disabled={submitting}>
-			{#if submitting}<span class="spin"></span>{:else}Buka akses{/if}
+			{#if submitting}<span class="spin"></span>{:else}{$t('gate.submit')}{/if}
 		</button>
 	</form>
 </div>

@@ -306,6 +306,7 @@ menyinkronkan lintas subdomain.)
   di-i18n-kan via `key` (inbox/sent/…), bukan label server.
 - Next.js (meet): dictionary + context/provider, toggle floating.
 
-**Status rollout:** Landing ✅. Berikutnya: Mail (portalsi-mail + sekolahimpian-mail, kode kembar →
-kerjakan sekali lalu salin), Meet, Marketplace, App. Terjemahan Inggris harus natural/rapi, bukan
-harfiah. Cookie nama: `portalsi_lang` (semua *.portalsi.com), `sim_lang` (sekolahimpian).
+**Status rollout:** Landing ✅. Mail ✅ (portalsi-mail + sekolahimpian-mail; store `src/lib/i18n.ts`
++ `$t()`, toggle di Pengaturan→Tampilan, init lang dari cookie via `+layout.server.ts`). Berikutnya:
+Meet, Marketplace, App. Terjemahan Inggris harus natural/rapi, bukan harfiah.
+Cookie nama: `portalsi_lang` (semua *.portalsi.com), `sim_lang` (sekolahimpian).

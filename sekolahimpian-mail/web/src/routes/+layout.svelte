@@ -1,12 +1,14 @@
 <script lang="ts">
 	import { LogOut, LayoutGrid, HelpCircle } from '@lucide/svelte';
 	import { page } from '$app/stores';
+	import { initLang, t } from '$lib/i18n';
 	let { data, children } = $props();
 	let path = $derived($page.url.pathname);
 	let isAuth = $derived(path === '/login' || path === '/register');
 	let isApp = $derived(path === '/');
 	let flush = $derived(isApp || isAuth);
 	let menuOpen = $state(false);
+	initLang(data.lang as 'id' | 'en' | undefined);
 </script>
 
 <svelte:head>
@@ -26,12 +28,12 @@
 			</a>
 			{#if data.user}
 				<div class="appswitch">
-					<button class="quick" class:active={menuOpen} onclick={() => (menuOpen = !menuOpen)} aria-label="Menu" title="Menu"><LayoutGrid size={18} /></button>
+					<button class="quick" class:active={menuOpen} onclick={() => (menuOpen = !menuOpen)} aria-label={$t('common.close')} title={$t('set.title')}><LayoutGrid size={18} /></button>
 					{#if menuOpen}
-						<button class="menu-backdrop" onclick={() => (menuOpen = false)} aria-label="Tutup"></button>
+						<button class="menu-backdrop" onclick={() => (menuOpen = false)} aria-label={$t('common.close')}></button>
 						<div class="menu">
-							<a href="https://wa.me/6281350880733?text=Assalamu%27alaikum%20wr.%20wb.%20%F0%9F%99%8F%0A%0ASaya%20ingin%20bertanya%20seputar%20layanan%20SI%20Mail.%20Boleh%20dibantu%3F%20Terima%20kasih%20sebelumnya." target="_blank" rel="noopener" class="menu-row"><HelpCircle size={16} /> Bantuan</a>
-							<form method="POST" action="/logout"><button class="menu-row danger" type="submit"><LogOut size={16} /> Keluar</button></form>
+							<a href="https://wa.me/6281350880733?text=Assalamu%27alaikum%20wr.%20wb.%20%F0%9F%99%8F%0A%0ASaya%20ingin%20bertanya%20seputar%20layanan%20SI%20Mail.%20Boleh%20dibantu%3F%20Terima%20kasih%20sebelumnya." target="_blank" rel="noopener" class="menu-row"><HelpCircle size={16} /> {$t('menu.help')}</a>
+							<form method="POST" action="/logout"><button class="menu-row danger" type="submit"><LogOut size={16} /> {$t('menu.logout')}</button></form>
 						</div>
 					{/if}
 				</div>

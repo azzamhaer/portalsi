@@ -2,6 +2,7 @@
 	import { Eye, EyeOff, LoaderCircle, LockKeyhole, UserRound } from '@lucide/svelte';
 	import AuthFields from '$lib/components/auth/AuthFields.svelte';
 	import AuthShell from '$lib/components/auth/AuthShell.svelte';
+	import { t } from '$lib/i18n';
 	let { form, data } = $props();
 	let reveal = $state(false);
 	let loginValue = $state(form?.login ?? '');
@@ -13,41 +14,41 @@
 
 <AuthShell>
 	<div class="heading">
-		<p class="eyebrow">SELAMAT DATANG KEMBALI</p>
-		<h1>Masuk ke Sekolah Impian Mail</h1>
-		<p>Buka email dan lanjutkan bisnismu.</p>
+		<p class="eyebrow">{$t('login.eyebrow')}</p>
+		<h1>{$t('login.title')}</h1>
+		<p>{$t('login.sub')}</p>
 	</div>
-	{#if data?.verified === '1'}<div class="form-ok" role="status">Email berhasil diverifikasi. Silakan masuk.</div>{/if}
-	{#if data?.verified === '0'}<div class="form-alert" role="alert">Tautan verifikasi tidak valid atau kedaluwarsa. Coba masuk lalu kirim ulang tautannya.</div>{/if}
-	{#if data?.emailchanged === '1'}<div class="form-ok" role="status">Email pemulihan berhasil diganti.</div>{/if}
-	{#if data?.emailchanged === '0'}<div class="form-alert" role="alert">Tautan ganti email tidak valid atau kedaluwarsa.</div>{/if}
+	{#if data?.verified === '1'}<div class="form-ok" role="status">{$t('login.verifiedOk')}</div>{/if}
+	{#if data?.verified === '0'}<div class="form-alert" role="alert">{$t('login.verifiedBad')}</div>{/if}
+	{#if data?.emailchanged === '1'}<div class="form-ok" role="status">{$t('login.emailChangedOk')}</div>{/if}
+	{#if data?.emailchanged === '0'}<div class="form-alert" role="alert">{$t('login.emailChangedBad')}</div>{/if}
 	{#if form?.resent}
-		<div class="form-ok" role="status">{form.message || 'Tautan verifikasi baru telah dikirim. Cek email kamu.'}</div>
+		<div class="form-ok" role="status">{form.message || $t('login.resent')}</div>
 	{:else if form?.message}
 		<div class="form-alert" role="alert">{form.message}</div>
 	{/if}
 	{#if form?.unverified && form?.email}
 		<form method="POST" action="?/resend" class="resend-form">
 			<input type="hidden" name="email" value={form.email} />
-			<button type="submit" class="resend-btn">Kirim ulang tautan verifikasi ke {form.email}</button>
+			<button type="submit" class="resend-btn">{$t('login.resendTo')} {form.email}</button>
 		</form>
 	{/if}
 	<form method="POST" action="?/login" onsubmit={() => (submitting = true)}>
 		<AuthFields>
 			<label>
-				<span>Username atau email</span>
+				<span>{$t('field.loginId')}</span>
 				<div class="input-icon">
 					<UserRound size={18} /><input name="login" autocomplete="username" placeholder="nama@contoh.id" bind:value={loginValue} />
 				</div>
 			</label>
 			<label>
-				<span>Kata sandi</span>
+				<span>{$t('field.password')}</span>
 				<div class="input-icon">
 					<LockKeyhole size={18} /><input
 						name="password"
 						type={reveal ? 'text' : 'password'}
 						autocomplete="current-password"
-						placeholder="Masukkan kata sandi"
+						placeholder={$t('login.pwPlaceholder')}
 						bind:value={passwordValue}
 					/><button type="button" onclick={() => (reveal = !reveal)} aria-label="Tampilkan kata sandi">
 						{#if reveal}<EyeOff size={18} />{:else}<Eye size={18} />{/if}
@@ -55,11 +56,11 @@
 				</div>
 			</label>
 			<button class="auth-primary" type="submit" disabled={submitting}>
-				{#if submitting}<LoaderCircle size={17} class="button-spin" /> Memproses…{:else}Masuk{/if}
+				{#if submitting}<LoaderCircle size={17} class="button-spin" /> {$t('common.processing')}{:else}{$t('login.submit')}{/if}
 			</button>
 		</AuthFields>
 	</form>
-	<p class="switch">Belum punya akun? <a href="/register">Daftar sekarang</a></p>
+	<p class="switch">{$t('login.noAccount')} <a href="/register">{$t('login.registerNow')}</a></p>
 </AuthShell>
 
 <style>

@@ -2,9 +2,9 @@ import { derived, writable } from 'svelte/store';
 
 export type Lang = 'id' | 'en';
 
-// Cookie BERSAMA lintas subdomain *.portalsi.com — ganti bahasa di app mana pun, semua ikut.
-export const LANG_COOKIE = 'portalsi_lang';
-const COOKIE_DOMAIN = '.portalsi.com';
+// Cookie BERSAMA lintas subdomain *.sekolahimpian.com (domain berbeda dari Portal SI).
+export const LANG_COOKIE = 'sim_lang';
+const COOKIE_DOMAIN = '.sekolahimpian.com';
 
 export const lang = writable<Lang>('id');
 
@@ -37,7 +37,7 @@ export function setLang(l: Lang) {
 export function initLang(initial?: Lang) {
 	let l: Lang = initial === 'en' || initial === 'id' ? initial : 'id';
 	if (typeof document !== 'undefined') {
-		const m = document.cookie.match(/(?:^|;\s*)portalsi_lang=(id|en)/);
+		const m = document.cookie.match(/(?:^|;\s*)sim_lang=(id|en)/);
 		if (m) l = m[1] as Lang;
 		else {
 			try {
@@ -70,7 +70,7 @@ const DICT: Record<Lang, Record<string, string>> = {
 		'common.close': 'Tutup',
 		// ── login ──
 		'login.eyebrow': 'SELAMAT DATANG KEMBALI',
-		'login.title': 'Masuk ke Portal SI Mail',
+		'login.title': 'Masuk ke Sekolah Impian Mail',
 		'login.sub': 'Buka email dan lanjutkan bisnismu.',
 		'field.loginId': 'Username atau email',
 		'field.password': 'Kata sandi',
@@ -87,7 +87,7 @@ const DICT: Record<Lang, Record<string, string>> = {
 		'login.fill': 'Isi email/username dan password.',
 		// ── register ──
 		'reg.eyebrow': 'MULAI PERJALANAN ANDA',
-		'reg.title': 'Buat akun Portal SI',
+		'reg.title': 'Buat akun Sekolah Impian',
 		'reg.sub': 'Karena jutaan langkah dimulai dari satu langkah.',
 		'field.fullName': 'Nama lengkap',
 		'field.username': 'Username',
@@ -101,7 +101,7 @@ const DICT: Record<Lang, Record<string, string>> = {
 		'reg.signin': 'Masuk',
 		// ── gate ──
 		'gate.title': 'Akses beta',
-		'gate.body': 'Portal SI Mail masih tahap beta. Masukkan master password dari admin untuk melanjutkan.',
+		'gate.body': 'Sekolah Impian Mail masih tahap beta. Masukkan master password dari admin untuk melanjutkan.',
 		'gate.placeholder': 'Master password',
 		'gate.submit': 'Buka akses',
 		// ── setup ──
@@ -129,7 +129,33 @@ const DICT: Record<Lang, Record<string, string>> = {
 		'set.languageNote': 'Preferensi bahasa berlaku di seluruh layanan Portal SI.',
 		'set.saved': 'Pengaturan disimpan',
 		'set.changePw': 'Ganti kata sandi',
-		'set.pwInfo': 'Kata sandi ini dipakai untuk masuk ke akun Portal SI Mail kamu.',
+		'set.pwInfo': 'Kata sandi ini dipakai untuk masuk ke akun SI Mail kamu.',
+		'set.photoOnlyDomain': 'Foto profil hanya terlihat oleh sesama pengguna @sekolahimpian.com (mis. saat kalian berkirim email). Pengguna email lain seperti Gmail tidak melihatnya.',
+		'set.changePhoto': 'Ubah foto (maks 2MB)',
+		'set.uploading': 'Mengunggah…',
+		'set.fullName': 'Nama lengkap',
+		'set.fullNameNote': 'Nama ini juga dipakai sebagai nama pengirim pada email keluar.',
+		'set.username': 'Username',
+		'set.displayNameNote': 'Nama tampilan mengikuti nama akun — tidak bisa diubah terpisah.',
+		'set.emailFixedSekim': 'Alamat @sekolahimpian.com tidak bisa diubah setelah dibuat.',
+		'set.saveProfile': 'Simpan profil',
+		'set.changeRecoveryEmail': 'Ganti email pemulihan',
+		'set.emailNow': 'Email sekarang:',
+		'set.emailChangeHint': 'Tautan konfirmasi dikirim ke email lama; setelah dikonfirmasi, email baru mendapat pemberitahuan sukses.',
+		'set.sendConfirmLink': 'Kirim tautan konfirmasi',
+		'set.newEmailPlaceholder': 'email-baru@contoh.com',
+		'reset.eyebrow': 'KEAMANAN AKUN',
+		'reset.title': 'Setel kata sandi baru',
+		'reset.sub': 'Buat kata sandi baru untuk akun SI Mail kamu.',
+		'reset.repeat': 'Ulangi kata sandi',
+		'reset.done': 'Kata sandi berhasil diganti.',
+		'reset.notice': 'Kata sandi ini dipakai untuk masuk ke akun SI Mail kamu.',
+		'reset.newPassword': 'Kata sandi baru',
+		'reset.save': 'Simpan kata sandi',
+		'reset.saving': 'Menyimpan…',
+		'reset.backToLogin': 'Kembali ke halaman masuk',
+		'reset.toLogin': 'Ke halaman masuk',
+		'reset.invalid': 'Tautan reset tidak lengkap atau tidak valid. Silakan minta tautan baru dari halaman masuk.',
 		'set.sendLink': 'Kirim tautan ke email',
 		'set.emailFixed': 'Alamat email tidak bisa diubah setelah dibuat.',
 		'set.photoAccount': 'Foto profil akun',
@@ -256,7 +282,7 @@ const DICT: Record<Lang, Record<string, string>> = {
 		'common.cancel': 'Cancel',
 		'common.close': 'Close',
 		'login.eyebrow': 'WELCOME BACK',
-		'login.title': 'Sign in to Portal SI Mail',
+		'login.title': 'Sign in to Sekolah Impian Mail',
 		'login.sub': 'Open your inbox and get back to it.',
 		'field.loginId': 'Username or email',
 		'field.password': 'Password',
@@ -272,7 +298,7 @@ const DICT: Record<Lang, Record<string, string>> = {
 		'login.resendTo': 'Resend verification link to',
 		'login.fill': 'Enter your email/username and password.',
 		'reg.eyebrow': 'START YOUR JOURNEY',
-		'reg.title': 'Create your Portal SI account',
+		'reg.title': 'Create your Sekolah Impian account',
 		'reg.sub': 'Because every great journey begins with a single step.',
 		'field.fullName': 'Full name',
 		'field.username': 'Username',
@@ -285,7 +311,7 @@ const DICT: Record<Lang, Record<string, string>> = {
 		'reg.haveAccount': 'Already have an account?',
 		'reg.signin': 'Sign in',
 		'gate.title': 'Beta access',
-		'gate.body': 'Portal SI Mail is still in beta. Enter the master password from your admin to continue.',
+		'gate.body': 'Sekolah Impian Mail is still in beta. Enter the master password from your admin to continue.',
 		'gate.placeholder': 'Master password',
 		'gate.submit': 'Unlock access',
 		'setup.title': 'Create your email',
@@ -311,7 +337,33 @@ const DICT: Record<Lang, Record<string, string>> = {
 		'set.languageNote': 'Your language preference applies across all Portal SI services.',
 		'set.saved': 'Settings saved',
 		'set.changePw': 'Change password',
-		'set.pwInfo': 'This password is used to sign in to your Portal SI Mail account.',
+		'set.pwInfo': 'This password is used to sign in to your SI Mail account.',
+		'set.photoOnlyDomain': 'Your profile photo is only visible to fellow @sekolahimpian.com users (e.g. when you email each other). Users on other email providers like Gmail will not see it.',
+		'set.changePhoto': 'Change photo (max 2MB)',
+		'set.uploading': 'Uploading…',
+		'set.fullName': 'Full name',
+		'set.fullNameNote': 'This name is also used as the sender name on outgoing email.',
+		'set.username': 'Username',
+		'set.displayNameNote': 'The display name follows your account name — it cannot be changed separately.',
+		'set.emailFixedSekim': 'Your @sekolahimpian.com address cannot be changed once created.',
+		'set.saveProfile': 'Save profile',
+		'set.changeRecoveryEmail': 'Change recovery email',
+		'set.emailNow': 'Current email:',
+		'set.emailChangeHint': 'A confirmation link is sent to your old email; once confirmed, the new email receives a success notice.',
+		'set.sendConfirmLink': 'Send confirmation link',
+		'set.newEmailPlaceholder': 'new-email@example.com',
+		'reset.eyebrow': 'ACCOUNT SECURITY',
+		'reset.title': 'Set a new password',
+		'reset.sub': 'Create a new password for your SI Mail account.',
+		'reset.repeat': 'Repeat password',
+		'reset.done': 'Password changed successfully.',
+		'reset.notice': 'This password is used to sign in to your SI Mail account.',
+		'reset.newPassword': 'New password',
+		'reset.save': 'Save password',
+		'reset.saving': 'Saving…',
+		'reset.backToLogin': 'Back to sign in',
+		'reset.toLogin': 'Go to sign in',
+		'reset.invalid': 'The reset link is incomplete or invalid. Please request a new one from the sign-in page.',
 		'set.sendLink': 'Send link to email',
 		'set.emailFixed': 'Your email address cannot be changed once created.',
 		'set.photoAccount': 'Account profile photo',

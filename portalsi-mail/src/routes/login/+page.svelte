@@ -2,6 +2,7 @@
 	import { Eye, EyeOff, LoaderCircle, LockKeyhole, UserRound } from '@lucide/svelte';
 	import AuthFields from '$lib/components/auth/AuthFields.svelte';
 	import AuthShell from '$lib/components/auth/AuthShell.svelte';
+	import { t } from '$lib/i18n';
 	let { form } = $props();
 	let reveal = $state(false);
 	let loginValue = $state(form?.login ?? '');
@@ -13,27 +14,27 @@
 
 <AuthShell>
 	<div class="heading">
-		<p class="eyebrow">SELAMAT DATANG KEMBALI</p>
-		<h1>Masuk ke Portal SI Mail</h1>
-		<p>Buka email dan lanjutkan bisnismu.</p>
+		<p class="eyebrow">{$t('login.eyebrow')}</p>
+		<h1>{$t('login.title')}</h1>
+		<p>{$t('login.sub')}</p>
 	</div>
 	{#if form?.message}<div class="form-alert" role="alert">{form.message}</div>{/if}
 	<form method="POST" onsubmit={() => (submitting = true)}>
 		<AuthFields>
 			<label>
-				<span>Username atau email</span>
+				<span>{$t('field.loginId')}</span>
 				<div class="input-icon">
 					<UserRound size={18} /><input name="login" autocomplete="username" placeholder="nama@contoh.id" bind:value={loginValue} />
 				</div>
 			</label>
 			<label>
-				<span>Kata sandi</span>
+				<span>{$t('field.password')}</span>
 				<div class="input-icon">
 					<LockKeyhole size={18} /><input
 						name="password"
 						type={reveal ? 'text' : 'password'}
 						autocomplete="current-password"
-						placeholder="Masukkan kata sandi"
+						placeholder={$t('login.pwPlaceholder')}
 						bind:value={passwordValue}
 					/><button type="button" onclick={() => (reveal = !reveal)} aria-label="Tampilkan kata sandi">
 						{#if reveal}<EyeOff size={18} />{:else}<Eye size={18} />{/if}
@@ -41,11 +42,11 @@
 				</div>
 			</label>
 			<button class="auth-primary" type="submit" disabled={submitting}>
-				{#if submitting}<LoaderCircle size={17} class="button-spin" /> Memproses…{:else}Masuk{/if}
+				{#if submitting}<LoaderCircle size={17} class="button-spin" /> {$t('common.processing')}{:else}{$t('login.submit')}{/if}
 			</button>
 		</AuthFields>
 	</form>
-	<p class="switch">Belum punya akun? <a href="/register">Daftar sekarang</a></p>
+	<p class="switch">{$t('login.noAccount')} <a href="/register">{$t('login.registerNow')}</a></p>
 </AuthShell>
 
 <style>

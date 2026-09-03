@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { get } from 'svelte/store';
 	import { t, lang, setLang } from '$lib/i18n';
+	const tr = (k: string) => get(t)(k);
 	import { navigating } from '$app/stores';
 	import { tick, onMount } from 'svelte';
 	import {
@@ -170,7 +172,7 @@
 		if (pinned.includes(uid)) pinned = pinned.filter((u) => u !== uid);
 		else {
 			if (pinned.length >= 3) {
-				toast('Maksimal 3 email disematkan.');
+				toast(tr('pin.max'));
 				return;
 			}
 			pinned = [...pinned, uid];
@@ -200,7 +202,7 @@
 	let pages = $derived(live?.pages ?? data.pages);
 	let curPage = $derived(live?.page ?? data.page);
 	let curFolder = $derived(folders.find((f: any) => f.key === data.folderKey));
-	let curLabel = $derived(curFolder?.label ?? 'Kotak Masuk');
+	let curLabel = $derived($t('folder.' + (curFolder?.key ?? 'inbox')));
 	let pageTitle = $derived(
 		(curFolder?.unseen ? `(${curFolder.unseen}) ` : '') + `${curLabel} — Portal SI Mail`
 	);
@@ -218,7 +220,7 @@
 				const d = await r.json();
 				const top = d.messages?.[0]?.uid ?? 0;
 				if (data.folderKey === 'inbox' && data.page === 1 && !data.q && prevTop && top > prevTop) {
-					toast('Email baru masuk!');
+					toast(tr('list.newMail'));
 				}
 				prevTop = top;
 				live = d;
@@ -290,7 +292,7 @@
 			localStorage.setItem('ps_mail_dark', darkMode ? '1' : '0');
 		}
 		settingsOpen = false;
-		toast('Pengaturan disimpan');
+		toast(tr('set.saved'));
 	}
 
 	// nama pengirim efektif (ikut akun atau kustom)
@@ -323,7 +325,7 @@
 	let filtered = $derived(filter === 'unread' ? visible.filter((m: any) => !seenOf(m)) : visible);
 	let pinnedItems = $derived(data.folderKey === 'inbox' ? filtered.filter((m: any) => isPinned(m.uid)) : []);
 	let groups = $derived.by(() => {
-		const order = ['Hari ini', 'Kemarin', '7 hari terakhir', 'Bulan ini', 'Lebih lama'];
+		const order = ['today', 'yesterday', 'week', 'month', 'older'];
 		const pinnedSet = new Set(pinnedItems.map((m: any) => m.uid));
 		const map = new Map<string, any[]>();
 		for (const m of filtered) {
@@ -336,17 +338,17 @@
 	});
 
 	function groupOf(iso: string | null): string {
-		if (!iso) return 'Lebih lama';
+		if (!iso) return 'older';
 		const d = new Date(iso);
 		const now = new Date();
 		const sd = new Date(d.getFullYear(), d.getMonth(), d.getDate());
 		const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 		const diff = Math.round((today.getTime() - sd.getTime()) / 86400000);
-		if (diff <= 0) return 'Hari ini';
-		if (diff === 1) return 'Kemarin';
-		if (diff < 7) return '7 hari terakhir';
-		if (d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()) return 'Bulan ini';
-		return 'Lebih lama';
+		if (diff <= 0) return 'today';
+		if (diff === 1) return 'yesterday';
+		if (diff < 7) return 'week';
+		if (d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()) return 'month';
+		return 'older';
 	}
 
 	// ── buka pesan tanpa reload ──
@@ -368,10 +370,10 @@
 				selected = d.message;
 				thread = d.thread ?? [];
 			} else {
-				toast('Gagal memuat pesan.');
+				toast(tr('msg.loadFail'));
 			}
 		} catch {
-			toast('Gagal memuat pesan.');
+			toast(tr('msg.loadFail'));
 		} finally {
 			loadingMsg = false;
 		}
@@ -436,7 +438,7 @@
 		await Promise.allSettled(promises);
 		bgLabel = '';
 		bgCount = 0;
-		toast(`${label} selesai`);
+		toast(`${label} ${tr('bg.done')}`);
 	}
 	// hilangkan baris seketika, kerjakan di latar
 	function optimisticRemove(uids: number[], serverAction: string, label: string) {
@@ -457,27 +459,27 @@
 	let inArchive = $derived(data.folderKey === 'archive');
 	let inTrash = $derived(data.folderKey === 'trash');
 	function doArchive(uids: number[]) {
-		if (inArchive) optimisticRemove(uids, 'unarchive', 'Memindahkan ke Kotak Masuk');
-		else optimisticRemove(uids, 'archive', 'Mengarsipkan');
+		if (inArchive) optimisticRemove(uids, 'unarchive', tr('bg.toInbox'));
+		else optimisticRemove(uids, 'archive', tr('bg.archiving'));
 	}
 	function doTrash(uids: number[], confirmPurge = true) {
 		if (inTrash) {
-			if (confirmPurge && typeof window !== 'undefined' && !window.confirm('Hapus permanen email ini? Tidak bisa dikembalikan.')) return;
-			optimisticRemove(uids, 'trash', 'Menghapus permanen');
+			if (confirmPurge && typeof window !== 'undefined' && !window.confirm(tr('confirm.purgeOne'))) return;
+			optimisticRemove(uids, 'trash', tr('bg.purging'));
 		} else {
-			optimisticRemove(uids, 'trash', 'Memindahkan ke sampah');
+			optimisticRemove(uids, 'trash', tr('bg.toTrash'));
 		}
 	}
 	function bulk(action: 'archive' | 'trash' | 'read') {
 		if (!checked.size) return;
 		const uids = [...checked];
-		if (action === 'trash' && inTrash && typeof window !== 'undefined' && !window.confirm(`Hapus permanen ${uids.length} email? Tidak bisa dikembalikan.`)) return;
+		if (action === 'trash' && inTrash && typeof window !== 'undefined' && !window.confirm(tr('confirm.purgeMany'))) return;
 		checked = new Set();
 		if (action === 'read') {
 			const so = { ...seenOverride };
 			uids.forEach((u) => (so[u] = true));
 			seenOverride = so;
-			runBg('Menandai dibaca', uids.map((uid) => postAction('toggleRead', { uid, folder_path: data.folderPath, seen: 1 })));
+			runBg(tr('bg.marking'), uids.map((uid) => postAction('toggleRead', { uid, folder_path: data.folderPath, seen: 1 })));
 		} else if (action === 'archive') {
 			doArchive(uids);
 		} else {
@@ -560,7 +562,7 @@
 		const input = e.target as HTMLInputElement;
 		if (input.files) {
 			const next = [...files, ...Array.from(input.files)];
-			if (next.reduce((s, f) => s + f.size, 0) > MAX_ATTACH_TOTAL) toast(`Total lampiran maksimal ${fmtSize(MAX_ATTACH_TOTAL)}.`);
+			if (next.reduce((s, f) => s + f.size, 0) > MAX_ATTACH_TOTAL) toast(`${tr('attach.max')} ${fmtSize(MAX_ATTACH_TOTAL)}.`);
 			else files = next;
 		}
 		input.value = '';
@@ -672,7 +674,7 @@
 			const html = msg?.html || (msg?.text ? `<div>${escapeHtml(msg.text).replace(/\n/g, '<br>')}</div>` : '');
 			await openComposer(html);
 		} catch {
-			toast('Gagal membuka draf.');
+			toast(tr('draft.openFail'));
 		}
 	}
 
@@ -746,9 +748,9 @@
 		<nav class="folders">
 			{#each folders as f (f.key)}
 				{@const Icon = folderIcon[f.key] ?? Inbox}
-				<a href="/?folder={f.key}" class="fitem" class:active={f.key === data.folderKey} title={f.label} onclick={() => { if (typeof window !== 'undefined' && window.innerWidth <= 820) sidebarOpen = false; }}>
+				<a href="/?folder={f.key}" class="fitem" class:active={f.key === data.folderKey} title={$t('folder.' + f.key)} onclick={() => { if (typeof window !== 'undefined' && window.innerWidth <= 820) sidebarOpen = false; }}>
 					<span class="fico"><Icon size={19} /></span>
-					<span class="lbl">{f.label}</span>
+					<span class="lbl">{$t('folder.' + f.key)}</span>
 					{#if f.unseen}<b class="count">{f.unseen}</b>{/if}
 				</a>
 			{/each}
@@ -776,14 +778,14 @@
 	<section class="listpane" class:hide-on-mobile={selected || loadingMsg}>
 		<div class="lp-head">
 			<button class="hamb only-mobile" onclick={toggleSidebar} aria-label="Menu"><Menu size={20} /></button>
-			<button class="chk head" class:on={selectMode} onclick={() => { selectMode = !selectMode; if (!selectMode) checked = new Set(); }} title="Pilih email" aria-label="Mode pilih">
+			<button class="chk head" class:on={selectMode} onclick={() => { selectMode = !selectMode; if (!selectMode) checked = new Set(); }} title={$t('list.pickMode')} aria-label={$t('list.pickMode')}>
 				{#if selectMode}<span class="tick">✓</span>{/if}
 			</button>
 			<div class="segs">
-				<button class:on={filter === 'all'} onclick={() => (filter = 'all')}>Semua</button>
-				<button class:on={filter === 'unread'} onclick={() => (filter = 'unread')}>Belum dibaca</button>
+				<button class:on={filter === 'all'} onclick={() => (filter = 'all')}>{$t('list.all')}</button>
+				<button class:on={filter === 'unread'} onclick={() => (filter = 'unread')}>{$t('list.unread')}</button>
 			</div>
-			<button class="icon-btn" class:spinning={refreshing} onclick={refresh} title="Muat ulang" aria-label="Muat ulang"><RefreshCw size={17} /></button>
+			<button class="icon-btn" class:spinning={refreshing} onclick={refresh} title={$t('list.refresh')} aria-label={$t('list.refresh')}><RefreshCw size={17} /></button>
 		</div>
 
 		<div class="lp-search-wrap">
@@ -792,7 +794,7 @@
 				<input
 					name="q"
 					bind:value={sq}
-					placeholder={`Cari ${curLabel.toLowerCase()}…`}
+					placeholder={`${$t('list.searchIn')} ${$t('folder.' + data.folderKey).toLowerCase()}…`}
 					oninput={onSearchInput}
 					onfocus={() => { if (sq.trim().length) searchOpen = true; }}
 				/>
@@ -803,9 +805,9 @@
 				<button class="s-backdrop" onclick={() => (searchOpen = false)} aria-label="Tutup"></button>
 				<div class="s-results">
 					{#if searchLoading}
-						<div class="s-loading"><span class="spin dark"></span> Mencari…</div>
+						<div class="s-loading"><span class="spin dark"></span> {$t('search.searching')}</div>
 					{:else if searchResults.length === 0}
-						<div class="s-empty">{sq.trim().length < 2 ? 'Ketik minimal 2 huruf…' : `Tidak ada hasil untuk "${sq.trim()}".`}</div>
+						<div class="s-empty">{sq.trim().length < 2 ? $t('search.min') : `${$t('search.noResultsFor')} "${sq.trim()}".`}</div>
 					{:else}
 						{#each searchResults as m (m.uid)}
 							<button class="s-item" onclick={() => openSearchResult(m)}>
@@ -816,7 +818,7 @@
 								</span>
 							</button>
 						{/each}
-						<a class="s-all" href="/?folder={data.folderKey}&q={encodeURIComponent(sq.trim())}">Lihat semua hasil →</a>
+						<a class="s-all" href="/?folder={data.folderKey}&q={encodeURIComponent(sq.trim())}">{$t('search.seeAll')}</a>
 					{/if}
 				</div>
 			{/if}
@@ -825,8 +827,8 @@
 		{#if selectMode || checked.size}
 			<div class="bulkbar">
 				<button class="bb-close" onclick={() => { selectMode = false; checked = new Set(); }} aria-label="Selesai"><X size={16} /></button>
-				<span>{checked.size} dipilih</span>
-				<button class="bb-all" onclick={checkAll}>{allChecked && filtered.length ? 'Batalkan semua' : 'Pilih semua'}</button>
+				<span>{checked.size} {$t('list.selected')}</span>
+				<button class="bb-all" onclick={checkAll}>{allChecked && filtered.length ? $t('list.unselectAll') : $t('list.selectAll')}</button>
 				<div class="bulk-actions">
 					<button onclick={() => bulk('read')} disabled={!checked.size} title="Tandai dibaca"><MailCheck size={16} /></button>
 					<button onclick={() => bulk('archive')} disabled={!checked.size} title="Arsipkan"><Archive size={16} /></button>
@@ -835,29 +837,29 @@
 			</div>
 		{/if}
 		{#if bgCount > 0}
-			<div class="bgbar"><span class="spin dark"></span> {bgLabel}… {bgCount} tersisa</div>
+			<div class="bgbar"><span class="spin dark"></span> {bgLabel}… {bgCount} {$t('bg.left')}</div>
 		{/if}
 		{#if data.folderKey === 'trash' && msgs.length && !trashDismissed}
 			<div class="trash-notice">
-				<div class="tn-text"><Trash2 size={15} /> Pesan di Sampah dihapus permanen setelah 30 hari.</div>
+				<div class="tn-text"><Trash2 size={15} /> {$t('trash.notice')}</div>
 				<div class="tn-actions">
 					<button class="tn-close" onclick={() => (trashDismissed = true)} aria-label="Tutup"><X size={15} /></button>
 					<form
 						method="POST"
 						action="?/emptyTrash"
 						use:enhance={({ cancel }) => {
-							if (typeof window !== 'undefined' && !window.confirm('Kosongkan Sampah sekarang? Semua pesan akan dihapus permanen dan tak bisa dikembalikan.')) {
+							if (typeof window !== 'undefined' && !window.confirm($t('confirm.emptyTrash'))) {
 								cancel();
 								return;
 							}
 							return async ({ update }) => {
 								live = null;
 								await update();
-								toast('Sampah dikosongkan');
+								toast($t('trash.emptied'));
 							};
 						}}
 					>
-						<button class="tn-btn">Bersihkan sampah sekarang</button>
+						<button class="tn-btn">{$t('trash.empty')}</button>
 					</form>
 				</div>
 			</div>
@@ -907,15 +909,15 @@
 			{:else if filtered.length === 0}
 				<div class="empty small">
 					<MailOpen size={38} />
-					<p>{data.q ? 'Tidak ada hasil.' : filter === 'unread' ? 'Semua telah terbaca.' : 'Tidak ada sesuatu disini.'}</p>
+					<p>{data.q ? $t('list.noResults') : filter === 'unread' ? $t('list.allRead') : $t('list.empty')}</p>
 				</div>
 			{:else}
 				{#if pinnedItems.length}
-					<div class="grp-h pin"><Pin size={12} fill="currentColor" /> Disematkan</div>
+					<div class="grp-h pin"><Pin size={12} fill="currentColor" /> {$t('list.pinned')}</div>
 					{#each pinnedItems as m (m.uid)}{@render rowEl(m)}{/each}
 				{/if}
 				{#each groups as g (g.label)}
-					<div class="grp-h">{g.label}</div>
+					<div class="grp-h">{$t('grp.' + g.label)}</div>
 					{#each g.items as m (m.uid)}{@render rowEl(m)}{/each}
 				{/each}
 			{/if}
@@ -944,38 +946,38 @@
 		{:else if selected}
 			<div class="rd-toolbar">
 				<div class="rd-nav">
-					<button class="back-btn" onclick={closeReader}><ArrowLeft size={17} /> Kembali</button>
-					{#if selIndex >= 0}<span class="counter">{selIndex + 1} dari {total}</span>{/if}
-					<button class="icon-btn" disabled={selIndex <= 0} onclick={() => goRel(-1)} aria-label="Sebelumnya"><ChevronLeft size={18} /></button>
-					<button class="icon-btn" disabled={selIndex < 0 || selIndex >= msgs.length - 1} onclick={() => goRel(1)} aria-label="Berikutnya"><ChevronRight size={18} /></button>
+					<button class="back-btn" onclick={closeReader}><ArrowLeft size={17} /> {$t('read.back')}</button>
+					{#if selIndex >= 0}<span class="counter">{selIndex + 1} {$t('read.of')} {total}</span>{/if}
+					<button class="icon-btn" disabled={selIndex <= 0} onclick={() => goRel(-1)} aria-label={$t('read.prev')}><ChevronLeft size={18} /></button>
+					<button class="icon-btn" disabled={selIndex < 0 || selIndex >= msgs.length - 1} onclick={() => goRel(1)} aria-label={$t('read.next')}><ChevronRight size={18} /></button>
 				</div>
 				<div class="rd-tools">
-					<button class="icon-btn only-desktop" class:on={selected.flagged} onclick={() => toggleStar(selected)} aria-label="Bintang"><Star size={18} fill={selected.flagged ? 'currentColor' : 'none'} /></button>
+					<button class="icon-btn only-desktop" class:on={selected.flagged} onclick={() => toggleStar(selected)} aria-label={$t('read.star')}><Star size={18} fill={selected.flagged ? 'currentColor' : 'none'} /></button>
 					{#if data.folderKey === 'inbox'}
-						<button class="icon-btn only-desktop" class:pinon={isPinned(selected.uid)} onclick={() => togglePin(selected.uid)} aria-label="Sematkan"><Pin size={18} fill={isPinned(selected.uid) ? 'currentColor' : 'none'} /></button>
+						<button class="icon-btn only-desktop" class:pinon={isPinned(selected.uid)} onclick={() => togglePin(selected.uid)} aria-label={$t('read.pin')}><Pin size={18} fill={isPinned(selected.uid) ? 'currentColor' : 'none'} /></button>
 					{/if}
-					<button class="icon-btn only-desktop" onclick={() => doArchive([selected.uid])} title={inArchive ? 'Batal arsip' : 'Arsipkan'} aria-label={inArchive ? 'Batal arsip' : 'Arsipkan'}>
+					<button class="icon-btn only-desktop" onclick={() => doArchive([selected.uid])} title={inArchive ? $t('read.unarchiveTitle') : $t('read.archive')} aria-label={inArchive ? $t('read.unarchiveTitle') : $t('read.archive')}>
 						{#if inArchive}<ArchiveRestore size={18} />{:else}<Archive size={18} />{/if}
 					</button>
-					<button class="icon-btn only-desktop" onclick={() => doTrash([selected.uid])} title={inTrash ? 'Hapus permanen' : 'Pindahkan ke sampah'} aria-label={inTrash ? 'Hapus permanen' : 'Hapus'}><Trash2 size={18} /></button>
-					<button class="icon-btn only-desktop" onclick={() => window.print()} aria-label="Cetak"><Printer size={18} /></button>
-					<button class="icon-btn only-desktop" onclick={() => (readerFull = !readerFull)} aria-label="Layar penuh">
+					<button class="icon-btn only-desktop" onclick={() => doTrash([selected.uid])} title={inTrash ? $t('read.purge') : $t('read.trash')} aria-label={inTrash ? $t('read.purge') : $t('read.delete')}><Trash2 size={18} /></button>
+					<button class="icon-btn only-desktop" onclick={() => window.print()} aria-label={$t('read.print')}><Printer size={18} /></button>
+					<button class="icon-btn only-desktop" onclick={() => (readerFull = !readerFull)} aria-label={$t('read.fullscreen')}>
 						{#if readerFull}<Minimize2 size={17} />{:else}<Maximize2 size={17} />{/if}
 					</button>
 					<div class="kebab only-mobile">
-						<button class="icon-btn" onclick={() => (readerMenuOpen = !readerMenuOpen)} aria-label="Aksi lain"><MoreVertical size={20} /></button>
+						<button class="icon-btn" onclick={() => (readerMenuOpen = !readerMenuOpen)} aria-label={$t('read.more')}><MoreVertical size={20} /></button>
 						{#if readerMenuOpen}
-							<button class="menu-backdrop" onclick={() => (readerMenuOpen = false)} aria-label="Tutup"></button>
+							<button class="menu-backdrop" onclick={() => (readerMenuOpen = false)} aria-label={$t('common.close')}></button>
 							<div class="rmenu">
-								<button onclick={() => { toggleStar(selected); readerMenuOpen = false; }}><Star size={17} fill={selected.flagged ? 'currentColor' : 'none'} /> {selected.flagged ? 'Hapus bintang' : 'Beri bintang'}</button>
+								<button onclick={() => { toggleStar(selected); readerMenuOpen = false; }}><Star size={17} fill={selected.flagged ? 'currentColor' : 'none'} /> {selected.flagged ? $t('read.unstar') : $t('read.star')}</button>
 								<button onclick={() => { doArchive([selected.uid]); readerMenuOpen = false; }}>
-									{#if inArchive}<ArchiveRestore size={17} /> Pindahkan ke Kotak Masuk{:else}<Archive size={17} /> Arsipkan{/if}
+									{#if inArchive}<ArchiveRestore size={17} /> {$t('read.unarchive')}{:else}<Archive size={17} /> {$t('read.archive')}{/if}
 								</button>
 								<button onclick={() => { toggleReaderRead(); readerMenuOpen = false; }}>
-									{#if readerSeen}<MailIcon size={17} /> Tandai belum dibaca{:else}<MailOpen size={17} /> Tandai sudah dibaca{/if}
+									{#if readerSeen}<MailIcon size={17} /> {$t('read.markUnread')}{:else}<MailOpen size={17} /> {$t('read.markRead')}{/if}
 								</button>
 								<button class="danger" onclick={() => { doTrash([selected.uid]); readerMenuOpen = false; }}>
-									<Trash2 size={17} /> {inTrash ? 'Hapus permanen' : 'Pindahkan ke sampah'}
+									<Trash2 size={17} /> {inTrash ? $t('read.purge') : $t('read.trash')}
 								</button>
 							</div>
 						{/if}
@@ -993,12 +995,12 @@
 					</div>
 					<div class="rs-date">{fmtFull(selected.date)}</div>
 				</div>
-				{#if selected.to}<div class="rd-to">ke {selected.to}</div>{/if}
+				{#if selected.to}<div class="rd-to">{$t('read.to')} {selected.to}</div>{/if}
 
 				{#if selected.attachments.filter((a: any) => !a.inline).length}
 					<div class="attachments">
 						{#each selected.attachments.filter((a: any) => !a.inline) as a}
-							<a class="att" href={attUrl(selected.uid, a.index)} title="Unduh {a.filename}">
+							<a class="att" href={attUrl(selected.uid, a.index)} title="{$t('att.download')} {a.filename}">
 								{#if isImage(a.contentType)}<img class="att-thumb" src={attUrl(selected.uid, a.index, true)} alt={a.filename} />
 								{:else}<span class="att-ico"><Paperclip size={16} /></span>{/if}
 								<span class="att-info"><span class="att-name">{a.filename}</span><span class="att-size">{fmtSize(a.size)}</span></span>
@@ -1012,13 +1014,13 @@
 					{#if selected.html}
 						<iframe title="Isi email" sandbox="" srcdoc={selected.html} class="htmlframe"></iframe>
 					{:else}
-						<pre class="textbody">{selected.text || '(pesan kosong)'}</pre>
+						<pre class="textbody">{selected.text || $t('read.emptyBody')}</pre>
 					{/if}
 				</div>
 
 				{#if thread.length}
 					<div class="thread">
-						<div class="thread-h">Percakapan ini ({thread.length + 1})</div>
+						<div class="thread-h">{$t('read.thread')} ({thread.length + 1})</div>
 						{#each thread as t (t.uid)}
 							<button class="thread-item" onclick={() => openMessage(t)}>
 								{@render avat(t.fromAddr, t.fromName, 'sm')}
@@ -1031,32 +1033,32 @@
 			</div>
 
 			<div class="rd-actionbar">
-				<button class="pill primary" onclick={() => replyTo(selected)}><Reply size={16} /> Balas</button>
-				<button class="pill" onclick={() => forwardMsg(selected)}><Forward size={16} /> Teruskan</button>
+				<button class="pill primary" onclick={() => replyTo(selected)}><Reply size={16} /> {$t('read.reply')}</button>
+				<button class="pill" onclick={() => forwardMsg(selected)}><Forward size={16} /> {$t('read.forward')}</button>
 				<button class="pill only-desktop" onclick={toggleReaderRead}>
-					{#if readerSeen}<MailIcon size={16} /> Tandai belum dibaca{:else}<MailOpen size={16} /> Tandai sudah dibaca{/if}
+					{#if readerSeen}<MailIcon size={16} /> {$t('read.markUnread')}{:else}<MailOpen size={16} /> {$t('read.markRead')}{/if}
 				</button>
 			</div>
 		{:else}
 			<div class="empty">
 				<div class="empty-ill"><MailOpen size={52} /></div>
-				<h3>Pilih email untuk dibaca</h3>
-				<p>Klik salah satu pesan di daftar, atau tulis email baru.</p>
-				<button class="pill primary" onclick={newMail}><PenSquare size={16} /> Tulis email</button>
+				<h3>{$t('read.pickToRead')}</h3>
+				<p>{$t('read.pickHint')}</p>
+				<button class="pill primary" onclick={newMail}><PenSquare size={16} /> {$t('list.compose')}</button>
 			</div>
 		{/if}
 	</section>
 </div>
 
 {#if !selected && !loadingMsg && !composeOpen}
-	<button class="fab only-mobile" onclick={newMail} aria-label="Tulis email"><PenSquare size={22} /></button>
+	<button class="fab only-mobile" onclick={newMail} aria-label={$t('list.compose')}><PenSquare size={22} /></button>
 {/if}
 
 <!-- ═══════════ COMPOSER ═══════════ -->
 {#if composeOpen}
 	<div class="composer" class:min={composeMin} class:full={composeFull}>
 		<header class="cp-head">
-			<span><MailIcon size={15} /> Pesan baru</span>
+			<span><MailIcon size={15} /> {$t('cp.new')}</span>
 			<div class="cp-hbtns">
 				<button class="cp-hbtn only-desktop" onclick={() => { composeMin = !composeMin; if (composeMin) composeFull = false; }} aria-label="Kecilkan">
 					{#if composeMin}<ChevronRight size={15} style="transform:rotate(-90deg)" />{:else}<ChevronRight size={15} style="transform:rotate(90deg)" />{/if}
@@ -1086,13 +1088,13 @@
 							files = [];
 							compose.draftUid = null;
 								poll();
-								toast('Email terkirim');
+								toast($t('cp.sent'));
 							} else if (result.type === 'success' && (result.data as any)?.draftSaved) {
 								composeOpen = false;
 								files = [];
 								compose.draftUid = null;
 								poll();
-								toast('Draf disimpan');
+								toast($t('cp.draftSaved'));
 						} else {
 							await update({ reset: false });
 						}
@@ -1101,15 +1103,15 @@
 			>
 				{#if data.addresses && data.addresses.length > 1}
 					<div class="cp-field">
-						<label>Dari</label>
+						<label>{$t('cp.from')}</label>
 						<select class="cp-from" bind:value={fromAddr}>
 							{#each data.addresses as a}<option value={a}>{a}</option>{/each}
 						</select>
 					</div>
 				{/if}
 				<div class="cp-field">
-					<label>Ke</label>
-					<input name="to" bind:value={compose.to} placeholder="penerima@contoh.com" required autocomplete="off" oninput={onToInput} onfocus={onToInput} />
+					<label>{$t('cp.to')}</label>
+					<input name="to" bind:value={compose.to} placeholder={$t('cp.toPlaceholder')} required autocomplete="off" oninput={onToInput} onfocus={onToInput} />
 						{#if toSuggestOpen}
 							<button type="button" class="to-backdrop" onclick={() => (toSuggestOpen = false)} aria-label="Tutup"></button>
 							<div class="to-suggest">
@@ -1128,7 +1130,7 @@
 				</div>
 				{#if showCc}<div class="cp-field"><label>Cc</label><input name="cc" bind:value={compose.cc} /></div>{/if}
 				{#if showBcc}<div class="cp-field"><label>Bcc</label><input name="bcc" bind:value={compose.bcc} /></div>{/if}
-				<div class="cp-field"><label>Subjek</label><input name="subject" bind:value={compose.subject} placeholder="Subjek" /></div>
+				<div class="cp-field"><label>{$t('cp.subject')}</label><input name="subject" bind:value={compose.subject} placeholder={$t('cp.subjectPlaceholder')} /></div>
 
 				<div class="cp-toolbar">
 					<button type="button" title="Tebal" onclick={() => exec('bold')}><Bold size={16} /></button>
@@ -1160,14 +1162,14 @@
 
 				<div class="cp-foot">
 					<button class="cp-send" disabled={sending}>
-						{#if sending}<span class="spin"></span>{:else}<Send size={16} /> Kirim{/if}
+						{#if sending}<span class="spin"></span>{:else}<Send size={16} /> {$t('cp.send')}{/if}
 					</button>
-					<button type="submit" formaction="?/saveDraft" formnovalidate class="cp-icon" title="Simpan draf" disabled={savingDraft || sending}>
+					<button type="submit" formaction="?/saveDraft" formnovalidate class="cp-icon" title={$t('cp.saveDraft')} disabled={savingDraft || sending}>
 						{#if savingDraft}<span class="spin dark"></span>{:else}<FileText size={17} />{/if}
 					</button>
 					<button type="button" class="cp-icon" title="Lampirkan" onclick={() => fileInput?.click()}><Paperclip size={17} /></button>
-					<button type="button" class="cp-icon" title="Sisipkan gambar" onclick={() => fileInput?.click()}><ImageIcon size={17} /></button>
-					<button type="button" class="cp-icon danger" title="Buang" onclick={() => (composeOpen = false)}><Trash size={17} /></button>
+					<button type="button" class="cp-icon" title={$t('cp.insertImage')} onclick={() => fileInput?.click()}><ImageIcon size={17} /></button>
+					<button type="button" class="cp-icon danger" title={$t('cp.discard')} onclick={() => (composeOpen = false)}><Trash size={17} /></button>
 				</div>
 			</form>
 		{/if}
@@ -1178,11 +1180,11 @@
 {#if settingsOpen}
 	<div class="modal-bg" onclick={() => (settingsOpen = false)} role="presentation">
 		<div class="modal wide" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
-			<header class="mh"><b>Pengaturan</b><button onclick={() => (settingsOpen = false)} aria-label="Tutup"><X size={16} /></button></header>
+			<header class="mh"><b>{$t('set.title')}</b><button onclick={() => (settingsOpen = false)} aria-label={$t('common.close')}><X size={16} /></button></header>
 			<div class="tabs">
-				<button class:on={settingsTab === 'profil'} onclick={() => (settingsTab = 'profil')}>Profil</button>
-				<button class:on={settingsTab === 'keamanan'} onclick={() => (settingsTab = 'keamanan')}>Keamanan</button>
-				<button class:on={settingsTab === 'tampilan'} onclick={() => (settingsTab = 'tampilan')}>Tampilan</button>
+				<button class:on={settingsTab === 'profil'} onclick={() => (settingsTab = 'profil')}>{$t('set.tab.profile')}</button>
+				<button class:on={settingsTab === 'keamanan'} onclick={() => (settingsTab = 'keamanan')}>{$t('set.tab.security')}</button>
+				<button class:on={settingsTab === 'tampilan'} onclick={() => (settingsTab = 'tampilan')}>{$t('set.tab.display')}</button>
 			</div>
 
 			{#if settingsTab === 'profil'}
@@ -1194,35 +1196,35 @@
 					{/if}
 					<div class="pp-info">
 						<b>{data.user?.full_name || data.user?.username}</b>
-						<span class="muted">Foto profil dari Portal SI</span>
-						<a class="pp-link" href="https://app.portalsi.com/profile/edit" target="_blank" rel="noopener"><Camera size={14} /> Ubah foto di app.portalsi.com</a>
+						<span class="muted">{$t('set.photoAccount')}</span>
+						<a class="pp-link" href="https://app.portalsi.com/profile/edit" target="_blank" rel="noopener"><Camera size={14} /> {$t('set.changePhotoApp')}</a>
 					</div>
 				</div>
-				<label class="ml">Nama tampilan (di email keluar)</label>
+				<label class="ml">{$t('set.displayName')}</label>
 				<button class="dark-toggle" onclick={() => (nameFollow = !nameFollow)}>
-					<span class="dt-left"><UserRound size={16} /> Ikuti nama akun {#if data.user?.full_name} ({data.user.full_name}){/if}</span>
+					<span class="dt-left"><UserRound size={16} /> {$t('set.followAccountName')} {#if data.user?.full_name} ({data.user.full_name}){/if}</span>
 					<span class="switch-ui" class:on={nameFollow}><span class="knob"></span></span>
 				</button>
 				{#if !nameFollow}
-					<input class="mi" bind:value={displayName} placeholder="Tuliskan nama pengirim kustom..." />
+					<input class="mi" bind:value={displayName} placeholder={$t('set.customName')} />
 				{/if}
-				<label class="ml">Alamat email{data.addresses && data.addresses.length > 1 ? ' (dua alamat, satu kotak masuk)' : ''}</label>
+				<label class="ml">{$t('set.emailAddress')}</label>
 				{#each data.addresses ?? [data.account?.email] as a}
 					<input class="mi" value={a} readonly />
 				{/each}
 				<p class="note">Alamat email tidak bisa diubah setelah dibuat.</p>
-				<div class="mf"><button class="cp-send" onclick={saveSettings}>Simpan</button></div>
+				<div class="mf"><button class="cp-send" onclick={saveSettings}>{$t('common.save')}</button></div>
 			{:else if settingsTab === 'keamanan'}
 				<div class="sec-ico"><KeyRound size={22} /></div>
-				<h3 class="sec-h">Ganti kata sandi</h3>
+				<h3 class="sec-h">{$t('set.changePw')}</h3>
 				<div class="warn-box">
 					<ShieldCheck size={18} />
-					<span>Kata sandi ini dipakai untuk <b>seluruh layanan Portal SI</b> (App, Meet, Marketplace, Mail). Menggantinya akan mengubah kata sandi di <b>semua</b> layanan tersebut.</span>
+					<span>{@html $t('set.pwWarnAll')}</span>
 				</div>
 				{#if (form as any)?.pwSent}
-					<div class="ok-box">{(form as any).pwMessage || 'Tautan konfirmasi telah dikirim ke email. Cek kotak masuk (dan folder spam) untuk melanjutkan.'}</div>
+					<div class="ok-box">{(form as any).pwMessage || $t('pw.sentBox')}</div>
 				{:else}
-					<p class="note">Tautan konfirmasi dikirim ke email akunmu: <b>{data.user?.email || '—'}</b>. Klik tautan itu untuk menyetel kata sandi baru. <span class="muted">(Maks 3 permintaan per hari.)</span></p>
+					<p class="note">{$t('pw.note1')} <b>{data.user?.email || '—'}</b>. {$t('pw.note2')} <span class="muted">{$t('pw.max3')}</span></p>
 					<form
 						method="POST"
 						action="?/resetPassword"
@@ -1237,7 +1239,7 @@
 						{#if (form as any)?.pwError}<p class="err-inline">{(form as any).pwError}</p>{/if}
 						<div class="mf">
 							<button class="cp-send" disabled={pwSending || !data.user?.email}>
-								{#if pwSending}<span class="spin"></span>{:else}Kirim tautan ke email{/if}
+								{#if pwSending}<span class="spin"></span>{:else}{$t('set.sendLink')}{/if}
 							</button>
 						</div>
 					</form>
@@ -1258,7 +1260,7 @@
 					<span class="switch-ui" class:on={darkMode}><span class="knob"></span></span>
 				</button>
 				<p class="note">{$t('set.darkNote')}</p>
-				<div class="mf"><button class="cp-send" onclick={saveSettings}>Simpan</button></div>
+				<div class="mf"><button class="cp-send" onclick={saveSettings}>{$t('common.save')}</button></div>
 			{/if}
 		</div>
 	</div>

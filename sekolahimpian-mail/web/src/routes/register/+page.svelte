@@ -2,6 +2,7 @@
 	import { Eye, EyeOff, LoaderCircle } from '@lucide/svelte';
 	import AuthFields from '$lib/components/auth/AuthFields.svelte';
 	import AuthShell from '$lib/components/auth/AuthShell.svelte';
+	import { t } from '$lib/i18n';
 	let { form } = $props();
 	let showPw = $state(false);
 	let showConfirm = $state(false);
@@ -15,9 +16,9 @@
 
 <AuthShell mode="register">
 	<div class="heading">
-		<p class="eyebrow">MULAI PERJALANAN ANDA</p>
-		<h1>Buat akun Sekolah Impian</h1>
-		<p>Karena jutaan langkah dimulai dari satu langkah.</p>
+		<p class="eyebrow">{$t('reg.eyebrow')}</p>
+		<h1>{$t('reg.title')}</h1>
+		<p>{$t('reg.sub')}</p>
 	</div>
 	{#if form?.success}
 		<div class="form-ok" role="status">{form.message}</div>
@@ -26,32 +27,32 @@
 		<form method="POST" onsubmit={() => (submitting = true)}>
 			<AuthFields>
 				<div class="two-fields">
-					<label><span>Nama lengkap</span><input name="full_name" autocomplete="name" placeholder="Fulan Abdullah" value={form?.values?.full_name ?? ''} /></label>
-					<label><span>Username</span><input name="username" autocomplete="username" placeholder="fulan123" value={form?.values?.username ?? ''} /></label>
+					<label><span>{$t('field.fullName')}</span><input name="full_name" autocomplete="name" placeholder="Fulan Abdullah" value={form?.values?.full_name ?? ''} /></label>
+					<label><span>{$t('field.username')}</span><input name="username" autocomplete="username" placeholder="fulan123" value={form?.values?.username ?? ''} /></label>
 				</div>
-				<label><span>Email pemulihan</span><input name="email" type="email" autocomplete="email" placeholder="nama@contoh.id" value={form?.values?.email ?? ''} /></label>
+				<label><span>{$t('field.recoveryEmail')}</span><input name="email" type="email" autocomplete="email" placeholder="nama@contoh.id" value={form?.values?.email ?? ''} /></label>
 				<label>
-					<span>Kata sandi</span>
+					<span>{$t('field.password')}</span>
 					<div class="pw-field">
-						<input name="password" type={showPw ? 'text' : 'password'} autocomplete="new-password" placeholder="Minimal 6 karakter" bind:value={password} />
+						<input name="password" type={showPw ? 'text' : 'password'} autocomplete="new-password" placeholder={$t('reg.pwPlaceholder')} bind:value={password} />
 						<button type="button" onclick={() => (showPw = !showPw)} aria-label="Tampilkan">{#if showPw}<EyeOff size={18} />{:else}<Eye size={18} />{/if}</button>
 					</div>
 				</label>
 				<label>
-					<span>Ulangi kata sandi</span>
+					<span>{$t('field.repeatPassword')}</span>
 					<div class="pw-field">
-						<input type={showConfirm ? 'text' : 'password'} autocomplete="new-password" placeholder="Ketik ulang" bind:value={confirm} aria-invalid={mismatch ? 'true' : undefined} />
+						<input type={showConfirm ? 'text' : 'password'} autocomplete="new-password" placeholder={$t('reg.repeatPlaceholder')} bind:value={confirm} aria-invalid={mismatch ? 'true' : undefined} />
 						<button type="button" onclick={() => (showConfirm = !showConfirm)} aria-label="Tampilkan">{#if showConfirm}<EyeOff size={18} />{:else}<Eye size={18} />{/if}</button>
 					</div>
-					{#if mismatch}<small class="field-error">Kata sandi belum sama.</small>{/if}
+					{#if mismatch}<small class="field-error">{$t('reg.mismatch')}</small>{/if}
 				</label>
 				<button class="auth-primary" type="submit" disabled={submitting || mismatch}>
-					{#if submitting}<LoaderCircle size={17} class="button-spin" /> Memproses…{:else}Buat akun{/if}
+					{#if submitting}<LoaderCircle size={17} class="button-spin" /> {$t('common.processing')}{:else}{$t('reg.submit')}{/if}
 				</button>
 			</AuthFields>
 		</form>
 	{/if}
-	<p class="switch">Sudah punya akun? <a href="/login">Masuk</a></p>
+	<p class="switch">{$t('reg.haveAccount')} <a href="/login">{$t('reg.signin')}</a></p>
 </AuthShell>
 
 <style>

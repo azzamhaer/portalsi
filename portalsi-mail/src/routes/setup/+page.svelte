@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { AtSign, ShieldAlert, X } from '@lucide/svelte';
+	import { t } from '$lib/i18n';
 	let { data, form } = $props();
 	let submitting = $state(false);
 	let local = $state(form?.local ?? '');
@@ -24,12 +25,8 @@
 
 <div class="card">
 	<div class="ico"><AtSign size={22} /></div>
-	<h1>Buat email kamu</h1>
-	<p class="sub">
-		Pilih nama untuk alamat emailmu. Minimal 3 karakter, huruf kecil/angka, diawali huruf.
-		{#if hasAlias}Kamu otomatis mendapat <b>{allDomains.length} alamat sekaligus</b> (satu kotak masuk).{/if}
-		Satu akun per pengguna dan <b>tidak bisa diganti</b> setelah dibuat.
-	</p>
+	<h1>{$t('setup.title')}</h1>
+	<p class="sub">{@html $t('setup.sub')}</p>
 
 	{#if form?.message}<div class="err">{form.message}</div>{/if}
 
@@ -45,12 +42,12 @@
 		}}
 	>
 		<label class="field">
-			Nama email
+			{$t('setup.name')}
 			<span class="addr">
 				<input
 					name="local_part"
 					bind:value={local}
-					placeholder="namamu"
+					placeholder={$t('setup.namePlaceholder')}
 					autocomplete="off"
 					spellcheck="false"
 					required
@@ -59,26 +56,26 @@
 			</span>
 		</label>
 		<div class="preview">
-			Alamat kamu:
-			{#each allDomains as d}<b class="pv-addr">{clean || 'namamu'}@{d}</b>{/each}
+			{$t('setup.yourAddress')}
+			{#each allDomains as d}<b class="pv-addr">{clean || $t('setup.namePlaceholder')}@{d}</b>{/each}
 		</div>
 		<button type="button" class="btn" onclick={askConfirm} disabled={submitting || !valid}>
-			{#if submitting}<span class="spin"></span>{:else}Buat email{/if}
+			{#if submitting}<span class="spin"></span>{:else}{$t('setup.create')}{/if}
 		</button>
 
 		{#if confirmOpen}
 			<div class="cf-bg" role="presentation" onclick={() => (confirmOpen = false)}>
 				<div class="cf" role="dialog" aria-modal="true" onclick={(e) => e.stopPropagation()}>
-					<button class="cf-x" onclick={() => (confirmOpen = false)} aria-label="Tutup"><X size={16} /></button>
+					<button class="cf-x" onclick={() => (confirmOpen = false)} aria-label={$t('common.close')}><X size={16} /></button>
 					<div class="cf-ico"><ShieldAlert size={26} /></div>
-					<h2>Konfirmasi alamat email</h2>
-					<p>Kamu akan membuat{hasAlias ? ` ${allDomains.length} alamat (satu kotak masuk)` : ''}:</p>
+					<h2>{$t('setup.confirmTitle')}</h2>
+					<p>{$t('setup.confirmIntro')}</p>
 					{#each allDomains as d}<div class="cf-addr">{clean}@{d}</div>{/each}
-					<p class="cf-warn">Alamat ini <b>permanen</b> dan <b>tidak bisa diubah atau dihapus</b> setelahnya. Pastikan ejaannya benar.</p>
+					<p class="cf-warn">{@html $t('setup.permanentWarn')}</p>
 					<div class="cf-actions">
-						<button type="button" class="cf-cancel" onclick={() => (confirmOpen = false)}>Periksa lagi</button>
+						<button type="button" class="cf-cancel" onclick={() => (confirmOpen = false)}>{$t('setup.recheck')}</button>
 						<button type="submit" class="btn" onclick={doSubmit} disabled={submitting}>
-							{#if submitting}<span class="spin"></span>{:else}Ya, buat permanen{/if}
+							{#if submitting}<span class="spin"></span>{:else}{$t('setup.createPermanent')}{/if}
 						</button>
 					</div>
 				</div>

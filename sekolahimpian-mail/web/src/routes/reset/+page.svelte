@@ -2,6 +2,7 @@
 	import { Eye, EyeOff, LoaderCircle, ShieldCheck } from '@lucide/svelte';
 	import AuthFields from '$lib/components/auth/AuthFields.svelte';
 	import AuthShell from '$lib/components/auth/AuthShell.svelte';
+	import { t } from '$lib/i18n';
 	let { form, data } = $props();
 	let showPw = $state(false);
 	let showConfirm = $state(false);
@@ -15,41 +16,41 @@
 
 <AuthShell>
 	<div class="heading">
-		<p class="eyebrow">KEAMANAN AKUN</p>
-		<h1>Setel kata sandi baru</h1>
-		<p>Buat kata sandi baru untuk akun <b>SI Mail</b> kamu{#if data?.email} (<b>{data.email}</b>){/if}.</p>
+		<p class="eyebrow">{$t('reset.eyebrow')}</p>
+		<h1>{$t('reset.title')}</h1>
+		<p>{$t('reset.sub')}</p>
 	</div>
 
 	{#if form?.success}
-		<div class="form-ok" role="status">{form.message || 'Kata sandi berhasil diganti.'}</div>
-		<p class="switch"><a href="/login">Kembali ke halaman masuk</a></p>
+		<div class="form-ok" role="status">{form.message || $t('reset.done')}</div>
+		<p class="switch"><a href="/login">{$t('reset.backToLogin')}</a></p>
 	{:else if !data?.valid}
-		<div class="form-alert" role="alert">Tautan reset tidak lengkap atau tidak valid. Silakan minta tautan baru dari halaman masuk.</div>
-		<p class="switch"><a href="/login">Ke halaman masuk</a></p>
+		<div class="form-alert" role="alert">{$t('reset.invalid')}</div>
+		<p class="switch"><a href="/login">{$t('reset.toLogin')}</a></p>
 	{:else}
-		<div class="notice"><ShieldCheck size={16} /> <span>Kata sandi ini dipakai untuk masuk ke akun SI Mail kamu.</span></div>
+		<div class="notice"><ShieldCheck size={16} /> <span>{$t('reset.notice')}</span></div>
 		{#if form?.message}<div class="form-alert" role="alert">{form.message}</div>{/if}
 		<form method="POST" onsubmit={() => (submitting = true)}>
 			<input type="hidden" name="token" value={data.token} />
 			<input type="hidden" name="email" value={data.email} />
 			<AuthFields>
 				<label>
-					<span>Kata sandi baru</span>
+					<span>{$t('reset.newPassword')}</span>
 					<div class="pw-field">
-						<input name="password" type={showPw ? 'text' : 'password'} autocomplete="new-password" placeholder="Minimal 6 karakter" bind:value={password} />
+						<input name="password" type={showPw ? 'text' : 'password'} autocomplete="new-password" placeholder={$t('reg.pwPlaceholder')} bind:value={password} />
 						<button type="button" onclick={() => (showPw = !showPw)} aria-label="Tampilkan">{#if showPw}<EyeOff size={18} />{:else}<Eye size={18} />{/if}</button>
 					</div>
 				</label>
 				<label>
-					<span>Ulangi kata sandi</span>
+					<span>{$t('reset.repeat')}</span>
 					<div class="pw-field">
-						<input name="confirm" type={showConfirm ? 'text' : 'password'} autocomplete="new-password" placeholder="Ketik ulang" bind:value={confirm} aria-invalid={mismatch ? 'true' : undefined} />
+						<input name="confirm" type={showConfirm ? 'text' : 'password'} autocomplete="new-password" placeholder={$t('reg.repeatPlaceholder')} bind:value={confirm} aria-invalid={mismatch ? 'true' : undefined} />
 						<button type="button" onclick={() => (showConfirm = !showConfirm)} aria-label="Tampilkan">{#if showConfirm}<EyeOff size={18} />{:else}<Eye size={18} />{/if}</button>
 					</div>
-					{#if mismatch}<small class="field-error">Kata sandi belum sama.</small>{/if}
+					{#if mismatch}<small class="field-error">{$t('reg.mismatch')}</small>{/if}
 				</label>
 				<button class="auth-primary" type="submit" disabled={submitting || mismatch || password.length < 6}>
-					{#if submitting}<LoaderCircle size={17} class="button-spin" /> Menyimpan…{:else}Simpan kata sandi{/if}
+					{#if submitting}<LoaderCircle size={17} class="button-spin" /> {$t('reset.saving')}{:else}{$t('reset.save')}{/if}
 				</button>
 			</AuthFields>
 		</form>
