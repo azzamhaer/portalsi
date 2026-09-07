@@ -72,6 +72,8 @@
 html {
 	background: var(--color-canvas);
 	scrollbar-gutter: stable;
+	/* Cegah scroll horizontal liar (mis. bar user-online / kartu rail yang sedikit melebihi kolom). */
+	overflow-x: hidden;
 }
 
 body {

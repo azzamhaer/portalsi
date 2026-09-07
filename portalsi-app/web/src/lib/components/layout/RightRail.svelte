@@ -132,6 +132,8 @@
 		border-radius: var(--radius-lg);
 		box-shadow: var(--shadow-xs);
 		backdrop-filter: blur(12px);
+		min-width: 0;
+		overflow: hidden;
 	}
 
 	.section-head {

@@ -120,7 +120,7 @@
 	}
 </script>
 
-<svelte:head><title>Preferensi notifikasi — Portal SI</title></svelte:head>
+<svelte:head><title>Preferensi — Portal SI</title></svelte:head>
 
 <main class="preferences surface">
 	<a class="back" href="/settings">← {$t('nav.settings')}</a>
