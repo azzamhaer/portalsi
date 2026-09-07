@@ -9,23 +9,23 @@
 		},
 		{
 			id: 'watermark',
-			label: get(t)('mod.wmTitle'),
-			text: get(t)('mod.wmDesc')
+			label: 'Watermark / hak cipta platform lain',
+			text: 'Konten mengandung watermark atau tanda hak cipta dari platform lain (TikTok, CapCut, Instagram, dll.).'
 		},
 		{
 			id: 'low_quality',
-			label: get(t)('mod.lqTitle'),
-			text: get(t)('mod.lqDesc')
+			label: 'Kualitas rendah / tanpa nilai',
+			text: 'Kualitas konten terlalu rendah dan dianggap tidak memiliki nilai bagi komunitas.'
 		},
 		{
 			id: 'reupload',
-			label: get(t)('mod.repostTitle'),
-			text: get(t)('mod.repostDesc')
+			label: 'Repost / bukan karya sendiri',
+			text: 'Konten merupakan unggahan ulang / bukan karya orisinal pengunggah.'
 		},
 		{
 			id: 'inappropriate',
-			label: get(t)('mod.inappTitle'),
-			text: get(t)('mod.inappDesc')
+			label: 'Konten tidak pantas',
+			text: 'Konten tidak pantas atau melanggar pedoman komunitas Portal SI.'
 		},
 		{
 			id: 'spam',
