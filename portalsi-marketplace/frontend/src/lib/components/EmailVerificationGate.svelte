@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
+  import { get } from 'svelte/store';
+  import { t } from '$lib/i18n';
   import Icon from './Icon.svelte';
   import { auth, toast } from '$lib/stores.svelte';
   import { apiEndpoints, setToken, getToken } from '$lib/api';
@@ -30,7 +32,7 @@
       const r: any = await apiEndpoints.resendVerification();
       remainingToday = typeof r.remaining_today === 'number' ? r.remaining_today : null;
       startCooldown(r.cooldown_seconds || 60);
-      toast.success(r.message || 'Email verifikasi Portal SI dikirim ulang.');
+      toast.success(r.message || get(t)('evg.resent'));
     } catch (e: any) {
       if (e.data?.cooldown_seconds) startCooldown(e.data.cooldown_seconds);
       if (e.data?.limit_reached) { limitReached = true; remainingToday = 0; }
@@ -46,8 +48,8 @@
     try {
       const u: any = await apiEndpoints.me();
       auth.set(u);
-      if (u.email_verified_at) toast.success('Email Anda sudah terverifikasi!');
-      else toast.info('Email belum terverifikasi. Cek inbox atau klik link dari Portal SI.');
+      if (u.email_verified_at) toast.success(get(t)('evg.verified'));
+      else toast.info(get(t)('evg.notVerified'));
     } catch (e: any) {
       toast.error(e.message);
     } finally {
@@ -73,8 +75,8 @@
     <div class="w-16 h-16 rounded-full bg-amber-100 grid place-items-center mx-auto mb-4">
       <Icon name="mail" size={28} class="text-amber-600" />
     </div>
-    <h2 class="font-display text-xl sm:text-2xl font-bold tracking-tightest mb-2">Verifikasi email Portal SI Anda</h2>
-    <p class="text-sm text-ink-500 mb-2">Portal SI sudah mengirim link verifikasi ke:</p>
+    <h2 class="font-display text-xl sm:text-2xl font-bold tracking-tightest mb-2">{$t('evg.title')}</h2>
+    <p class="text-sm text-ink-500 mb-2">{$t('evg.sentTo')}</p>
     <p class="font-semibold text-ink-900 mb-6 break-all">{auth.user?.email}</p>
     <p class="text-xs text-ink-500 mb-6">
       Klik link resmi dari Portal SI untuk mengaktifkan akun. Cek folder Spam/Promosi jika tidak ada di Inbox.
@@ -92,21 +94,21 @@
         {:else if resending}
           Mengirim...
         {:else}
-          Kirim ulang email
+          {$t('evg.resendEmail')}
         {/if}
       </button>
       <button onclick={refreshStatus} disabled={checking} class="btn-outline btn-md">
         <Icon name="refresh-cw" size={14} class={checking ? 'animate-spin' : ''} />
-        Cek status
+        {$t('evg.checkStatus')}
       </button>
     </div>
 
     {#if remainingToday !== null}
       <p class="text-xs text-ink-500 mt-3">
-        Sisa kuota kirim ulang hari ini: <b>{remainingToday}</b>
+        {$t('evg.quotaLeft')} <b>{remainingToday}</b>
       </p>
     {:else}
-      <p class="text-xs text-ink-400 mt-3">Kirim ulang mengikuti batas dan jeda dari Portal SI.</p>
+      <p class="text-xs text-ink-400 mt-3">{$t('evg.resendHint')}</p>
     {/if}
 
     <div class="mt-6 pt-6 border-t border-ink-100">

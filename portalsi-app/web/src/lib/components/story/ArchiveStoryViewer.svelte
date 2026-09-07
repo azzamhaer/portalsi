@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { ChevronLeft, ChevronRight, LoaderCircle, Music2, Trash2, X } from '@lucide/svelte';
+	import { get } from 'svelte/store';
+	import { t } from '$lib/i18n';
 	import { untrack } from 'svelte';
 	import { clientRequest } from '$lib/api/client';
 	import Avatar from '$lib/components/ui/Avatar.svelte';
@@ -136,9 +138,9 @@
 		const wasPaused = paused;
 		paused = true;
 		const confirmed = await confirmAction({
-			title: 'Hapus cerita ini?',
-			description: 'Cerita akan dihapus permanen dari arsip dan tidak dapat dipulihkan.',
-			confirmLabel: 'Hapus cerita',
+			title: get(t)('arch.delTitle'),
+			description: get(t)('arch.delMsg'),
+			confirmLabel: get(t)('arch.delConfirm'),
 			tone: 'danger'
 		});
 		if (!confirmed) {
@@ -153,7 +155,7 @@
 			if (stories.length === 0) onClose();
 			else if (index >= stories.length) index = stories.length - 1;
 		} catch {
-			status = 'Cerita belum dapat dihapus.';
+			status = get(t)('arch.delFailed');
 			paused = wasPaused;
 		}
 	}
@@ -170,7 +172,7 @@
 
 <svelte:window onkeydown={keyboard} />
 
-<div class="story-viewer" role="dialog" aria-modal="true" aria-label="Arsip cerita">
+<div class="story-viewer" role="dialog" aria-modal="true" aria-label={$t('arch.ariaArchive')}>
 	<article
 		style:width={`${frame.width}px`}
 		style:height={`${frame.height}px`}
@@ -178,10 +180,10 @@
 		onpointerup={() => (holding = false)}
 		onpointercancel={() => (holding = false)}
 	>
-		<button class="story-zone story-zone-left" onclick={previous} aria-label="Cerita sebelumnya"
+		<button class="story-zone story-zone-left" onclick={previous} aria-label={$t('arch.prev')}
 			><ChevronLeft size={28} /></button
 		>
-		<button class="story-zone story-zone-right" onclick={next} aria-label="Cerita berikutnya"
+		<button class="story-zone story-zone-right" onclick={next} aria-label={$t('arch.next')}
 			><ChevronRight size={28} /></button
 		>
 		<div class="progress">
@@ -197,7 +199,7 @@
 				<Avatar name={username} src={avatarUrl ?? undefined} size="sm" />
 				<span><small>@{username} · {story?.createdLabel ?? ''}</small></span>
 			</div>
-			<button class="close" onclick={onClose} aria-label="Tutup cerita"><X size={19} /></button>
+			<button class="close" onclick={onClose} aria-label={$t('arch.ariaClose')}><X size={19} /></button>
 		</header>
 		{#if story && story.type === 'video' && story.mediaUrl}
 			<video
@@ -244,7 +246,7 @@
 					? `linear-gradient(rgb(0 0 0 / 48%), rgb(0 0 0 / 70%)), url('${story.albumArtUrl}')`
 					: undefined}
 			>
-				<Music2 size={44} /><strong>{story.musicTitle || 'Cerita musik'}</strong><span
+				<Music2 size={44} /><strong>{story.musicTitle || get(t)('arch.musicStory')}</strong><span
 					>{story.musicArtist || 'Portal SI'}</span
 				>
 				{#if story.musicPreviewUrl}<audio
@@ -270,9 +272,9 @@
 				ontimeupdate={loopStoryMusic}
 			></audio>{/if}
 		{#if mediaLoading}<div class="media-loading">
-				<LoaderCircle size={28} /><span>Menyiapkan cerita…</span>
+				<LoaderCircle size={28} /><span>{$t('arch.preparing')}</span>
 			</div>{:else if mediaError}<div class="media-loading error">
-				<span>Media cerita belum dapat dimuat.</span>
+				<span>{$t('arch.mediaFailed')}</span>
 			</div>{/if}
 		{#if story?.caption}<div class="story-caption">
 				<p><MentionText text={story.caption} /></p>
@@ -283,7 +285,7 @@
 				onclick={(event) => {
 					event.stopPropagation();
 					void deleteStory();
-				}}><Trash2 size={18} /> Hapus</button
+				}}><Trash2 size={18} /> {$t('common.delete')}</button
 			>
 		</footer>
 		{#if status}<p class="status">{status}</p>{/if}

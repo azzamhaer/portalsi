@@ -6,6 +6,7 @@
   import { apiEndpoints, setToken } from '$lib/api';
   import { fmtRp } from '$lib/utils';
   import { t, lang, setLang } from '$lib/i18n';
+  import { get } from 'svelte/store';
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
 
@@ -57,7 +58,7 @@
         bank_holder: wdBankHolder,
       });
       wdAmount = wdBankName = wdBankAccount = wdBankHolder = '';
-      toast.success('Permintaan penarikan dikirim ke admin');
+      toast.success(get(t)('pf.withdrawSent'));
       await loadWallet();
     } catch (e: any) { toast.error(e.message); } finally { wdSaving = false; }
   }
@@ -68,7 +69,7 @@
     try {
       const u = await apiEndpoints.updateProfile({ name, phone });
       auth.set(u);
-      toast.success('Profil disimpan');
+      toast.success(get(t)('pf.saved'));
     } catch (e: any) { toast.error(e.message); } finally { saving = false; }
   }
   async function logout() {
@@ -82,24 +83,24 @@
 
   async function changePassword(e: Event) {
     e.preventDefault();
-    if (cpNew !== cpConfirm) { toast.error('Konfirmasi password tidak cocok'); return; }
-    if (cpNew.length < 8) { toast.error('Password baru minimal 8 karakter'); return; }
+    if (cpNew !== cpConfirm) { toast.error(get(t)('rp.mismatch')); return; }
+    if (cpNew.length < 8) { toast.error(get(t)('pf.pwMin8')); return; }
     cpSaving = true;
     try {
       await apiEndpoints.changePassword(cpOld, cpNew);
       cpOld = cpNew = cpConfirm = '';
-      toast.success('Password berhasil diubah');
+      toast.success(get(t)('pf.pwChanged'));
     } catch (e: any) { toast.error(e.message); } finally { cpSaving = false; }
   }
 
   async function changeEmail(e: Event) {
     e.preventDefault();
-    if (!newEmail.includes('@')) { toast.error('Email tidak valid'); return; }
+    if (!newEmail.includes('@')) { toast.error(get(t)('pf.emailInvalid')); return; }
     ceSaving = true;
     try {
       await apiEndpoints.requestChangeEmail(newEmail);
       newEmail = '';
-      toast.success('Link persetujuan sudah dikirim ke email saat ini');
+      toast.success(get(t)('pf.emailLinkSent'));
     } catch (e: any) { toast.error(e.message); } finally { ceSaving = false; }
   }
 
@@ -112,7 +113,7 @@
   async function saveAddr(e: Event) {
     e.preventDefault();
     if (formAddr.latitude == null || formAddr.longitude == null) {
-      toast.warn('Geser pin lokasi alamat terlebih dahulu.');
+      toast.warn(get(t)('pf.pinFirst'));
       return;
     }
     try {
@@ -121,14 +122,14 @@
       addresses = await apiEndpoints.addresses();
       editing = null;
       addressFormOpen = false;
-      toast.success('Alamat disimpan');
+      toast.success(get(t)('pf.addrSaved'));
     } catch (e: any) { toast.error(e.message); }
   }
   async function delAddr(id: number) {
     const ok = await confirmDialog.ask({
-      title: 'Hapus alamat?',
-      message: 'Alamat ini akan dihapus dari daftar alamat pengiriman Anda.',
-      confirmText: 'Hapus alamat',
+      title: get(t)('pf.deleteAddrQ'),
+      message: get(t)('pf.deleteAddrMsg'),
+      confirmText: get(t)('pf.deleteAddr'),
       tone: 'danger',
     });
     if (!ok) return;
@@ -159,37 +160,37 @@
     <!-- Admin: hanya panel profile, tanpa sidebar buyer -->
     <div class="max-w-2xl mx-auto space-y-5">
       <div class="card">
-        <h3 class="font-semibold mb-4 flex items-center gap-2"><Icon name="user" size={16} /> Data Akun Portal SI</h3>
+        <h3 class="font-semibold mb-4 flex items-center gap-2"><Icon name="user" size={16} /> {$t('pf.accountData')}</h3>
         <form on:submit={save} class="space-y-4">
-          <div><label class="label">Nama</label><input bind:value={name} class="input" /></div>
-          <div><label class="label">Email saat ini</label><input value={auth.user?.email ?? ''} disabled class="input bg-ink-50" /></div>
-          <div><label class="label">No. HP</label><input bind:value={phone} class="input" /></div>
-          <button disabled={saving} class="btn-primary btn-md">{saving ? 'Menyimpan…' : 'Simpan'}</button>
+          <div><label class="label">{$t('pf.name')}</label><input bind:value={name} class="input" /></div>
+          <div><label class="label">{$t('pf.currentEmail')}</label><input value={auth.user?.email ?? ''} disabled class="input bg-ink-50" /></div>
+          <div><label class="label">{$t('auth.phone')}</label><input bind:value={phone} class="input" /></div>
+          <button disabled={saving} class="btn-primary btn-md">{saving ? $t('pf.saving') : $t('pf.save')}</button>
         </form>
       </div>
 
       <div class="card">
-        <h3 class="font-semibold mb-4 flex items-center gap-2"><Icon name="mail" size={16} /> Ubah Email</h3>
-        <p class="text-xs text-ink-500 mb-3">Perubahan email diproses lewat Portal SI. Link konfirmasi akan dikirim ke email baru.</p>
+        <h3 class="font-semibold mb-4 flex items-center gap-2"><Icon name="mail" size={16} /> {$t('pf.changeEmail')}</h3>
+        <p class="text-xs text-ink-500 mb-3">{$t('pf.emailNote')}</p>
         <form on:submit={changeEmail} class="flex gap-2">
-          <input type="email" bind:value={newEmail} class="input flex-1" placeholder="email-baru@contoh.com" required />
-          <button disabled={ceSaving} class="btn-primary btn-md">{ceSaving ? 'Mengirim…' : 'Kirim konfirmasi'}</button>
+          <input type="email" bind:value={newEmail} class="input flex-1" placeholder={$t('pf.newEmailPlaceholder')} required />
+          <button disabled={ceSaving} class="btn-primary btn-md">{ceSaving ? $t('pf.sending') : $t('pf.sendConfirm')}</button>
         </form>
       </div>
 
       <div class="card">
-        <h3 class="font-semibold mb-4 flex items-center gap-2"><Icon name="lock" size={16} /> Ubah Password</h3>
-        <p class="text-xs text-ink-500 mb-3">Password ini mengikuti akun Portal SI. Lupa password lama? Gunakan <a href="/forgot-password" class="link">reset password via email</a>.</p>
+        <h3 class="font-semibold mb-4 flex items-center gap-2"><Icon name="lock" size={16} /> {$t('pf.changePw')}</h3>
+        <p class="text-xs text-ink-500 mb-3">{$t('pf.pwNote')}<a href="/forgot-password" class="link">{$t('pf.resetViaEmail')}</a>.</p>
         <form on:submit={changePassword} class="space-y-3 max-w-md">
-          <div><label class="label">Password lama</label><input type="password" bind:value={cpOld} class="input" required /></div>
-          <div><label class="label">Password baru</label><input type="password" bind:value={cpNew} class="input" required minlength="8" /></div>
-          <div><label class="label">Konfirmasi password baru</label><input type="password" bind:value={cpConfirm} class="input" required minlength="8" /></div>
-          <button disabled={cpSaving} class="btn-primary btn-md">{cpSaving ? 'Menyimpan…' : 'Ubah Password'}</button>
+          <div><label class="label">{$t('pf.oldPw')}</label><input type="password" bind:value={cpOld} class="input" required /></div>
+          <div><label class="label">{$t('pf.newPw')}</label><input type="password" bind:value={cpNew} class="input" required minlength="8" /></div>
+          <div><label class="label">{$t('pf.confirmNewPw')}</label><input type="password" bind:value={cpConfirm} class="input" required minlength="8" /></div>
+          <button disabled={cpSaving} class="btn-primary btn-md">{cpSaving ? $t('pf.saving') : $t('pf.changePw')}</button>
         </form>
       </div>
 
       <div class="flex justify-end">
-        <button on:click={logout} class="btn-outline btn-md text-red-600 border-red-200 hover:bg-red-50">Keluar</button>
+        <button on:click={logout} class="btn-outline btn-md text-red-600 border-red-200 hover:bg-red-50">{$t('nav.logout')}</button>
       </div>
     </div>
   {:else}
@@ -200,94 +201,94 @@
           <div class="flex items-start justify-between gap-4 mb-4">
             <div>
               <h3 class="font-semibold flex items-center gap-2"><Icon name="wallet" size={16} /> Saldo Profil</h3>
-              <p class="text-xs text-ink-500 mt-1">Refund pesanan yang disetujui admin akan masuk ke saldo ini.</p>
+              <p class="text-xs text-ink-500 mt-1">{$t('pf.refundNote')}</p>
               <a href="/refunds" class="mt-2 inline-flex items-center gap-1 text-xs text-app-primary hover:underline">
                 <Icon name="receipt" size={12} /> Lihat riwayat refund detail
               </a>
             </div>
             <div class="text-right">
-              <div class="text-xs text-ink-500">Tersedia</div>
+              <div class="text-xs text-ink-500">{$t('pf.available')}</div>
               <div class="text-xl font-bold">{walletLoading ? '...' : fmtRp(wallet?.available ?? 0)}</div>
             </div>
           </div>
 
           <div class="grid sm:grid-cols-3 gap-2 mb-4">
             <div class="rounded-2xl bg-ink-50 p-3">
-              <div class="text-xs text-ink-500">Total masuk</div>
+              <div class="text-xs text-ink-500">{$t('pf.totalIn')}</div>
               <div class="font-semibold">{fmtRp(wallet?.gross ?? 0)}</div>
             </div>
             <div class="rounded-2xl bg-ink-50 p-3">
-              <div class="text-xs text-ink-500">Diproses/ditarik</div>
+              <div class="text-xs text-ink-500">{$t('pf.processingWithdraw')}</div>
               <div class="font-semibold">{fmtRp(wallet?.withdrawn ?? 0)}</div>
             </div>
             <div class="rounded-2xl bg-ink-50 p-3">
-              <div class="text-xs text-ink-500">Riwayat</div>
+              <div class="text-xs text-ink-500">{$t('pf.history')}</div>
               <div class="font-semibold">{wallet?.transactions?.length ?? 0} transaksi</div>
             </div>
           </div>
 
           <form on:submit={requestUserWithdraw} class="space-y-3">
             <div class="grid sm:grid-cols-2 gap-3">
-              <div><label class="label">Jumlah penarikan</label><input type="number" min="10000" bind:value={wdAmount} class="input" placeholder="Contoh: 50000" required /></div>
-              <div><label class="label">Nama bank/e-wallet</label><input bind:value={wdBankName} class="input" placeholder="BCA, Mandiri, DANA" required /></div>
-              <div><label class="label">Nomor rekening/akun</label><input bind:value={wdBankAccount} class="input" required /></div>
-              <div><label class="label">Nama pemilik</label><input bind:value={wdBankHolder} class="input" required /></div>
+              <div><label class="label">{$t('pf.withdrawAmount')}</label><input type="number" min="10000" bind:value={wdAmount} class="input" placeholder={$t('pf.amountPlaceholder')} required /></div>
+              <div><label class="label">{$t('pf.bankName')}</label><input bind:value={wdBankName} class="input" placeholder="BCA, Mandiri, DANA" required /></div>
+              <div><label class="label">{$t('pf.accountNumber')}</label><input bind:value={wdBankAccount} class="input" required /></div>
+              <div><label class="label">{$t('pf.ownerName')}</label><input bind:value={wdBankHolder} class="input" required /></div>
             </div>
-            <button disabled={wdSaving || (wallet?.available ?? 0) <= 0} class="btn-primary btn-md">{wdSaving ? 'Mengirim...' : 'Ajukan Penarikan'}</button>
+            <button disabled={wdSaving || (wallet?.available ?? 0) <= 0} class="btn-primary btn-md">{wdSaving ? $t('pf.sending2') : 'Ajukan Penarikan'}</button>
           </form>
         </div>
 
         <div class="card">
-          <h3 class="font-semibold mb-4">Data Akun Portal SI</h3>
+          <h3 class="font-semibold mb-4">{$t('pf.accountData')}</h3>
           <form on:submit={save} class="space-y-4 max-w-lg">
-            <div><label class="label">Nama</label><input bind:value={name} class="input" /></div>
-            <div><label class="label">Email</label><input value={auth.user?.email ?? ''} disabled class="input bg-ink-50" /></div>
-            <div><label class="label">No. HP</label><input bind:value={phone} class="input" /></div>
-            <button disabled={saving} class="btn-primary btn-md">{saving ? 'Menyimpan…' : 'Simpan'}</button>
+            <div><label class="label">{$t('pf.name')}</label><input bind:value={name} class="input" /></div>
+            <div><label class="label">{$t('auth.email')}</label><input value={auth.user?.email ?? ''} disabled class="input bg-ink-50" /></div>
+            <div><label class="label">{$t('auth.phone')}</label><input bind:value={phone} class="input" /></div>
+            <button disabled={saving} class="btn-primary btn-md">{saving ? $t('pf.saving') : $t('pf.save')}</button>
           </form>
         </div>
 
         <div class="card">
-          <h3 class="font-semibold mb-3 flex items-center gap-2"><Icon name="mail" size={16} /> Ubah Email</h3>
-          <p class="text-xs text-ink-500 mb-3">Perubahan email diproses lewat Portal SI. Link konfirmasi akan dikirim ke email baru.</p>
+          <h3 class="font-semibold mb-3 flex items-center gap-2"><Icon name="mail" size={16} /> {$t('pf.changeEmail')}</h3>
+          <p class="text-xs text-ink-500 mb-3">{$t('pf.emailNote')}</p>
           <form on:submit={changeEmail} class="flex gap-2">
-            <input type="email" bind:value={newEmail} class="input flex-1" placeholder="email-baru@contoh.com" required />
-            <button disabled={ceSaving} class="btn-primary btn-md">{ceSaving ? 'Mengirim…' : 'Kirim'}</button>
+            <input type="email" bind:value={newEmail} class="input flex-1" placeholder={$t('pf.newEmailPlaceholder')} required />
+            <button disabled={ceSaving} class="btn-primary btn-md">{ceSaving ? $t('pf.sending') : $t('pf.send')}</button>
           </form>
         </div>
 
         <div class="card">
-          <h3 class="font-semibold mb-3 flex items-center gap-2"><Icon name="lock" size={16} /> Ubah Password</h3>
-          <p class="text-xs text-ink-500 mb-3">Password ini mengikuti akun Portal SI. Lupa password lama? Gunakan <a href="/forgot-password" class="link">reset password via email</a>.</p>
+          <h3 class="font-semibold mb-3 flex items-center gap-2"><Icon name="lock" size={16} /> {$t('pf.changePw')}</h3>
+          <p class="text-xs text-ink-500 mb-3">{$t('pf.pwNote')}<a href="/forgot-password" class="link">{$t('pf.resetViaEmail')}</a>.</p>
           <form on:submit={changePassword} class="space-y-3 max-w-md">
-            <div><label class="label">Password lama</label><input type="password" bind:value={cpOld} class="input" required /></div>
-            <div><label class="label">Password baru</label><input type="password" bind:value={cpNew} class="input" required minlength="8" /></div>
-            <div><label class="label">Konfirmasi password baru</label><input type="password" bind:value={cpConfirm} class="input" required minlength="8" /></div>
-            <button disabled={cpSaving} class="btn-primary btn-md">{cpSaving ? 'Menyimpan…' : 'Ubah Password'}</button>
+            <div><label class="label">{$t('pf.oldPw')}</label><input type="password" bind:value={cpOld} class="input" required /></div>
+            <div><label class="label">{$t('pf.newPw')}</label><input type="password" bind:value={cpNew} class="input" required minlength="8" /></div>
+            <div><label class="label">{$t('pf.confirmNewPw')}</label><input type="password" bind:value={cpConfirm} class="input" required minlength="8" /></div>
+            <button disabled={cpSaving} class="btn-primary btn-md">{cpSaving ? $t('pf.saving') : $t('pf.changePw')}</button>
           </form>
         </div>
 
         <div id="addresses" class="card">
           <div class="flex items-center justify-between mb-4">
-            <h3 class="font-semibold">Alamat</h3>
-            <button on:click={() => openAddrForm(null)} class="btn-outline btn-sm"><Icon name="plus" size={12} /> Tambah</button>
+            <h3 class="font-semibold">{$t('pf.addresses')}</h3>
+            <button on:click={() => openAddrForm(null)} class="btn-outline btn-sm"><Icon name="plus" size={12} /> {$t('pf.add')}</button>
           </div>
           {#if addresses.length === 0 && !addressFormOpen}
-            <p class="text-sm text-ink-500">Belum ada alamat tersimpan.</p>
+            <p class="text-sm text-ink-500">{$t('pf.noAddr')}</p>
           {/if}
           {#each addresses as a (a.id)}
             <div class="border border-ink-100 rounded-xl p-4 mb-2 flex items-start gap-3">
               <Icon name="map-pin" size={18} class="text-ink-500 mt-0.5" />
               <div class="flex-1">
-                <div class="flex items-center gap-2"><b>{a.recipient}</b> <span class="text-xs text-ink-500">{a.phone}</span> {#if a.is_default}<span class="pill-ink">Utama</span>{/if}</div>
+                <div class="flex items-center gap-2"><b>{a.recipient}</b> <span class="text-xs text-ink-500">{a.phone}</span> {#if a.is_default}<span class="pill-ink">{$t('co.primary')}</span>{/if}</div>
                 <div class="text-sm text-ink-600 mt-0.5">
                   {a.full_address}, {a.village ? `${a.village}, ` : ''}{a.district ? `${a.district}, ` : ''}{a.city}{a.province ? `, ${a.province}` : ''}{a.postal_code ? ` ${a.postal_code}` : ''}
                 </div>
                 {#if a.latitude && a.longitude}
-                  <a href={`https://www.google.com/maps?q=${a.latitude},${a.longitude}`} target="_blank" class="text-xs text-blue-600 mt-1 inline-flex items-center gap-1">Lihat di Maps <Icon name="external-link" size={10} /></a>
+                  <a href={`https://www.google.com/maps?q=${a.latitude},${a.longitude}`} target="_blank" class="text-xs text-blue-600 mt-1 inline-flex items-center gap-1">{$t('pf.viewMaps')}<Icon name="external-link" size={10} /></a>
                 {:else}
                   <div class="mt-1 inline-flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-1 text-[11px] font-medium text-red-700">
-                    <Icon name="map-pin-off" size={11} /> Pin lokasi wajib dilengkapi
+                    <Icon name="map-pin-off" size={11} /> {$t('pf.pinRequired')}
                   </div>
                 {/if}
               </div>
@@ -299,17 +300,17 @@
 
         {#if addressFormOpen}
           <div class="card">
-            <h3 class="font-semibold mb-4">{editing?.id ? 'Edit' : 'Tambah'} Alamat</h3>
+            <h3 class="font-semibold mb-4">{editing?.id ? $t('pf.edit') : $t('pf.add')} {$t('pf.addrWord')}</h3>
             <form on:submit={saveAddr} class="space-y-3">
               <AddressFields bind:value={formAddr} />
               <div>
-                <label class="label">Pin Lokasi (opsional)</label>
+                <label class="label">{$t('pf.pinOptional')}</label>
                 <MapPicker bind:lat={formAddr.latitude} bind:lng={formAddr.longitude} query={addressQuery(formAddr)} />
               </div>
-              <label class="flex items-center gap-2 text-sm"><input type="checkbox" bind:checked={formAddr.is_default} /> Jadikan alamat utama</label>
+              <label class="flex items-center gap-2 text-sm"><input type="checkbox" bind:checked={formAddr.is_default} /> {$t('pf.makeDefault')}</label>
               <div class="flex gap-2">
-                <button class="btn-primary btn-md">Simpan</button>
-                <button type="button" on:click={() => { editing = null; addressFormOpen = false; }} class="btn-outline btn-md">Batal</button>
+                <button class="btn-primary btn-md">{$t('pf.save')}</button>
+                <button type="button" on:click={() => { editing = null; addressFormOpen = false; }} class="btn-outline btn-md">{$t('od.cancel')}</button>
               </div>
             </form>
           </div>

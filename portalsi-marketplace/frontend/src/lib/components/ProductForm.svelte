@@ -1,5 +1,7 @@
 <script lang="ts">
   import Icon from './Icon.svelte';
+  import { get } from 'svelte/store';
+  import { t } from '$lib/i18n';
   import { toast } from '$lib/stores.svelte';
   import { apiEndpoints } from '$lib/api';
   import { goto } from '$app/navigation';
@@ -95,8 +97,8 @@
 
   async function submit(e: Event) {
     e.preventDefault();
-    if (!name || !price) { toast.warn('Lengkapi data'); return; }
-    if (tags.length === 0) { toast.warn('Tambah minimal 1 tag'); return; }
+    if (!name || !price) { toast.warn(get(t)('pfrm.completeData')); return; }
+    if (tags.length === 0) { toast.warn(get(t)('pfrm.min1Tag')); return; }
     saving = true;
     try {
       const cleanVariants: any = {};
@@ -119,18 +121,18 @@
       };
       if (mode === 'create') await apiEndpoints.sellerCreateProduct(body);
       else await apiEndpoints.sellerUpdateProduct(product.id, body);
-      toast.success(mode === 'create' ? 'Produk dibuat' : 'Produk diperbarui');
+      toast.success(mode === 'create' ? get(t)('pfrm.created') : get(t)('pfrm.updated'));
       goto('/seller/products');
     } catch (e: any) { toast.error(e.message); } finally { saving = false; }
   }
 </script>
 
 <form on:submit={submit} class="space-y-5">
-  <div><label class="label">Nama Produk</label><input bind:value={name} class="input" required /></div>
+  <div><label class="label">{$t('pfrm.name')}</label><input bind:value={name} class="input" required /></div>
 
   <div>
-    <label class="label">Tag <span class="text-red-600">*</span></label>
-    <p class="helper mb-2">Gunakan tag untuk mengkategorikan produk. Otomatis lowercase, contoh: <code>elektronik</code>, <code>kemeja-pria</code>.</p>
+    <label class="label">{$t('pfrm.tag')} <span class="text-red-600">*</span></label>
+    <p class="helper mb-2">{$t('pfrm.tagHint')} <code>elektronik</code>, <code>kemeja-pria</code>.</p>
     <div class="flex flex-wrap gap-1.5 mb-2">
       {#each tags as t}
         <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-app-primary text-app-pfg text-xs">
@@ -141,28 +143,28 @@
     </div>
     <div class="flex gap-2">
       <input bind:value={tagInput} on:keydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addTag(); } }} class="input flex-1" placeholder="ketik tag lalu Enter" />
-      <button type="button" on:click={addTag} class="btn-outline btn-md">Tambah</button>
+      <button type="button" on:click={addTag} class="btn-outline btn-md">{$t('mk.add')}</button>
     </div>
   </div>
 
   <div class="grid sm:grid-cols-4 gap-3">
-    <div><label class="label">Harga (Rp)</label><input type="number" min="1" bind:value={price} class="input" required /></div>
-    <div><label class="label">Harga Coret</label><input type="number" min="0" bind:value={original_price} class="input" /></div>
-    <div><label class="label">Stok</label><input type="number" min="0" bind:value={stock} class="input" required /></div>
-    <div><label class="label">Berat (gram)</label><input type="number" min="1" bind:value={weight} class="input" required /></div>
+    <div><label class="label">{$t('pfrm.price')}</label><input type="number" min="1" bind:value={price} class="input" required /></div>
+    <div><label class="label">{$t('pfrm.strikePrice')}</label><input type="number" min="0" bind:value={original_price} class="input" /></div>
+    <div><label class="label">{$t('pfrm.stock')}</label><input type="number" min="0" bind:value={stock} class="input" required /></div>
+    <div><label class="label">{$t('pfrm.weight')}</label><input type="number" min="1" bind:value={weight} class="input" required /></div>
   </div>
 
-  <div><label class="label">Deskripsi</label><textarea rows={4} bind:value={description} class="input" required /></div>
+  <div><label class="label">{$t('pfrm.desc')}</label><textarea rows={4} bind:value={description} class="input" required /></div>
 
   <!-- Multi images -->
   <div>
-    <label class="label">Gambar Produk (maks 8)</label>
-    <p class="helper mb-2">Gambar pertama dipakai sebagai cover. Drag urutan pakai tombol panah.</p>
+    <label class="label">{$t('pfrm.images')}</label>
+    <p class="helper mb-2">{$t('pfrm.imagesHint')}</p>
     <div class="grid grid-cols-3 sm:grid-cols-4 gap-2 mb-2">
       {#each images as img, i}
         <div class="relative aspect-square rounded-xl border border-ink-200 bg-ink-50 overflow-hidden group">
           <img src={img} alt="" class="w-full h-full object-cover" />
-          {#if i === 0}<span class="absolute top-1 left-1 bg-app-primary text-app-pfg text-[10px] px-2 py-0.5 rounded-full">Cover</span>{/if}
+          {#if i === 0}<span class="absolute top-1 left-1 bg-app-primary text-app-pfg text-[10px] px-2 py-0.5 rounded-full">{$t('pfrm.cover')}</span>{/if}
           <div class="absolute inset-x-1 bottom-1 flex items-center justify-between opacity-0 group-hover:opacity-100 transition">
             <div class="flex gap-1">
               <button type="button" on:click={() => moveImage(i, -1)} class="w-6 h-6 grid place-items-center rounded-full bg-white shadow-soft" title="Kiri"><Icon name="chevron-left" size={12} /></button>
@@ -179,19 +181,19 @@
         </label>
       {/if}
     </div>
-    <p class="helper">Maks 1MB per gambar. Jika kosong, sistem generate placeholder otomatis.</p>
+    <p class="helper">{$t('pfrm.imagesMaxHint')}</p>
   </div>
 
   <!-- Variants -->
   <div>
-    <label class="label">Varian (opsional)</label>
-    <p class="helper mb-2">Tambah atribut seperti <b>Warna</b>, <b>Ukuran</b>, dll. Pembeli bisa pilih saat checkout.</p>
+    <label class="label">{$t('pfrm.variants')}</label>
+    <p class="helper mb-2">{$t('pfrm.addAttrLike')} <b>Warna</b>, <b>Ukuran</b>, dll. Pembeli bisa pilih saat checkout.</p>
     <div class="space-y-2">
       {#each Object.entries(variants) as [key, opts]}
         <div class="card !p-3 bg-ink-50">
           <div class="flex items-center justify-between mb-2">
             <b class="text-sm">{key}</b>
-            <button type="button" on:click={() => removeAttr(key)} class="text-xs text-red-600 hover:underline flex items-center gap-1"><Icon name="trash-2" size={12} /> Hapus atribut</button>
+            <button type="button" on:click={() => removeAttr(key)} class="text-xs text-red-600 hover:underline flex items-center gap-1"><Icon name="trash-2" size={12} /> {$t('pfrm.delAttr')}</button>
           </div>
           <div class="flex flex-wrap gap-2 mb-2">
             {#each opts as o}
@@ -205,7 +207,7 @@
                   <input type="file" accept="image/*" on:change={(e) => onVariantImage(e, key, o)} class="hidden" />
                 </label>
                 <div class="truncate" title={optLabel(o)}>{optLabel(o)}</div>
-                <button type="button" on:click={() => removeOpt(key, o)} class="mt-1 inline-flex items-center gap-1 text-[11px] text-red-600"><Icon name="x" size={10} /> Hapus</button>
+                <button type="button" on:click={() => removeOpt(key, o)} class="mt-1 inline-flex items-center gap-1 text-[11px] text-red-600"><Icon name="x" size={10} /> {$t('aap.remove')}</button>
               </div>
             {/each}
           </div>
@@ -220,7 +222,7 @@
     </div>
     <div class="flex gap-2 mt-2">
       <input bind:value={newAttrName} on:keydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addAttr(); } }} class="input flex-1 !py-2 !text-sm" placeholder="Nama atribut (contoh: Warna, Ukuran)" />
-      <button type="button" on:click={addAttr} class="btn-outline btn-sm">Tambah Atribut</button>
+      <button type="button" on:click={addAttr} class="btn-outline btn-sm">{$t('pfrm.addAttr')}</button>
     </div>
   </div>
 
@@ -230,7 +232,7 @@
   </label>
 
   <div class="flex gap-2 pt-3 border-t border-ink-100">
-    <button disabled={saving} class="btn-primary btn-md">{saving ? 'Menyimpan…' : (mode === 'create' ? 'Buat Produk' : 'Simpan Perubahan')}</button>
-    <button type="button" on:click={() => history.back()} class="btn-outline btn-md">Batal</button>
+    <button disabled={saving} class="btn-primary btn-md">{saving ? $t('mk.saving') : (mode === 'create' ? $t('pfrm.create') : $t('mk.saveChanges'))}</button>
+    <button type="button" on:click={() => history.back()} class="btn-outline btn-md">{$t('od.cancel')}</button>
   </div>
 </form>

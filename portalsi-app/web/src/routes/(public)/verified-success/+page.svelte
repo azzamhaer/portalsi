@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { BadgeCheck, MailCheck, TriangleAlert } from '@lucide/svelte';
+	import { get } from 'svelte/store';
+	import { t } from '$lib/i18n';
 	import { page } from '$app/state';
 
 	const state = $derived(page.url.searchParams.get('email'));
@@ -8,26 +10,26 @@
 			case 'changed':
 				return {
 					ok: true,
-					title: 'Email berhasil diubah',
-					body: 'Alamat email akun Anda telah diperbarui dan terverifikasi. Silakan masuk kembali dengan email baru Anda.'
+					title: get(t)('auth.vsEmailChanged'),
+					body: get(t)('auth.vsEmailChangedMsg')
 				};
 			case 'taken':
 				return {
 					ok: false,
-					title: 'Email sudah dipakai',
-					body: 'Alamat email tersebut kini sudah digunakan akun lain, sehingga perubahan tidak dapat diselesaikan.'
+					title: get(t)('auth.vsEmailUsed'),
+					body: get(t)('auth.vsEmailUsedMsg')
 				};
 			case 'invalid':
 				return {
 					ok: false,
-					title: 'Tautan tidak valid',
-					body: 'Tautan konfirmasi tidak valid atau sudah kedaluwarsa. Silakan minta perubahan email lagi.'
+					title: get(t)('auth.vsInvalid'),
+					body: get(t)('auth.vsInvalidMsg')
 				};
 			default:
 				return {
 					ok: true,
-					title: 'Email berhasil diverifikasi',
-					body: 'Masuk kembali atau lanjutkan ke Portal SI untuk memperbarui status sesi.'
+					title: get(t)('auth.vsVerified'),
+					body: get(t)('auth.vsVerifiedMsg')
 				};
 		}
 	});

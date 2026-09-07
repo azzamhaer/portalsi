@@ -1,0 +1,19 @@
+# Worker penerima email (Cloudflare Email Routing → Email Worker).
+# Menerima email masuk untuk *@kbihuarrahman.com, parse, simpan ke D1 + R2.
+# D1 & R2 di sini HARUS binding yang sama dengan web app (kbihu-mail).
+name = "kbihu-mail-inbound"
+main = "src/index.ts"
+compatibility_date = "2025-01-09"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "kbihu_mail"
+database_id = "41870cc8-02b3-4319-a961-79a0439412cf"   # sama dgn web/wrangler.toml
+
+[[r2_buckets]]
+binding = "MAILSTORE"
+bucket_name = "kbihu-mailstore"
+
+[vars]
+MAIL_DOMAIN = "kbihuarrahman.com"

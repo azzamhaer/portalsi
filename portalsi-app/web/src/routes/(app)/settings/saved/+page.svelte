@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { Image, Play } from '@lucide/svelte';
+	import { get } from 'svelte/store';
+	import { t } from '$lib/i18n';
 	import SectionPage from '$lib/components/layout/SectionPage.svelte';
 	import type { PageProps } from './$types';
 	let { data }: PageProps = $props();
@@ -27,7 +29,7 @@
 						/>{/if}</i
 				>
 				<span
-					><strong>@{post.user.username}</strong><small>{post.caption || 'Tanpa caption'}</small
+					><strong>@{post.user.username}</strong><small>{post.caption || get(t)('sarch.noCaption')}</small
 					></span
 				>
 			</a>{/each}{#if data.posts.length === 0}<p class="surface">

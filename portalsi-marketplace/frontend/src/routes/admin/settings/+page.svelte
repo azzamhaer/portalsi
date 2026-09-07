@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { t } from '$lib/i18n';
+  import { get } from 'svelte/store';
   import { apiEndpoints } from '$lib/api';
   import { toast, settings as settingsStore, confirmDialog } from '$lib/stores.svelte';
   import Icon from '$lib/components/Icon.svelte';
@@ -45,7 +47,7 @@
       });
       const pub: any = await apiEndpoints.publicSettings();
       settingsStore.setAll(pub);
-      toast.success('Pengaturan disimpan');
+      toast.success(get(t)('aset.saved'));
     } catch (e: any) { toast.error(e.message); } finally { saving = false; }
   }
 
@@ -70,18 +72,18 @@
       seoFile = null;
       const pub: any = await apiEndpoints.publicSettings();
       settingsStore.setAll(pub);
-      toast.success('Gambar share diupload');
+      toast.success(get(t)('aset.shareUploaded'));
     } catch (e: any) {
       toast.error(e.message || 'Gagal upload gambar share');
     }
   }
 
   async function runMigrateFresh() {
-    if (!freshPassword) { toast.warn('Masukkan password admin'); return; }
+    if (!freshPassword) { toast.warn(get(t)('aset.enterAdminPw')); return; }
     const ok = await confirmDialog.ask({
-      title: 'Jalankan Migrate Fresh?',
-      message: 'Aksi ini menghapus seluruh data transaksi/testing non-konfigurasi. Admin, settings, kategori, tag, FAQ, kurir, dan payment method tetap disimpan.',
-      confirmText: 'Migrate Fresh',
+      title: get(t)('aset.migTitle'),
+      message: get(t)('aset.migMsg'),
+      confirmText: get(t)('aset.migConfirm'),
       tone: 'danger',
     });
     if (!ok) return;
@@ -89,7 +91,7 @@
     try {
       await apiEndpoints.adminFreshStart(freshPassword);
       freshPassword = '';
-      toast.success('Migrate fresh selesai');
+      toast.success(get(t)('aset.migDone'));
       freshSummary = await apiEndpoints.adminFreshStartSummary();
     } catch (e: any) {
       toast.error(e.message || 'Migrate fresh gagal');
@@ -99,13 +101,13 @@
   }
 </script>
 
-{#if !s}<div class="card text-center text-ink-500 py-10">Memuat…</div>
+{#if !s}<div class="card text-center text-ink-500 py-10">{$t('wl.loading')}</div>
 {:else}
   <div class="space-y-5">
     <div class="card bg-sky-50 text-sky-800 text-xs p-3 rounded-xl flex items-start gap-2">
       <Icon name="info" size={14} class="mt-0.5 shrink-0" />
       <div>
-        Halaman ini untuk konfigurasi sistem (komisi, payment gateway, email). Untuk mengubah tampilan UI, logo, hero, FAQ, atau metode pembayaran yang ditampilkan, buka <a href="/admin/appearance" class="underline font-semibold">Tampilan</a>.
+        Halaman ini untuk konfigurasi sistem (komisi, payment gateway, email). Untuk mengubah tampilan UI, logo, hero, FAQ, atau metode pembayaran yang ditampilkan, buka <a href="/admin/appearance" class="underline font-semibold">{$t('aset.appearance')}</a>.
       </div>
     </div>
 
@@ -120,34 +122,34 @@
         <div class="space-y-4">
           <div class="grid sm:grid-cols-2 gap-3">
             <div>
-              <label class="label">Default SEO title</label>
+              <label class="label">{$t('aset.defSeoTitle')}</label>
               <input bind:value={s.seo_title} class="input" placeholder="MPSI Marketplace" />
             </div>
             <div>
-              <label class="label">Gambar share default</label>
+              <label class="label">{$t('aset.defShareImg')}</label>
               <div class="flex gap-2">
                 <input type="file" accept="image/*" on:change={(e: any) => seoFile = e.target.files?.[0] ?? null} class="text-sm flex-1" />
-                <button type="button" on:click={uploadSeoImage} disabled={!seoFile} class="btn-outline btn-sm">Upload</button>
+                <button type="button" on:click={uploadSeoImage} disabled={!seoFile} class="btn-outline btn-sm">{$t('aset.upload')}</button>
               </div>
             </div>
             <div class="sm:col-span-2">
-              <label class="label">Default SEO description</label>
-              <textarea bind:value={s.seo_description} class="input" rows={2} maxlength="300" placeholder="Deskripsi singkat marketplace untuk preview share."></textarea>
+              <label class="label">{$t('aset.defSeoDesc')}</label>
+              <textarea bind:value={s.seo_description} class="input" rows={2} maxlength="300" placeholder={$t('aset.shareDescPh')}></textarea>
             </div>
           </div>
 
           <div class="grid sm:grid-cols-2 gap-3 rounded-2xl border border-ink-100 bg-ink-50 p-3">
-            <div class="sm:col-span-2 text-xs font-semibold uppercase tracking-widest text-ink-500">Homepage</div>
-            <div><label class="label">Title beranda</label><input bind:value={s.seo_home_title} class="input bg-white" placeholder="Kosongkan untuk pakai default" /></div>
-            <div><label class="label">Gambar beranda</label><input bind:value={s.seo_home_image} class="input bg-white" placeholder="Kosongkan untuk pakai gambar default" /></div>
-            <div class="sm:col-span-2"><label class="label">Description beranda</label><textarea bind:value={s.seo_home_description} class="input bg-white" rows={2} placeholder="Kosongkan untuk pakai default"></textarea></div>
+            <div class="sm:col-span-2 text-xs font-semibold uppercase tracking-widest text-ink-500">{$t('aset.homepage')}</div>
+            <div><label class="label">{$t('aset.homeTitle')}</label><input bind:value={s.seo_home_title} class="input bg-white" placeholder={$t('aset.emptyDefault')} /></div>
+            <div><label class="label">{$t('aset.homeImg')}</label><input bind:value={s.seo_home_image} class="input bg-white" placeholder={$t('aset.emptyDefaultImg')} /></div>
+            <div class="sm:col-span-2"><label class="label">{$t('aset.homeDesc')}</label><textarea bind:value={s.seo_home_description} class="input bg-white" rows={2} placeholder={$t('aset.emptyDefault')}></textarea></div>
           </div>
 
           <div class="grid sm:grid-cols-2 gap-3 rounded-2xl border border-ink-100 bg-ink-50 p-3">
-            <div class="sm:col-span-2 text-xs font-semibold uppercase tracking-widest text-ink-500">Halaman Produk</div>
-            <div><label class="label">Title /products</label><input bind:value={s.seo_products_title} class="input bg-white" placeholder="Semua Produk di MPSI" /></div>
-            <div><label class="label">Gambar /products</label><input bind:value={s.seo_products_image} class="input bg-white" placeholder="Kosongkan untuk pakai gambar default" /></div>
-            <div class="sm:col-span-2"><label class="label">Description /products</label><textarea bind:value={s.seo_products_description} class="input bg-white" rows={2} placeholder="Deskripsi katalog produk"></textarea></div>
+            <div class="sm:col-span-2 text-xs font-semibold uppercase tracking-widest text-ink-500">{$t('aset.productsPage')}</div>
+            <div><label class="label">{$t('aset.prodTitle')}</label><input bind:value={s.seo_products_title} class="input bg-white" placeholder="Semua Produk di MPSI" /></div>
+            <div><label class="label">{$t('aset.prodImg')}</label><input bind:value={s.seo_products_image} class="input bg-white" placeholder={$t('aset.emptyDefaultImg')} /></div>
+            <div class="sm:col-span-2"><label class="label">{$t('aset.prodDesc')}</label><textarea bind:value={s.seo_products_description} class="input bg-white" rows={2} placeholder={$t('aset.prodDescPh')}></textarea></div>
           </div>
         </div>
 
@@ -169,11 +171,11 @@
     </div>
 
     <div class="card">
-      <h3 class="font-semibold mb-4">Komisi Platform</h3>
-      <p class="text-xs text-ink-500 mb-4">Persen yang dipotong dari setiap pesanan selesai sebelum dana bisa ditarik oleh seller.</p>
+      <h3 class="font-semibold mb-4">{$t('aset.commission')}</h3>
+      <p class="text-xs text-ink-500 mb-4">{$t('aset.commissionDesc')}</p>
       <div class="grid sm:grid-cols-[200px_1fr] gap-3 items-center">
         <div>
-          <label class="label">Persen (0–50%)</label>
+          <label class="label">{$t('aset.percent')}</label>
           <div class="flex items-center gap-2">
             <input type="number" min="0" max="50" step="0.5" bind:value={s.commission_percent} class="input" />
             <span class="font-semibold">%</span>
@@ -200,23 +202,23 @@
       </div>
       <div class="grid sm:grid-cols-2 gap-3">
         <div class="sm:col-span-2">
-          <label class="label">API Key</label>
+          <label class="label">{$t('aset.apiKey')}</label>
           <input type="password" bind:value={s.brevo_api_key} class="input font-mono text-xs" placeholder="xkeysib-..." />
         </div>
         <div>
-          <label class="label">Sender Email</label>
+          <label class="label">{$t('aset.senderEmail')}</label>
           <input bind:value={s.brevo_sender_email} class="input" placeholder="noreply@yourdomain.com" />
         </div>
         <div>
-          <label class="label">Sender Name</label>
+          <label class="label">{$t('aset.senderName')}</label>
           <input bind:value={s.brevo_sender_name} class="input" placeholder="MPSI" />
         </div>
       </div>
     </div>
 
     <div class="card">
-      <h3 class="font-semibold mb-4">Tripay Payment Gateway</h3>
-      <p class="text-xs text-ink-500 mb-4">Settings ini override .env. Kosongkan untuk pakai .env. Daftar credentials di <a href="https://tripay.co.id/member/merchant" target="_blank" class="link">tripay.co.id</a>.</p>
+      <h3 class="font-semibold mb-4">{$t('aset.tripay')}</h3>
+      <p class="text-xs text-ink-500 mb-4">{$t('lf.setEnvHint')} <a href="https://tripay.co.id/member/merchant" target="_blank" class="link">tripay.co.id</a>.</p>
       <div class="grid sm:grid-cols-2 gap-4">
         <div><label class="label">Mode</label>
           <select bind:value={s.tripay_mode} class="input">
@@ -232,11 +234,11 @@
 
     <div class="card">
       <h3 class="font-semibold mb-4">RajaOngkir / Komerce Shipping</h3>
-      <p class="text-xs text-ink-500 mb-4">API ini dipakai untuk cari destinasi, hitung ongkir live saat checkout, dan mencoba membuat data order/AWB saat seller mengirim pesanan.</p>
+      <p class="text-xs text-ink-500 mb-4">{$t('lf.setApiHint1')}</p>
       <label class="mb-4 flex items-center justify-between gap-4 rounded-xl border border-ink-100 bg-ink-50 px-4 py-3 text-sm">
         <span>
           <b class="block text-ink-900">Aktifkan tarif otomatis RajaOngkir</b>
-          <span class="text-ink-500">Jika dimatikan atau API gagal, checkout memakai opsi pengiriman manual dari menu admin.</span>
+          <span class="text-ink-500">{$t('lf.setApiHint2')}</span>
         </span>
         <input type="checkbox" bind:checked={s.rajaongkir_enabled} class="h-5 w-5 shrink-0" />
       </label>
@@ -279,10 +281,10 @@
           <div class="mt-4 grid gap-2 sm:grid-cols-[1fr_auto_auto]">
             <input type="password" bind:value={freshPassword} class="input bg-white" placeholder="Password admin" />
             <button type="button" on:click={loadFreshSummary} disabled={freshLoading} class="btn-outline btn-sm bg-white">
-              <Icon name="list-checks" size={13} /> {freshLoading ? 'Memuat...' : 'Ringkasan'}
+              <Icon name="list-checks" size={13} /> {freshLoading ? $t('ch.loading') : $t('aod.summary')}
             </button>
             <button type="button" on:click={runMigrateFresh} disabled={freshRunning || !freshPassword} class="btn-danger btn-sm">
-              <Icon name="trash-2" size={13} /> {freshRunning ? 'Memproses...' : 'Migrate Fresh'}
+              <Icon name="trash-2" size={13} /> {freshRunning ? $t('mk.processing') : $t('aset.migConfirm')}
             </button>
           </div>
         </div>
@@ -290,7 +292,7 @@
     </div>
 
     <div class="flex justify-end">
-      <button on:click={save} disabled={saving} class="btn-primary btn-lg">{saving ? 'Menyimpan…' : 'Simpan Pengaturan'}</button>
+      <button on:click={save} disabled={saving} class="btn-primary btn-lg">{saving ? $t('mk.saving') : $t('mk.saveSettings')}</button>
     </div>
   </div>
 {/if}

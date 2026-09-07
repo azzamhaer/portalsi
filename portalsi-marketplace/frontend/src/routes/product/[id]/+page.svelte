@@ -3,6 +3,8 @@
   import Icon from '$lib/components/Icon.svelte';
   import { fmtRp, calcDiscount } from '$lib/utils';
   import { cart, auth, toast, wishlist, settings } from '$lib/stores.svelte';
+  import { t } from '$lib/i18n';
+  import { get } from 'svelte/store';
   import { apiBaseUrl, apiEndpoints } from '$lib/api';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
@@ -84,12 +86,12 @@
   let chatOpen = $state(false);
   let chatMessage = $state('Hai, apakah barang ini masih tersedia?');
   let sendingChat = $state(false);
-  const chatTemplates = [
-    'Hai, apakah barang ini masih tersedia?',
-    'Apakah produk ini original dan bergaransi?',
-    'Bisa dikirim hari ini?',
-    'Apakah stok untuk varian yang saya pilih masih ada?'
-  ];
+  const chatTemplates = $derived([
+    $t('pd.qDefault'),
+    $t('pd.q1'),
+    $t('pd.q2'),
+    $t('pd.q3')
+  ]);
 
   onMount(async () => {
     reviews = p?.reviews ?? [];
@@ -113,14 +115,14 @@
   });
 
   async function submitReview() {
-    if (!myComment.trim()) { toast.error('Tulis ulasan dulu'); return; }
+    if (!myComment.trim()) { toast.error(get(t)('pd.writeReviewFirst')); return; }
     submittingReview = true;
     try {
       const r: any = await apiEndpoints.submitReview(p.id, myRating, myComment.trim());
       reviews = [r, ...reviews];
       canReview = false; alreadyReviewed = true;
       myComment = ''; myRating = 5;
-      toast.success('Ulasan terkirim, terima kasih!');
+      toast.success(get(t)('pd.reviewSent'));
     } catch (e: any) { toast.error(e.message); } finally { submittingReview = false; }
   }
 
@@ -131,14 +133,14 @@
   );
 
   function addToCart() {
-    if (auth.user?.role === 'ADMIN') { toast.warn('Admin tidak bisa berbelanja'); return false; }
+    if (auth.user?.role === 'ADMIN') { toast.warn(get(t)('pd.adminNoShop')); return false; }
     if (!auth.user) { goto(loginHref($page.url.pathname + $page.url.search, 'cart')); return false; }
     if (isOutOfStock) {
-      toast.warn('Stok habis. Masukkan ke wishlist untuk diberi notifikasi ketika stok tersedia kembali.');
+      toast.warn(get(t)('pd.outOfStockWishlist'));
       return false;
     }
     if (variantNames.length && !allVariantsPicked()) {
-      toast.warn('Pilih ' + variantNames.join(' & ') + ' dulu');
+      toast.warn(get(t)('pd.select') + variantNames.join(' & ') + get(t)('pd.selectSuffix'));
       return false;
     }
     const added = cart.add({
@@ -148,21 +150,21 @@
       variant_selection: variantText(), variant_details: pickedVariantDetails, qty
     });
     if (!added) {
-      toast.warn('Stok habis. Masukkan ke wishlist untuk diberi notifikasi ketika stok tersedia kembali.');
+      toast.warn(get(t)('lf.pdOutStockToast'));
       return false;
     }
-    toast.success('Ditambahkan ke keranjang');
+    toast.success(get(t)('pd.addedToCart'));
     return true;
   }
   function buyNow() {
-    if (auth.user?.role === 'ADMIN') { toast.warn('Admin tidak bisa berbelanja'); return; }
+    if (auth.user?.role === 'ADMIN') { toast.warn(get(t)('lf.pdAdminNoShop')); return; }
     if (!auth.user) { goto(loginHref($page.url.pathname + $page.url.search, 'buy')); return; }
     if (addToCart()) goto('/checkout');
   }
   async function toggleWish() {
     if (!auth.user) { goto(loginHref($page.url.pathname + $page.url.search, 'wishlist')); return; }
     wishlist.toggle(p.id);
-    try { await apiEndpoints.toggleWishlist(p.id); toast.success(inWishlist ? 'Dihapus dari wishlist' : 'Ditambahkan ke wishlist'); }
+    try { await apiEndpoints.toggleWishlist(p.id); toast.success(inWishlist ? get(t)('lf.wlRemoved') : get(t)('lf.wlAdded')); }
     catch (e: any) { wishlist.toggle(p.id); toast.error(e.message); }
   }
   async function chatVendor() {
@@ -170,7 +172,7 @@
     chatOpen = true;
   }
   async function sendChatMessage() {
-    if (!chatMessage.trim()) { toast.warn('Pilih atau tulis pesan dulu'); return; }
+    if (!chatMessage.trim()) { toast.warn(get(t)('pd.pickMsgFirst')); return; }
     sendingChat = true;
     try {
       const t: any = await apiEndpoints.startChat(v.id, p.id, chatMessage.trim());
@@ -189,7 +191,7 @@
       catch {}
     }
     await navigator.clipboard.writeText(productUrl);
-    toast.success('Link produk disalin');
+    toast.success(get(t)('pd.linkCopied'));
   }
 </script>
 
@@ -215,9 +217,9 @@
 
 <div class="container-x py-4 sm:py-6 md:py-10">
   <nav class="flex items-center gap-1 text-xs text-ink-500 mb-4 overflow-hidden whitespace-nowrap">
-    <a href="/" class="hover:text-ink-900">Beranda</a>
+    <a href="/" class="hover:text-ink-900">{$t('nav.home')}</a>
     <Icon name="chevron-right" size={12} />
-    <a href="/products" class="hover:text-ink-900">Produk</a>
+    <a href="/products" class="hover:text-ink-900">{$t('nav.products')}</a>
     <Icon name="chevron-right" size={12} />
     <span class="text-ink-700 truncate">{p.name}</span>
   </nav>
@@ -280,7 +282,7 @@
         </div>
         {#if isOutOfStock}
           <div class="mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">
-            <b>Stok habis.</b> Silahkan masukkan ke wishlist untuk diberikan notifikasi ketika stok ada kembali.
+            <b>{$t('lf.outOfStock')}</b> Silahkan masukkan ke wishlist untuk diberikan notifikasi ketika stok ada kembali.
           </div>
         {/if}
       </div>
@@ -291,7 +293,7 @@
           <div class="font-semibold text-sm truncate flex items-center gap-1.5">
             {v.name}
             {#if v.badge}<VendorBadge badge={v.badge} size={14} />{/if}
-            {#if v.is_official}<span class="pill-ink text-[10px]">Resmi</span>{/if}
+            {#if v.is_official}<span class="pill-ink text-[10px]">{$t('pd.official')}</span>{/if}
           </div>
           <div class="text-xs text-ink-500">{v.city} · {v.rating} <Icon name="star" size={10} class="inline text-amber-400" fill="currentColor" /></div>
         </div>
@@ -328,13 +330,13 @@
       {/if}
 
       <div class="flex items-center gap-3 sm:gap-4">
-        <span class="text-sm text-ink-700 w-16 sm:w-20">Jumlah</span>
+        <span class="text-sm text-ink-700 w-16 sm:w-20">{$t('pd.qty')}</span>
         <div class="inline-flex items-center border border-ink-200 rounded-full">
           <button on:click={() => qty = Math.max(1, qty-1)} disabled={isOutOfStock} class="w-9 h-9 grid place-items-center hover:bg-ink-50 rounded-l-full disabled:opacity-40"><Icon name="minus" size={14} /></button>
           <input type="number" bind:value={qty} min="1" max={p.stock} disabled={isOutOfStock} class="w-12 text-center bg-transparent text-sm outline-none disabled:opacity-40" />
           <button on:click={() => qty = Math.min(p.stock, qty+1)} disabled={isOutOfStock} class="w-9 h-9 grid place-items-center hover:bg-ink-50 rounded-r-full disabled:opacity-40"><Icon name="plus" size={14} /></button>
         </div>
-        <span class="text-xs {isOutOfStock ? 'text-red-600' : 'text-ink-500'}">Stok <b class={isOutOfStock ? 'text-red-700' : 'text-ink-700'}>{p.stock}</b></span>
+        <span class="text-xs {isOutOfStock ? 'text-red-600' : 'text-ink-500'}">{$t('pd.stock')}<b class={isOutOfStock ? 'text-red-700' : 'text-ink-700'}>{p.stock}</b></span>
       </div>
 
       <!-- Action buttons -->
@@ -353,14 +355,14 @@
                        {isAdmin || isOutOfStock ? 'opacity-40 cursor-not-allowed' : 'hover:bg-ink-50'}"
                 aria-label="Tambah ke keranjang">
           <Icon name="shopping-bag" size={18} />
-          <span class="hidden sm:inline text-sm font-medium">Keranjang</span>
+          <span class="hidden sm:inline text-sm font-medium">{$t('nav.cart')}</span>
         </button>
         <!-- Beli sekarang -->
         <button on:click={buyNow} disabled={isAdmin || isOutOfStock}
                 class="btn-primary rounded-full inline-flex items-center justify-center gap-2 h-11 sm:h-auto sm:py-3 flex-1 text-sm font-medium px-4
                        {isAdmin || isOutOfStock ? 'opacity-40 cursor-not-allowed' : ''}">
           <Icon name="zap" size={16} />
-          <span>{isOutOfStock ? 'Stok Habis' : 'Beli Sekarang'}</span>
+          <span>{isOutOfStock ? $t('pd.outOfStock') : $t('pd.buyNow')}</span>
         </button>
         <!-- Wishlist -->
         <button on:click={toggleWish} disabled={isAdmin}
@@ -385,7 +387,7 @@
         <div class="flex items-start gap-2 p-3 rounded-xl bg-ink-50">
           <Icon name="truck" size={16} class="text-ink-700 shrink-0 mt-0.5" />
           <div>
-            <div class="text-xs font-semibold">Cepat</div>
+            <div class="text-xs font-semibold">{$t('pd.fast')}</div>
             <div class="text-[11px] text-ink-500">{v.city} · 2-4 hari</div>
           </div>
         </div>
@@ -399,9 +401,9 @@
       </div>
 
       <div class="rounded-xl bg-ink-50 p-3 text-sm">
-        <div class="text-xs font-semibold text-ink-500 mb-1">Spesifikasi</div>
+        <div class="text-xs font-semibold text-ink-500 mb-1">{$t('pd.specs')}</div>
         <div class="flex justify-between gap-3">
-          <span class="text-ink-600">Berat</span>
+          <span class="text-ink-600">{$t('pd.weight')}</span>
           <b>{p.weight >= 1000 ? `${(p.weight / 1000).toLocaleString('id-ID')} kg` : `${p.weight} gram`}</b>
         </div>
       </div>
@@ -409,14 +411,14 @@
   </div>
 
   <section class="mt-12 sm:mt-16 max-w-4xl">
-    <div class="section-eyebrow mb-2">Deskripsi</div>
-    <h2 class="text-xl sm:text-2xl font-bold tracking-tightest mb-5">Tentang produk ini</h2>
+    <div class="section-eyebrow mb-2">{$t('pd.description')}</div>
+    <h2 class="text-xl sm:text-2xl font-bold tracking-tightest mb-5">{$t('pd.aboutProduct')}</h2>
     <p class="text-base text-ink-700 leading-relaxed whitespace-pre-line">{p.description}</p>
   </section>
 
   <!-- Reviews -->
   <section class="mt-12 sm:mt-16">
-    <div class="section-eyebrow mb-2">Ulasan</div>
+    <div class="section-eyebrow mb-2">{$t('pd.reviews')}</div>
     <div class="flex items-end justify-between flex-wrap gap-4 mb-6">
       <h2 class="text-xl sm:text-2xl font-bold tracking-tightest">Ulasan pembeli ({reviews.length})</h2>
       <div class="flex items-center gap-2 text-sm">
@@ -429,7 +431,7 @@
     {#if auth.user}
       {#if canReview}
         <div class="card mb-6 bg-ink-50">
-          <h3 class="font-semibold mb-3">Beri ulasan Anda</h3>
+          <h3 class="font-semibold mb-3">{$t('pd.giveReview')}</h3>
           <div class="flex gap-1 mb-3">
             {#each [1,2,3,4,5] as n}
               <button type="button" on:click={() => myRating = n} aria-label={`${n} bintang`}>
@@ -438,9 +440,9 @@
             {/each}
             <span class="ml-2 text-sm text-ink-600 self-center">({myRating}/5)</span>
           </div>
-          <textarea bind:value={myComment} class="input" rows={3} placeholder="Bagaimana pengalaman Anda dengan produk ini?"></textarea>
+          <textarea bind:value={myComment} class="input" rows={3} placeholder={$t('pd.reviewPlaceholder')}></textarea>
           <button on:click={submitReview} disabled={submittingReview || !myComment.trim()} class="btn-primary btn-md mt-3">
-            {submittingReview ? 'Mengirim…' : 'Kirim ulasan'}
+            {submittingReview ? $t('pd.sending') : $t('pd.sendReview')}
           </button>
         </div>
       {:else if alreadyReviewed}
@@ -454,7 +456,7 @@
       {/if}
     {:else}
       <div class="bg-ink-50 text-ink-700 text-sm p-3 rounded-xl mb-6 flex items-center gap-2">
-        <Icon name="info" size={16} /> <a href="/login" class="font-semibold underline">Login</a> dulu untuk memberi ulasan (setelah Anda menyelesaikan pembelian).
+        <Icon name="info" size={16} /> <a href="/login" class="font-semibold underline">{$t('pd.login')}</a>{$t('pd.loginToReview')}
       </div>
     {/if}
 
@@ -473,7 +475,7 @@
               </div>
               <div class="flex-1 min-w-0">
                 <div class="flex items-center justify-between gap-2 flex-wrap">
-                  <div class="font-semibold text-sm">{r.user?.name ?? 'Anonim'}</div>
+                  <div class="font-semibold text-sm">{r.user?.name ?? $t('pd.anon')}</div>
                   <div class="text-xs text-ink-500">{new Date(r.created_at).toLocaleDateString('id-ID', { year:'numeric', month:'short', day:'numeric' })}</div>
                 </div>
                 <div class="flex gap-0.5 my-1">
@@ -493,7 +495,7 @@
   {#if data.related?.length}
     <section class="mt-16 sm:mt-20">
       <div class="section-eyebrow mb-2">Lainnya</div>
-      <h2 class="section-title mb-6 sm:mb-8">Produk serupa</h2>
+      <h2 class="section-title mb-6 sm:mb-8">{$t('pd.similar')}</h2>
       <ProductGrid products={data.related} />
     </section>
   {/if}
@@ -505,8 +507,8 @@
     <div class="relative w-full rounded-t-[24px] bg-white p-4 shadow-elevated sm:max-w-md sm:rounded-2xl">
       <div class="mb-4 flex items-center justify-between gap-3">
         <div>
-          <h2 class="text-base font-bold text-ink-950">Bagikan produk</h2>
-          <p class="mt-0.5 text-xs text-ink-500">Preview link akan mengikuti metadata halaman produk.</p>
+          <h2 class="text-base font-bold text-ink-950">{$t('pd.shareProduct')}</h2>
+          <p class="mt-0.5 text-xs text-ink-500">{$t('lf.pdPreviewMeta')}</p>
         </div>
         <button type="button" on:click={() => shareOpen = false} class="grid h-9 w-9 place-items-center rounded-full hover:bg-ink-100" aria-label="Tutup">
           <Icon name="x" size={18} />
@@ -571,8 +573,8 @@
     <div class="w-full rounded-t-[28px] bg-white p-5 shadow-elevated sm:max-w-md sm:rounded-[28px]">
       <div class="mb-4 flex items-start justify-between gap-3">
         <div>
-          <h2 class="text-lg font-bold">Tanyakan ke penjual</h2>
-          <p class="mt-1 text-sm text-ink-500">Pilih template atau tulis pesan sendiri.</p>
+          <h2 class="text-lg font-bold">{$t('pd.askSeller')}</h2>
+          <p class="mt-1 text-sm text-ink-500">{$t('lf.pdChooseTemplate')}</p>
         </div>
         <button type="button" on:click={() => chatOpen = false} class="grid h-9 w-9 place-items-center rounded-full hover:bg-ink-100"><Icon name="x" size={18} /></button>
       </div>
@@ -583,9 +585,9 @@
           </button>
         {/each}
       </div>
-      <textarea bind:value={chatMessage} class="input" rows={4} placeholder="Tulis pertanyaan Anda"></textarea>
+      <textarea bind:value={chatMessage} class="input" rows={4} placeholder={$t('pd.questionPlaceholder')}></textarea>
       <button type="button" on:click={sendChatMessage} disabled={sendingChat || !chatMessage.trim()} class="btn-primary btn-lg mt-4 w-full">
-        <Icon name="send" size={15} /> {sendingChat ? 'Mengirim...' : 'Kirim pertanyaan'}
+        <Icon name="send" size={15} /> {sendingChat ? $t('pd.sending') : $t('pd.sendQuestion')}
       </button>
     </div>
   </div>

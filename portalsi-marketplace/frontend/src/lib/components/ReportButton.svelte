@@ -1,5 +1,7 @@
 <script lang="ts">
   import Icon from './Icon.svelte';
+  import { get } from 'svelte/store';
+  import { t } from '$lib/i18n';
   import { auth, toast } from '$lib/stores.svelte';
   import { apiEndpoints } from '$lib/api';
   import { goto } from '$app/navigation';
@@ -8,7 +10,7 @@
     targetType,
     targetId,
     targetName = '',
-    label = 'Laporkan',
+    label = get(t)('rpt.report'),
     size = 'sm'
   } = $props<{
     targetType: 'PRODUCT' | 'VENDOR';
@@ -26,7 +28,7 @@
 
   async function openModal() {
     if (!auth.user) { goto('/login'); return; }
-    if (auth.user.role === 'ADMIN') { toast.warn('Admin tidak bisa melaporkan'); return; }
+    if (auth.user.role === 'ADMIN') { toast.warn(get(t)('rpt.adminNoReport')); return; }
     open = true;
     if (Object.keys(cats).length === 0) {
       try { cats = await apiEndpoints.reportCategories(); } catch {}
@@ -34,15 +36,15 @@
   }
 
   async function submit() {
-    if (!category) { toast.warn('Pilih jenis laporan'); return; }
-    if (description.trim().length < 10) { toast.warn('Deskripsi minimal 10 karakter'); return; }
+    if (!category) { toast.warn(get(t)('rpt.chooseType')); return; }
+    if (description.trim().length < 10) { toast.warn(get(t)('rpt.min10')); return; }
     submitting = true;
     try {
       await apiEndpoints.submitReport({
         target_type: targetType, target_id: targetId,
         category, description: description.trim()
       });
-      toast.success('Laporan terkirim. Admin akan meninjau.');
+      toast.success(get(t)('rpt.sent'));
       open = false;
       category = ''; description = '';
     } catch (e: any) { toast.error(e.message); } finally { submitting = false; }
@@ -51,7 +53,7 @@
 
 <button type="button" on:click={openModal}
         class="inline-flex items-center gap-1.5 text-xs text-ink-500 hover:text-red-600 transition"
-        title="Laporkan {targetType === 'PRODUCT' ? 'produk' : 'toko'} ini">
+        title={targetType === 'PRODUCT' ? $t('rpt.reportThisProduct') : $t('rpt.reportThisStore')}>
   <Icon name="flag" size={size === 'sm' ? 12 : 14} />
   <span>{label}</span>
 </button>
@@ -60,31 +62,31 @@
   <div class="fixed inset-0 z-50 bg-black/40 grid place-items-center p-4 animate-fadeIn" on:click={() => open = false} role="dialog" aria-modal="true">
     <div class="bg-white rounded-3xl p-6 max-w-md w-full" on:click|stopPropagation>
       <div class="flex items-center justify-between mb-4">
-        <h3 class="font-semibold text-lg flex items-center gap-2"><Icon name="flag" size={18} /> Laporkan {targetType === 'PRODUCT' ? 'Produk' : 'Toko'}</h3>
+        <h3 class="font-semibold text-lg flex items-center gap-2"><Icon name="flag" size={18} /> {targetType === 'PRODUCT' ? $t('rpt.reportProduct') : $t('rpt.reportStore')}</h3>
         <button on:click={() => open = false} class="w-8 h-8 grid place-items-center rounded-full hover:bg-ink-100"><Icon name="x" size={16} /></button>
       </div>
       {#if targetName}
         <div class="bg-ink-50 p-3 rounded-xl text-sm mb-4">
-          <div class="text-xs text-ink-500">Anda melaporkan:</div>
+          <div class="text-xs text-ink-500">{$t('rpt.youReport')}</div>
           <div class="font-semibold">{targetName}</div>
         </div>
       {/if}
       <div class="space-y-3">
         <div>
-          <label class="label">Jenis pelanggaran</label>
+          <label class="label">{$t('rpt.violationType')}</label>
           <select bind:value={category} class="input">
-            <option value="">— Pilih jenis —</option>
+            <option value="">{$t('rpt.chooseTypeOpt')}</option>
             {#each Object.entries(cats) as [k, v]}<option value={k}>{v}</option>{/each}
           </select>
         </div>
         <div>
-          <label class="label">Deskripsi detail</label>
+          <label class="label">{$t('rpt.detailDesc')}</label>
           <textarea bind:value={description} class="input" rows={5} placeholder="Jelaskan detail pelanggaran yang Anda temui..."></textarea>
-          <p class="helper">Min 10 karakter. Laporan palsu/spam akan ditindak.</p>
+          <p class="helper">{$t('rpt.minHint')}</p>
         </div>
         <div class="flex gap-2 pt-2">
-          <button on:click={() => open = false} class="btn-outline btn-md flex-1">Batal</button>
-          <button on:click={submit} disabled={submitting} class="btn-primary btn-md flex-1">{submitting ? 'Mengirim…' : 'Kirim Laporan'}</button>
+          <button on:click={() => open = false} class="btn-outline btn-md flex-1">{$t('od.cancel')}</button>
+          <button on:click={submit} disabled={submitting} class="btn-primary btn-md flex-1">{submitting ? $t('rpt.sending') : $t('rpt.sendReport')}</button>
         </div>
       </div>
     </div>

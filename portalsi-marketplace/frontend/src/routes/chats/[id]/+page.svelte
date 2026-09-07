@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy, tick } from 'svelte';
+  import { t } from '$lib/i18n';
+  import { get } from 'svelte/store';
   import Icon from '$lib/components/Icon.svelte';
   import VendorBadge from '$lib/components/VendorBadge.svelte';
   import { apiEndpoints, getToken } from '$lib/api';
@@ -42,7 +44,7 @@
   function onPickImage(e: Event) {
     const file = (e.target as HTMLInputElement).files?.[0];
     if (!file) return;
-    if (file.size > 1024 * 1024) { toast.error('Maks 1MB'); return; }
+    if (file.size > 1024 * 1024) { toast.error(get(t)('chd.max1mb')); return; }
     const r = new FileReader();
     r.onload = () => { pendingImage = String(r.result); };
     r.readAsDataURL(file);
@@ -61,14 +63,14 @@
   }
 </script>
 
-<svelte:head><title>Chat</title></svelte:head>
+<svelte:head><title>{$t('nav.chats')}</title></svelte:head>
 
 <div class="container-x py-4 sm:py-6">
   <a href="/chats" class="inline-flex items-center gap-1 text-sm text-ink-500 hover:text-ink-950 mb-4">
     <Icon name="arrow-left" size={14} /> Semua chat
   </a>
 
-  {#if loading}<div class="card text-center text-ink-500 py-10">Memuat…</div>
+  {#if loading}<div class="card text-center text-ink-500 py-10">{$t('wl.loading')}</div>
   {:else if thread}
     <div class="card !p-0 overflow-hidden flex flex-col" style="height: calc(100vh - 200px); min-height: 500px;">
       <!-- Header thread: tampilkan counterpart -->
@@ -152,8 +154,8 @@
       {#if pendingImage}
         <div class="px-3 pt-2 border-t border-ink-100 flex items-center gap-2">
           <img src={pendingImage} alt="" class="w-14 h-14 rounded-lg object-cover" />
-          <span class="text-xs text-ink-500">Foto siap dikirim</span>
-          <button type="button" on:click={() => pendingImage = null} class="ml-auto text-xs text-red-600 hover:underline">Hapus</button>
+          <span class="text-xs text-ink-500">{$t('chd.photoReady')}</span>
+          <button type="button" on:click={() => pendingImage = null} class="ml-auto text-xs text-red-600 hover:underline">{$t('cart.remove')}</button>
         </div>
       {/if}
 
@@ -163,7 +165,7 @@
           <Icon name="image" size={18} class="text-ink-500" />
           <input type="file" accept="image/*" on:change={onPickImage} class="hidden" />
         </label>
-        <input bind:value={msg} placeholder="Ketik pesan…" class="input flex-1 !rounded-full" />
+        <input bind:value={msg} placeholder={$t('chd.typePlaceholder')} class="input flex-1 !rounded-full" />
         <button type="submit" disabled={sending || (!msg.trim() && !pendingImage)} class="btn-primary btn-md !px-4 shrink-0"><Icon name="send" size={16} /></button>
       </form>
     </div>

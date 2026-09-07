@@ -1,5 +1,6 @@
 <script lang="ts">
   import Icon from './Icon.svelte';
+  import { t } from '$lib/i18n';
   import { settings } from '$lib/stores.svelte';
 </script>
 
@@ -24,7 +25,7 @@
         <a href={settings.heroCtaHref || '/products'} class="btn-primary btn-lg">
           {settings.heroCtaLabel || 'Mulai belanja'} <Icon name="arrow-right" size={16} />
         </a>
-        <a href="/seller/register" class="btn-outline btn-lg">Buka Toko Anda</a>
+        <a href="/seller/register" class="btn-outline btn-lg">{$t('hero.openStore')}</a>
       </div>
     </div>
 

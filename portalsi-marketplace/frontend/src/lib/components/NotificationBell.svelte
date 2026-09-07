@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
+  import { t } from '$lib/i18n';
   import Icon from './Icon.svelte';
   import { auth, toast } from '$lib/stores.svelte';
   import { apiEndpoints } from '$lib/api';
@@ -85,7 +86,7 @@
       <div class="absolute right-0 top-full mt-1 w-80 sm:w-96 bg-white rounded-2xl shadow-elevated border border-ink-100 animate-fadeIn z-50 overflow-hidden">
         <div class="flex items-center justify-between px-4 py-3 border-b border-ink-100">
           <h3 class="font-semibold text-sm">Notifikasi</h3>
-          <a href="/notifications" on:click={() => open = false} class="text-xs text-ink-500 hover:text-ink-950">Lihat semua</a>
+          <a href="/notifications" on:click={() => open = false} class="text-xs text-ink-500 hover:text-ink-950">{$t('lf.seeAll')}</a>
         </div>
         <div class="max-h-[400px] overflow-y-auto">
           {#if loading}

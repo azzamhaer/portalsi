@@ -1,0 +1,41 @@
+# Cloudflare Worker untuk KBIHU Ar-Rahman Mail (web app / webmail).
+# Aplikasi SvelteKit (adapter-cloudflare) — melayani UI + API + kirim via Brevo.
+name = "kbihu-mail"
+compatibility_date = "2025-01-09"
+compatibility_flags = ["nodejs_compat"]
+
+# Output build adapter-cloudflare (SvelteKit → Worker + static assets)
+main = ".svelte-kit/cloudflare/_worker.js"
+
+# Subdomain kustom → dibuat otomatis (DNS + SSL) saat deploy.
+routes = [
+	{ pattern = "mail.kbihuarrahman.com", custom_domain = true }
+]
+
+[assets]
+directory = ".svelte-kit/cloudflare"
+binding = "ASSETS"
+
+# ── D1 (database utama) ──────────────────────────────────────────────
+# Ganti database_id setelah `wrangler d1 create kbihu_mail`.
+[[d1_databases]]
+binding = "DB"
+database_name = "kbihu_mail"
+database_id = "41870cc8-02b3-4319-a961-79a0439412cf"
+
+# ── R2 (penyimpanan raw email + lampiran) ────────────────────────────
+[[r2_buckets]]
+binding = "MAILSTORE"
+bucket_name = "kbihu-mailstore"
+
+# ── Variabel non-rahasia ─────────────────────────────────────────────
+[vars]
+MAIL_DOMAIN = "kbihuarrahman.com"
+APP_NAME = "KBIHU Ar-Rahman Mail"
+APP_ORIGIN = "https://mail.kbihuarrahman.com"
+BREVO_SENDER_NAME = "KBIHU Ar-Rahman"
+
+# ── Rahasia (JANGAN ditaruh di sini). Set lewat:
+#   wrangler secret put BREVO_API_KEY
+#   wrangler secret put SESSION_SECRET
+# ─────────────────────────────────────────────────────────────────────

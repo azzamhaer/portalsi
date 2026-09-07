@@ -1,5 +1,6 @@
 <script lang="ts">
   import AdminSidebar from '$lib/components/AdminSidebar.svelte';
+  import { t } from '$lib/i18n';
   import { auth } from '$lib/stores.svelte';
   import { apiEndpoints } from '$lib/api';
   import { goto } from '$app/navigation';
@@ -37,15 +38,15 @@
 
 {#if access}
   <div class="container-x py-6 sm:py-8">
-    <h1 class="section-title mb-6 sm:mb-8">Admin Center</h1>
+    <h1 class="section-title mb-6 sm:mb-8">{$t('nav.adminCenter')}</h1>
     {#if pendingVendors > 0}
       <a href="/admin/vendors?status=PENDING" class="mb-5 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900 hover:bg-amber-100 transition">
         <span class="w-9 h-9 rounded-full bg-amber-200/70 grid place-items-center shrink-0">
           <span class="text-sm font-bold">{pendingVendors > 99 ? '99+' : pendingVendors}</span>
         </span>
         <span class="flex-1 min-w-0">
-          <span class="block font-semibold text-sm">Ada {pendingVendors} vendor menunggu approval</span>
-          <span class="block text-xs text-amber-800/80 mt-0.5">Klik untuk membuka daftar verifikasi KTP vendor.</span>
+          <span class="block font-semibold text-sm">{$t('adm.pendingPrefix')}{pendingVendors}{$t('adm.pendingSuffix')}</span>
+          <span class="block text-xs text-amber-800/80 mt-0.5">{$t('adm.ktpHint')}</span>
         </span>
       </a>
     {/if}
@@ -57,7 +58,7 @@
 {:else}
   <div class="container-x py-16">
     <div class="card text-center text-ink-500">
-      {mounted ? 'Mengalihkan…' : 'Memeriksa akses…'}
+      {mounted ? $t('adm.redirecting') : $t('adm.checkingAccess')}
     </div>
   </div>
 {/if}

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { t } from '$lib/i18n';
   import { apiEndpoints } from '$lib/api';
   import { toast } from '$lib/stores.svelte';
   import { page } from '$app/stores';
@@ -24,7 +25,7 @@
 </a>
 
 {#if loading}
-  <div class="card text-center text-ink-500 py-10">Memuat…</div>
+  <div class="card text-center text-ink-500 py-10">{$t('wl.loading')}</div>
 {:else if data}
   <div class="card mb-5">
     <div class="flex items-start gap-4 flex-wrap">
@@ -37,7 +38,7 @@
         <div class="text-xs text-ink-500 mt-1">
           Daftar {new Date(data.user.created_at).toLocaleDateString('id-ID', { dateStyle: 'medium' })}
           {#if data.user.phone}· {data.user.phone}{/if}
-          {#if data.user.email_verified_at}· <span class="text-emerald-600">Email terverifikasi</span>{:else}· <span class="text-amber-600">Email belum verif</span>{/if}
+          {#if data.user.email_verified_at}· <span class="text-emerald-600">{$t('aud.emailVerified')}</span>{:else}· <span class="text-amber-600">{$t('aud.emailNotVerified')}</span>{/if}
         </div>
       </div>
       <span class="pill-{data.user.role === 'ADMIN' ? 'red' : data.user.role === 'SELLER' ? 'blue' : 'ink'}">{data.user.role}</span>
@@ -51,7 +52,7 @@
           <div class="text-xs text-ink-500">@{data.user.vendor.username} · {data.user.vendor.city}</div>
         </div>
         <span class="pill-{data.user.vendor.verification_status === 'APPROVED' ? 'green' : data.user.vendor.verification_status === 'PENDING' ? 'amber' : 'red'}">{data.user.vendor.verification_status}</span>
-        <a href={data.user.vendor.username ? `/${data.user.vendor.username}` : `/vendors/${data.user.vendor.id}`} class="btn-outline btn-sm">Lihat Toko</a>
+        <a href={data.user.vendor.username ? `/${data.user.vendor.username}` : `/vendors/${data.user.vendor.id}`} class="btn-outline btn-sm">{$t('aud.viewStore')}</a>
       </div>
     {/if}
   </div>
@@ -73,12 +74,12 @@
 
   {#if tab === 'orders'}
     {#if data.orders.length === 0}
-      <div class="card text-center text-ink-500 py-10">Belum ada pesanan pembelian.</div>
+      <div class="card text-center text-ink-500 py-10">{$t('aud.noPurchases')}</div>
     {:else}
       <div class="card overflow-x-auto">
         <table class="w-full text-sm min-w-[600px]">
           <thead class="text-xs text-ink-500 border-b border-ink-100">
-            <tr><th class="text-left py-2">Order</th><th class="text-left py-2">Item</th><th class="text-left py-2">Total</th><th class="text-left py-2">Status</th><th class="text-left py-2">Tanggal</th></tr>
+            <tr><th class="text-left py-2">{$t('sd.order')}</th><th class="text-left py-2">{$t('aud.item')}</th><th class="text-left py-2">{$t('cart.total')}</th><th class="text-left py-2">{$t('sel.status')}</th><th class="text-left py-2">{$t('sw.date')}</th></tr>
           </thead>
           <tbody>
             {#each data.orders as o}
@@ -96,7 +97,7 @@
     {/if}
   {:else if tab === 'products' && data.user.vendor}
     {#if data.vendor_products.length === 0}
-      <div class="card text-center text-ink-500 py-10">Toko belum punya produk.</div>
+      <div class="card text-center text-ink-500 py-10">{$t('aud.noStoreProducts')}</div>
     {:else}
       <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {#each data.vendor_products as p}
@@ -105,7 +106,7 @@
             <div class="flex-1 min-w-0">
               <div class="font-medium text-sm line-clamp-2">{p.name}</div>
               <div class="text-sm font-semibold mt-1">{fmtRp(p.price)}</div>
-              <div class="text-xs text-ink-500 mt-1">{p.sold} terjual · {p.reviews_count} ulasan {#if !p.is_active}· <span class="text-red-600">Nonaktif</span>{/if}</div>
+              <div class="text-xs text-ink-500 mt-1">{p.sold} terjual · {p.reviews_count} ulasan {#if !p.is_active}· <span class="text-red-600">{$t('aud.inactive')}</span>{/if}</div>
             </div>
           </a>
         {/each}
@@ -113,12 +114,12 @@
     {/if}
   {:else if tab === 'incoming' && data.user.vendor}
     {#if data.vendor_orders.length === 0}
-      <div class="card text-center text-ink-500 py-10">Belum ada pesanan masuk.</div>
+      <div class="card text-center text-ink-500 py-10">{$t('sd.noIncomingOrders')}</div>
     {:else}
       <div class="card overflow-x-auto">
         <table class="w-full text-sm min-w-[600px]">
           <thead class="text-xs text-ink-500 border-b border-ink-100">
-            <tr><th class="text-left py-2">Order</th><th class="text-left py-2">Produk</th><th class="text-left py-2">Qty</th><th class="text-left py-2">Subtotal</th><th class="text-left py-2">Status</th></tr>
+            <tr><th class="text-left py-2">{$t('sd.order')}</th><th class="text-left py-2">Produk</th><th class="text-left py-2">Qty</th><th class="text-left py-2">Subtotal</th><th class="text-left py-2">{$t('sel.status')}</th></tr>
           </thead>
           <tbody>
             {#each data.vendor_orders as it}

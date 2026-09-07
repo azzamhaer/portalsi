@@ -18,6 +18,7 @@ import { ViewPanel } from './meeting/ViewPanel';
 import { WhiteboardPanel } from './meeting/WhiteboardPanel';
 import { TimerOverlay } from './meeting/TimerOverlay';
 import { TimerModal } from './meeting/TimerModal';
+import { useT } from '@/lib/i18n';
 
 export interface ChatMsg {
   id: string; text: string; senderName: string; senderIdentity: string; ts: number;

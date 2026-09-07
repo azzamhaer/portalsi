@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { env } from '$env/dynamic/public';
+	import { get } from 'svelte/store';
+	import { t } from '$lib/i18n';
 	import { onMount, untrack } from 'svelte';
 	import {
 		Bookmark,
@@ -327,11 +329,11 @@
 	{#if mutedHint}
 		<div class="muted-hint" role="status">
 			<VolumeX size={15} />
-			<span>Video di-mute, unmute di menu kanan atas</span>
+			<span>{$t('reel.mutedHint')}</span>
 		</div>
 	{/if}
 	{#if reels.length === 0}
-		<div class="reels-empty">Belum ada video untuk ditampilkan.</div>
+		<div class="reels-empty">{$t('reel.empty')}</div>
 	{:else}
 		<div class="reels-viewport">
 			{#each reels as reel, i (reel.id)}
@@ -354,7 +356,7 @@
 									onMutedChange={(m) => handleMutedChange(m, reel.id)}
 								>
 									{#snippet menuExtra(close: () => void)}
-										<small>Tampilan</small>
+										<small>{$t('reel.display')}</small>
 										<button
 											onclick={(event) => {
 												event.stopPropagation();
@@ -363,7 +365,7 @@
 											}}
 											>{#if clearView}<Eye size={16} />{:else}<EyeOff size={16} />{/if}
 											<span
-												>{clearView ? 'Tampilkan navigasi' : 'Sembunyikan navigasi'}
+												>{clearView ? get(t)('reel.showNav') : get(t)('reel.hideNav')}
 												<em>reel ini saja</em></span
 											></button
 										>
@@ -375,18 +377,18 @@
 												close();
 											}}
 											><MousePointerClick size={16} />
-											<span>Bersih tiap ganti reel <em>setelan tetap</em></span>
+											<span>{$t('reel.cleanEachReel')} <em>setelan tetap</em></span>
 											{#if clearOnScroll}<Check size={15} />{/if}</button
 										>
 										{#if $isModerator}
-											<small>Moderasi</small>
+											<small>{$t('reel.moderation')}</small>
 											<button
 												class="reel-mod-item"
 												onclick={(event) => {
 													event.stopPropagation();
 													moderationFor = reel.id;
 													close();
-												}}><ShieldAlert size={16} /> <span>Moderasi postingan</span></button
+												}}><ShieldAlert size={16} /> <span>{$t('post.ariaModerate')}</span></button
 											>
 										{/if}
 									{/snippet}
@@ -425,9 +427,9 @@
 										disabled={followBusy.has(reel.user.id)}
 										onclick={() => void toggleFollow(reel.user.id)}
 										>{followedNow.has(reel.user.id)
-											? 'Mengikuti'
+											? get(t)('common.following')
 											: reel.user.followsYou
-												? 'Ikuti balik'
+												? get(t)('rail.followBack')
 												: 'Ikuti'}</button
 									>
 								{/if}
@@ -441,8 +443,8 @@
 										<button
 											class="cap-toggle"
 											aria-label={expanded.has(reel.id)
-												? 'Tutup caption'
-												: 'Tampilkan caption selengkapnya'}
+												? get(t)('reel.closeCaption')
+												: get(t)('reel.showCaption')}
 											onclick={() => {
 												const s = new Set(expanded);
 												if (s.has(reel.id)) s.delete(reel.id);
@@ -462,21 +464,21 @@
 						</div>
 
 						<div class="reel-actions">
-							<button class:on={reel.isLiked} onclick={() => toggleLike(reel)} aria-label="Suka">
+							<button class:on={reel.isLiked} onclick={() => toggleLike(reel)} aria-label={$t('post.like')}>
 								<Heart size={27} fill={reel.isLiked ? 'currentColor' : 'none'} />
 								<b>{reel.likesCount > 0 ? nf(reel.likesCount) : 'Suka'}</b>
 							</button>
-							<button onclick={() => (commentsFor = reel.id)} aria-label="Komentar">
+							<button onclick={() => (commentsFor = reel.id)} aria-label={$t('post.ariaComment')}>
 								<MessageCircle size={27} />
-								<b>{reel.commentsCount > 0 ? nf(reel.commentsCount) : 'Komentar'}</b>
+								<b>{reel.commentsCount > 0 ? nf(reel.commentsCount) : get(t)('post.ariaComment')}</b>
 							</button>
-							<button onclick={() => (shareFor = reel.id)} aria-label="Bagikan">
+							<button onclick={() => (shareFor = reel.id)} aria-label={$t('common.share')}>
 								<Send size={25} />
 							</button>
 							<button
 								class:on={reel.isBookmarked}
 								onclick={() => toggleSave(reel)}
-								aria-label="Simpan"
+								aria-label={$t('common.save')}
 							>
 								<Bookmark size={25} fill={reel.isBookmarked ? 'currentColor' : 'none'} />
 							</button>
@@ -489,7 +491,7 @@
 		<div class="reels-nav">
 			<button
 				onclick={() => scrollToIndex(activeIndex - 1)}
-				aria-label="Reel sebelumnya"
+				aria-label={$t('reel.ariaPrev')}
 				disabled={activeIndex === 0}
 			>
 				<ChevronUp size={22} />

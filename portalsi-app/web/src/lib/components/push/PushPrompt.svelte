@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
+	import { get } from 'svelte/store';
+	import { t } from '$lib/i18n';
 	import { Bell, X, LoaderCircle } from '@lucide/svelte';
 	import { portal } from '$lib/actions/portal';
 	import { pushSupported, pushPermission, enablePush } from '$lib/push';
@@ -15,20 +17,20 @@
 
 	const resultCopy = {
 		granted: {
-			title: 'Notifikasi aktif 🎉',
-			body: 'Sekarang kamu akan langsung tahu setiap ada aktivitas penting di akunmu.'
+			title: get(t)('push.onTitle'),
+			body: get(t)('push.onMsg')
 		},
 		blocked: {
-			title: 'Belum diizinkan',
-			body: 'Tidak apa-apa. Kamu bisa mengaktifkannya nanti di Pengaturan › Preferensi, atau lewat pengaturan situs di browser.'
+			title: get(t)('push.deniedTitle'),
+			body: get(t)('push.deniedMsg')
 		},
 		later: {
-			title: 'Oke, nanti ya 👍',
-			body: 'Kamu bisa mengaktifkan notifikasi kapan saja di Pengaturan › Preferensi.'
+			title: get(t)('push.laterTitle'),
+			body: get(t)('push.laterMsg')
 		},
 		error: {
-			title: 'Belum bisa diaktifkan',
-			body: 'Coba lagi nanti dari Pengaturan › Preferensi.'
+			title: get(t)('push.failTitle'),
+			body: get(t)('push.failMsg')
 		}
 	} as const;
 
@@ -83,9 +85,9 @@
 </script>
 
 {#if open}
-	<div class="pp-scrim" use:portal role="dialog" aria-modal="true" aria-label="Aktifkan notifikasi">
+	<div class="pp-scrim" use:portal role="dialog" aria-modal="true" aria-label={$t('push.ariaEnable')}>
 		<div class="pp-card">
-			<button class="pp-x" onclick={closeNow} aria-label="Tutup"><X size={18} /></button>
+			<button class="pp-x" onclick={closeNow} aria-label={$t('common.close')}><X size={18} /></button>
 			<div class="pp-hero">
 				<img src="https://portalsi.com/notification.webp" alt="" loading="eager" />
 			</div>
@@ -95,13 +97,13 @@
 					<h2>{resultCopy[result].title}</h2>
 					<p>{resultCopy[result].body}</p>
 					<div class="pp-actions">
-						<button class="pp-ok" onclick={closeNow}>Tutup</button>
+						<button class="pp-ok" onclick={closeNow}>{$t('common.close')}</button>
 					</div>
 				{:else}
-					<h2>Jangan sampai ketinggalan</h2>
+					<h2>{$t('push.dontMiss')}</h2>
 					<p>
 						Aktifkan notifikasi biar kamu langsung tahu saat ada yang menyukai, mengomentari, atau
-						mengajakmu berkolaborasi. <strong>Bukan promosi</strong> — murni aktivitas akunmu.
+						mengajakmu berkolaborasi. <strong>{$t('push.notPromo')}</strong> — murni aktivitas akunmu.
 					</p>
 					<div class="pp-actions">
 						<button class="pp-later" onclick={() => toResult('later')} disabled={busy}>

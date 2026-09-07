@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { env } from '$env/dynamic/public';
+	import { t } from '$lib/i18n';
 	import { Copy, ImageOff, Play } from '@lucide/svelte';
 	import { z } from 'zod';
 	import { clientRequest } from '$lib/api/client';
@@ -104,7 +105,7 @@
 	</a>
 {:catch}
 	<a class="sp unavailable" href={`/posts/${postId}`}>
-		<span class="ph"><ImageOff size={26} /><small>Ketuk untuk membuka</small></span>
+		<span class="ph"><ImageOff size={26} /><small>{$t('chat.tapToOpen')}</small></span>
 	</a>
 {/await}
 

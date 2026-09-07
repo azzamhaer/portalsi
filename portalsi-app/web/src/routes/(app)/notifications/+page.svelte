@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { env } from '$env/dynamic/public';
+	import { get } from 'svelte/store';
+	import { t } from '$lib/i18n';
 	import { goto, invalidateAll } from '$app/navigation';
 	import {
 		AtSign,
@@ -52,13 +54,13 @@
 	let collabBusy = $state<number | null>(null);
 	async function decideCollab(item: (typeof items)[number], accept: boolean) {
 		if (!item.postId || collabBusy !== null) return;
-		const who = item.user ? `@${item.user.username}` : 'Postingan ini';
+		const who = item.user ? `@${item.user.username}` : get(t)('notif.thisPost');
 		const confirmed = await confirmAction({
-			title: accept ? 'Terima kolaborasi?' : 'Tolak undangan?',
+			title: accept ? get(t)('pd.acceptCollabTitle') : get(t)('pd.rejectInviteTitle'),
 			description: accept
 				? `Postingan dari ${who} akan muncul juga di profil Anda sebagai co-author.`
 				: `Undangan kolaborasi dari ${who} akan dihapus. Mereka masih bisa mengundang lagi.`,
-			confirmLabel: accept ? 'Terima' : 'Tolak',
+			confirmLabel: accept ? get(t)('pd.accept') : 'Tolak',
 			tone: accept ? 'default' : 'danger'
 		});
 		if (!confirmed) return;
@@ -68,9 +70,9 @@
 				method: 'POST'
 			});
 			items = items.filter((n) => n.id !== item.id);
-			statusMessage = accept ? 'Kolaborasi diterima.' : 'Undangan ditolak.';
+			statusMessage = accept ? get(t)('notif.collabAccepted') : get(t)('notif.inviteRejected');
 		} catch {
-			statusMessage = 'Gagal memproses undangan.';
+			statusMessage = get(t)('notif.inviteFailed');
 		} finally {
 			collabBusy = null;
 		}
@@ -127,9 +129,9 @@
 		try {
 			await clientRequest(`followers/${id}/${accept ? 'accept' : 'reject'}`, { method: 'POST' });
 			requests = requests.filter((item) => item.id !== id);
-			statusMessage = accept ? 'Permintaan pengikut diterima.' : 'Permintaan pengikut ditolak.';
+			statusMessage = accept ? get(t)('notif.followAccepted') : get(t)('notif.followRejected');
 		} catch {
-			statusMessage = 'Permintaan pengikut belum dapat diproses.';
+			statusMessage = get(t)('notif.followFailed');
 		}
 	}
 	async function loadMore() {
@@ -168,7 +170,7 @@
 			nextPage = response.pagination.current_page + 1;
 			hasMore = response.pagination.current_page < response.pagination.last_page;
 		} catch {
-			statusMessage = 'Notifikasi berikutnya belum dapat dimuat.';
+			statusMessage = get(t)('notif.loadMoreFailed');
 		} finally {
 			loadingMore = false;
 		}
@@ -206,7 +208,7 @@
 						</article>{/each}
 				</div>{/if}
 			<div class="list-head">
-				<h2 id="notification-heading">Terbaru</h2>
+				<h2 id="notification-heading">{$t('exp.latest')}</h2>
 				<span>{unreadCount} baru</span>
 			</div>
 			{#each items as item (item.id)}
@@ -227,7 +229,7 @@
 					</div>
 					<a href={destination(item)} onclick={(event) => openNotification(event, item)}
 						><p>
-							{#if item.type === 'post_moderated'}<strong class="system-name">Sistem AI</strong> {/if}{item.message}{#if item.user && item.type !== 'post_moderated'}<UserBadges
+							{#if item.type === 'post_moderated'}<strong class="system-name">{$t('notif.aiSystem')}</strong> {/if}{item.message}{#if item.user && item.type !== 'post_moderated'}<UserBadges
 									verified={item.user.badgeVerified}
 									role={item.user.role}
 								/>{/if}<small>{item.time}</small>
@@ -239,22 +241,22 @@
 								class="c-accept"
 								disabled={collabBusy === item.postId}
 								onclick={() => decideCollab(item, true)}
-								aria-label="Terima kolaborasi"><Check size={16} /></button
+								aria-label={$t('notif.ariaAccept')}><Check size={16} /></button
 							>
 							<button
 								class="c-reject"
 								disabled={collabBusy === item.postId}
 								onclick={() => decideCollab(item, false)}
-								aria-label="Tolak kolaborasi"><X size={16} /></button
+								aria-label={$t('notif.ariaReject')}><X size={16} /></button
 							>
 						</div>
 					{/if}
 					{#if item.postThumbnail}<a class="notif-thumb" href={destination(item)}
 							><img src={item.postThumbnail} alt="" /></a
-						>{:else if !item.read}<span class="dot" aria-label="Belum dibaca"></span>{/if}
+						>{:else if !item.read}<span class="dot" aria-label={$t('chat.unread')}></span>{/if}
 				</article>
 			{/each}
-			{#if items.length === 0}<p class="empty">Belum ada notifikasi.</p>{/if}
+			{#if items.length === 0}<p class="empty">{$t('notif.empty')}</p>{/if}
 			<InfiniteScrollTrigger
 				{hasMore}
 				loading={loadingMore}
@@ -266,9 +268,9 @@
 		</section>
 		<aside class="notification-aside surface">
 			<span><Bell size={22} /></span>
-			<h2>Tetap terhubung</h2>
-			<p>Notifikasi membantu Anda mengikuti percakapan tanpa perlu memeriksa setiap halaman.</p>
-			<a href="/settings">Atur preferensi</a>
+			<h2>{$t('notif.stayConnected')}</h2>
+			<p>{$t('notif.stayConnectedSub')}</p>
+			<a href="/settings">{$t('notif.setPrefs')}</a>
 		</aside>
 	</div>
 </SectionPage>

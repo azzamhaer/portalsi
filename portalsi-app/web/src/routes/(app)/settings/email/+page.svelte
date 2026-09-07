@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { MailCheck, ShieldAlert } from '@lucide/svelte';
+	import { get } from 'svelte/store';
+	import { t } from '$lib/i18n';
 	import type { PageProps } from './$types';
 	type EmailForm = {
 		success?: boolean;
@@ -15,13 +17,13 @@
 <svelte:head><title>Ubah email — Portal SI</title></svelte:head>
 <main class="settings-form surface">
 	<a href="/settings">← Pengaturan</a>
-	<h1>Ubah email</h1>
+	<h1>{$t('set.changeEmail')}</h1>
 
 	<div class="current">
-		<span>Email saat ini</span>
-		<strong>{data.email || 'Belum ada email'}</strong>
+		<span>{$t('eml.current')}</span>
+		<strong>{data.email || get(t)('eml.noEmail')}</strong>
 		{#if data.email}<em class:verified={data.emailVerified}
-				>{data.emailVerified ? 'Terverifikasi' : 'Belum diverifikasi'}</em
+				>{data.emailVerified ? get(t)('eml.verified') : get(t)('eml.unverified')}</em
 			>{/if}
 	</div>
 
@@ -37,7 +39,7 @@
 	{:else}
 		<form method="POST">
 			<label
-				><span>Email baru</span><input
+				><span>{$t('eml.new')}</span><input
 					type="email"
 					name="email"
 					required
@@ -55,7 +57,7 @@
 			</div>
 			{#if form?.errors?.email?.length}<p class="err">{form.errors.email[0]}</p>
 			{:else if form?.message && !form?.success}<p class="err">{form.message}</p>{/if}
-			<button>Kirim tautan konfirmasi</button>
+			<button>{$t('eml.sendConfirm')}</button>
 		</form>
 	{/if}
 </main>

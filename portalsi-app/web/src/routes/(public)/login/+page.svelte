@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import { get } from 'svelte/store';
+	import { t } from '$lib/i18n';
 	import { Eye, LoaderCircle, LockKeyhole, UserRound } from '@lucide/svelte';
 	import AuthFields from '$lib/components/auth/AuthFields.svelte';
 	import AuthShell from '$lib/components/auth/AuthShell.svelte';
@@ -16,13 +18,13 @@
 	const nextTarget = $derived(page.url.searchParams.get('next') ?? '');
 </script>
 
-<svelte:head><title>Masuk — Portal SI App</title></svelte:head>
+<svelte:head><title>{$t('auth.loginTitle')}</title></svelte:head>
 
 <AuthShell>
 	<div class="heading">
-		<p class="eyebrow">Selamat datang kembali</p>
-		<h1>Masuk ke Portal SI App</h1>
-		<p>Lanjutkan percakapan dan lihat kabar terbaru dari komunitas.</p>
+		<p class="eyebrow">{$t('auth.welcomeBack')}</p>
+		<h1>{$t('auth.signInToApp')}</h1>
+		<p>{$t('auth.loginSub')}</p>
 	</div>
 	{#if form?.message}<div class="form-alert" role="alert">
 			{form.message}{#if 'retryAfterSeconds' in form && form.retryAfterSeconds}
@@ -32,7 +34,7 @@
 		{#if nextTarget}<input type="hidden" name="next" value={nextTarget} />{/if}
 		<AuthFields>
 			<label>
-				<span>Username atau email</span>
+				<span>{$t('auth.userOrEmail')}</span>
 				<div class="input-icon">
 					<UserRound size={18} /><input
 						name="login"
@@ -45,19 +47,19 @@
 				{#if form?.errors?.login}<small class="field-error">{form.errors.login[0]}</small>{/if}
 			</label>
 			<label>
-				<span>Kata sandi</span>
+				<span>{$t('auth.password')}</span>
 				<div class="input-icon">
 					<LockKeyhole size={18} /><input
 						name="password"
 						type={revealPassword ? 'text' : 'password'}
 						autocomplete="current-password"
-						placeholder="Masukkan kata sandi"
+						placeholder={$t('auth.passwordPh')}
 						bind:value={passwordValue}
 						aria-invalid={form?.errors?.password ? 'true' : undefined}
 					/><button
 						type="button"
 						onclick={() => (revealPassword = !revealPassword)}
-						aria-label={revealPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
+						aria-label={revealPassword ? get(t)('auth.hidePw') : get(t)('auth.showPw')}
 						aria-pressed={revealPassword}><Eye size={18} /></button
 					>
 				</div>
@@ -66,15 +68,15 @@
 			</label>
 			<div class="form-meta">
 				<label class="remember"
-					><input type="checkbox" name="remember" /> <span>Ingat perangkat ini</span></label
-				><a href="/forgot-password">Lupa kata sandi?</a>
+					><input type="checkbox" name="remember" /> <span>{$t('auth.rememberDevice')}</span></label
+				><a href="/forgot-password">{$t('auth.forgotPw')}</a>
 			</div>
 			<button class="auth-primary" type="submit" disabled={submitting}>
 				{#if submitting}<LoaderCircle size={17} class="button-spin" /> Memproses…{:else}Masuk{/if}
 			</button>
 		</AuthFields>
 	</form>
-	<p class="switch">Belum punya akun? <a href="/register">Daftar sekarang</a></p>
+	<p class="switch">{$t('auth.noAccount')}<a href="/register">{$t('auth.registerNow')}</a></p>
 </AuthShell>
 
 <style>

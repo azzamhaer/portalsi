@@ -1,5 +1,7 @@
 <script lang="ts">
 	import {
+	import { t } from '$lib/i18n';
+	import { get } from 'svelte/store';
 		Bookmark,
 		Check,
 		ChevronLeft,
@@ -181,10 +183,10 @@
 		if (collabActionBusy) return;
 		const target = collabList.find((c) => c.userId === userId);
 		const confirmed = await confirmAction({
-			title: 'Hapus kolaborator?',
+			title: get(t)('pd.delCollabTitle'),
 			description: target
 				? `@${target.username} akan dihapus dari kolaborator postingan ini. Salinan postingan di profilnya juga hilang.`
-				: 'Kolaborator ini akan dihapus dari postingan.',
+				: get(t)('pd.delCollabMsg'),
 			confirmLabel: 'Hapus',
 			tone: 'danger'
 		});
@@ -330,20 +332,20 @@
 			if (res && res.processing) {
 				// Diproses di latar belakang (queue). Muat ulang beberapa detik lagi,
 				// lalu bersihkan pesan & tutup editor.
-				thumbMsg = 'Thumbnail sedang diproses, silahkan kembali dan akan muncul beberapa detik lagi…';
+				thumbMsg = get(t)('pd.thumbProcessing');
 				setTimeout(async () => {
 					await invalidateAll();
 					thumbMsg = '';
 					thumbEditOpen = false;
 				}, 6000);
 			} else {
-				thumbMsg = 'Thumbnail tersimpan.';
+				thumbMsg = get(t)('pd.thumbSaved');
 				thumbEditOpen = false;
 				await invalidateAll();
 			}
 		} catch (e) {
 			thumbMsg =
-				e instanceof Error && e.message ? e.message : 'Gagal menyimpan thumbnail. Coba lagi.';
+				e instanceof Error && e.message ? e.message : get(t)('pd.thumbFailed');
 		} finally {
 			thumbSaving = false;
 		}
@@ -364,9 +366,9 @@
 	);
 	async function deleteFromPopup() {
 		const ok = await confirmAction({
-			title: 'Hapus postingan ini?',
-			description: 'Postingan yang dimoderasi akan dihapus permanen dan tidak dapat dipulihkan.',
-			confirmLabel: 'Hapus permanen',
+			title: get(t)('pd.delPostTitle'),
+			description: get(t)('pd.delPostMsg'),
+			confirmLabel: get(t)('pd.delPermanent'),
 			tone: 'danger'
 		});
 		if (!ok) return;
@@ -375,7 +377,7 @@
 			modPopupOpen = false;
 			window.history.back();
 		} catch {
-			formMessage = 'Gagal menghapus postingan. Coba lagi.';
+			formMessage = get(t)('pd.delPostFailed');
 		}
 	}
 	async function cancelModeration() {
@@ -385,7 +387,7 @@
 			await clientRequest(`posts/${data.post.id}/moderation/cancel`, { method: 'POST' });
 			isModerated = false;
 		} catch {
-			formMessage = 'Gagal membatalkan moderasi. Coba lagi.';
+			formMessage = get(t)('pd.unmoderateFailed');
 		} finally {
 			modBusy = false;
 		}
@@ -397,10 +399,10 @@
 	async function leaveCollab() {
 		if (leavingCollab) return;
 		const ok = await confirmAction({
-			title: 'Batalkan kolaborasi?',
+			title: get(t)('pd.cancelCollabTitle'),
 			description:
-				'Postingan ini tidak lagi muncul di profil Anda. Pemilik bisa mengundang Anda lagi kapan saja.',
-			confirmLabel: 'Batalkan collab',
+				get(t)('pd.cancelCollabMsg'),
+			confirmLabel: get(t)('pd.cancelCollab'),
 			tone: 'danger'
 		});
 		if (!ok) return;
@@ -409,7 +411,7 @@
 			await clientRequest(`posts/${data.post.id}/collaborators/leave`, { method: 'POST' });
 			leftCollab = true;
 		} catch {
-			formMessage = 'Kolaborasi belum dapat dibatalkan. Coba lagi.';
+			formMessage = get(t)('pd.cancelCollabFailed');
 		} finally {
 			leavingCollab = false;
 		}
@@ -457,7 +459,7 @@
 			musicSaved = true;
 			setTimeout(() => (musicSaved = false), 2500);
 		} catch {
-			formMessage = 'Musik belum dapat disimpan. Coba lagi.';
+			formMessage = get(t)('pd.musicSaveFailed');
 		} finally {
 			savingMusic = false;
 		}
@@ -466,10 +468,10 @@
 	async function publishDraft() {
 		if (publishing) return;
 		const confirmed = await confirmAction({
-			title: 'Terbitkan draft ini?',
+			title: get(t)('pd.publishTitle'),
 			description:
-				'Setelah terbit, postingan langsung muncul di beranda pengikut Anda dan tidak bisa dikembalikan menjadi draft.',
-			confirmLabel: 'Ya, terbitkan'
+				get(t)('pd.publishMsg'),
+			confirmLabel: get(t)('pd.publishYes')
 		});
 		if (!confirmed) return;
 		publishing = true;
@@ -477,7 +479,7 @@
 			await clientRequest(`posts/${data.post.id}/publish`, { method: 'POST' });
 			isDraft = false;
 		} catch {
-			formMessage = 'Draft belum dapat diterbitkan. Coba lagi.';
+			formMessage = get(t)('pd.publishFailed');
 		} finally {
 			publishing = false;
 		}
@@ -506,13 +508,13 @@
 			const status = error instanceof ClientApiError ? error.status : 0;
 			if (status === 422) {
 				await confirmAction({
-					title: 'Sematan sudah penuh',
+					title: get(t)('pd.pinsFull'),
 					description: `Anda hanya bisa menyematkan ${MAX_PINNED} postingan. Lepas salah satu sematan lebih dulu, lalu coba lagi.`,
-					confirmLabel: 'Mengerti',
+					confirmLabel: get(t)('comp.gotIt'),
 					cancelLabel: ''
 				});
 			} else {
-				formMessage = 'Sematan belum dapat disimpan. Coba lagi.';
+				formMessage = get(t)('pd.pinFailed');
 			}
 		} finally {
 			pinBusy = false;
@@ -629,11 +631,11 @@
 	async function respondInvite(accept: boolean) {
 		if (inviteBusy) return;
 		const confirmed = await confirmAction({
-			title: accept ? 'Terima kolaborasi?' : 'Tolak undangan?',
+			title: accept ? get(t)('pd.acceptCollabTitle') : get(t)('pd.rejectInviteTitle'),
 			description: accept
-				? 'Postingan ini akan muncul juga di profil Anda sebagai co-author.'
-				: 'Undangan kolaborasi ini akan dihapus.',
-			confirmLabel: accept ? 'Terima' : 'Tolak',
+				? get(t)('pd.acceptCollabMsg')
+				: get(t)('pd.rejectInviteMsg'),
+			confirmLabel: accept ? get(t)('pd.accept') : 'Tolak',
 			tone: accept ? 'default' : 'danger'
 		});
 		if (!confirmed) return;
@@ -705,9 +707,9 @@
 			content = '';
 			replyTo = null;
 			commentCount += 1;
-			formMessage = gifUrl ? 'GIF terkirim.' : 'Komentar terkirim.';
+			formMessage = gifUrl ? 'GIF terkirim.' : get(t)('pd.commentSent');
 		} catch {
-			formMessage = 'Komentar belum dapat dikirim.';
+			formMessage = get(t)('pd.commentSendFailed');
 		} finally {
 			submitting = false;
 		}
@@ -736,7 +738,7 @@
 		} catch {
 			item.isLiked = wasLiked;
 			item.likesCount += wasLiked ? 1 : -1;
-			formMessage = 'Like komentar belum tersimpan.';
+			formMessage = get(t)('pd.commentLikeFailed');
 		}
 	}
 
@@ -770,7 +772,7 @@
 			item.text = text;
 			editing = null;
 		} catch {
-			formMessage = 'Komentar belum dapat diedit.';
+			formMessage = get(t)('pd.commentEditFailed');
 		} finally {
 			savingEdit = false;
 		}
@@ -779,9 +781,9 @@
 	async function deleteComment(id: number, reply = false) {
 		if (
 			!(await confirmAction({
-				title: 'Hapus komentar?',
-				description: 'Komentar ini akan dihapus dari percakapan.',
-				confirmLabel: 'Hapus komentar',
+				title: get(t)('cmt.delTitle'),
+				description: get(t)('cmt.delMsg'),
+				confirmLabel: get(t)('pd.delComment'),
 				tone: 'danger'
 			}))
 		)
@@ -804,20 +806,20 @@
 			{#if inviteStatus === 'pending'}
 				<div class="collab-invite-banner surface">
 					<div class="cib-text">
-						<strong>Kamu diundang berkolaborasi</strong>
-						<small>Terima agar postingan ini juga muncul di profilmu.</small>
+						<strong>{$t('pd.invited')}</strong>
+						<small>{$t('pd.invitedMsg')}</small>
 					</div>
 					<div class="cib-actions">
 						<button class="cib-accept" disabled={inviteBusy} onclick={() => respondInvite(true)}
-							><Check size={16} /> Terima</button
+							><Check size={16} /> {$t('pd.accept')}</button
 						>
 						<button class="cib-reject" disabled={inviteBusy} onclick={() => respondInvite(false)}
-							><X size={16} /> Tolak</button
+							><X size={16} /> {$t('common.reject')}</button
 						>
 					</div>
 				</div>
 			{:else if inviteStatus === 'done'}
-				<div class="collab-invite-banner surface done">Undangan kolaborasi telah diproses.</div>
+				<div class="collab-invite-banner surface done">{$t('pd.inviteProcessed')}</div>
 			{/if}
 			{#if ownerMenuOpen}
 				<!-- use:portal → dipindah ke <body>. Tanpa ini popup terjebak di dalam kolom
@@ -832,25 +834,25 @@
 						class="edit-modal-card"
 						role="dialog"
 						aria-modal="true"
-						aria-label="Kelola postingan"
+						aria-label={$t('pd.ariaManagePost')}
 						onclick={(e) => e.stopPropagation()}
 					>
 						<header class="emc-head">
-							<strong>Kelola postingan</strong>
-							<button onclick={() => (ownerMenuOpen = false)} aria-label="Tutup"><X size={20} /></button>
+							<strong>{$t('pd.ariaManagePost')}</strong>
+							<button onclick={() => (ownerMenuOpen = false)} aria-label={$t('common.close')}><X size={20} /></button>
 						</header>
 						<div class="emc-body">
 						<form id="editPostForm" method="POST" action="?/update">
-						<label>Caption <textarea name="caption" rows="4">{data.post.caption}</textarea></label>
+						<label>{$t('comp.caption')} <textarea name="caption" rows="4">{data.post.caption}</textarea></label>
 						<div class="edit-loc">
 							<label
-								>Lokasi <input
+								>{$t('pd.location')} <input
 									name="location"
 									bind:value={editLocation}
 									oninput={() => (editLocationChosen = false)}
 									maxlength="160"
 									autocomplete="off"
-									placeholder="Cari & tambahkan lokasi"
+									placeholder={$t('pd.locationPh')}
 								/></label
 							>
 							{#if editLocationResults.length}
@@ -873,7 +875,7 @@
 					{#if data.post.isVideo}
 						<div class="thumb-manage">
 							<strong><ImageIcon size={15} /> Thumbnail video</strong>
-							<p>Putar / geser video ke frame yang diinginkan, lalu tekan "Simpan thumbnail".</p>
+							<p>{$t('pd.thumbInstruction')}</p>
 							{#if thumbEditOpen}
 								<div class="thumb-stage">
 									<!-- svelte-ignore a11y_media_has_caption -->
@@ -900,12 +902,12 @@
 								/>
 								<div class="thumb-scrub-meta">
 									<span>{thumbSecond.toFixed(1)} dtk{thumbDuration ? ` / ${thumbDuration.toFixed(1)} dtk` : ''}</span>
-									{#if thumbChanged}<span class="thumb-chip">Frame dipilih</span>{/if}
+									{#if thumbChanged}<span class="thumb-chip">{$t('pd.frameSelected')}</span>{/if}
 								</div>
-								<button type="button" class="thumb-btn" onclick={saveThumbnail} disabled={!thumbChanged || thumbSaving}>{thumbSaving ? 'Menyimpan…' : 'Simpan thumbnail'}</button>
+								<button type="button" class="thumb-btn" onclick={saveThumbnail} disabled={!thumbChanged || thumbSaving}>{thumbSaving ? get(t)('pd.saving') : 'Simpan thumbnail'}</button>
 								{#if thumbMsg}<p class="thumb-hint">{thumbMsg}</p>{/if}
 							{:else}
-								<button type="button" class="thumb-btn" onclick={() => (thumbEditOpen = true)}>Ganti thumbnail</button>
+								<button type="button" class="thumb-btn" onclick={() => (thumbEditOpen = true)}>{$t('pd.changeThumb')}</button>
 							{/if}
 						</div>
 					{/if}
@@ -957,11 +959,11 @@
 								{/each}
 							</ul>
 						{:else if collabLoaded}
-							<p class="c-empty">Belum ada kolaborator.</p>
+							<p class="c-empty">{$t('pd.noCollab')}</p>
 						{/if}
 						{#if collabList.length < 5}
 							<div class="collab-add">
-								<input bind:value={collabQuery} maxlength="40" placeholder="Tambah kolaborator (cari username)" />
+								<input bind:value={collabQuery} maxlength="40" placeholder={$t('pd.collabPh2')} />
 								{#if collabResults.length}
 									<div class="collab-add-results">
 										{#each collabResults as u (u.id)}
@@ -976,7 +978,7 @@
 						</div>
 						</div>
 						<div class="emc-actions">
-							<button type="submit" form="editPostForm">Simpan</button>
+							<button type="submit" form="editPostForm">{$t('common.save')}</button>
 							<button
 								class="delete"
 								type="submit"
@@ -989,7 +991,7 @@
 											'Foto/video, komentar, interaksi, dan salinan di profil kolaborator akan dihapus permanen.',
 										confirmLabel: 'Hapus postingan',
 										tone: 'danger'
-									})}><Trash2 size={14} /> Hapus</button
+									})}><Trash2 size={14} /> {$t('common.delete')}</button
 							>
 						</div>
 					</div>
@@ -1044,8 +1046,8 @@
 								/>
 							{/each}
 						</div>
-						{#if slide > 0}<button class="dm-nav prev" onclick={() => goSlide(slide - 1)} aria-label="Sebelumnya"><ChevronLeft size={22} /></button>{/if}
-						{#if slide < gallery.length - 1}<button class="dm-nav next" onclick={() => goSlide(slide + 1)} aria-label="Berikutnya"><ChevronRight size={22} /></button>{/if}
+						{#if slide > 0}<button class="dm-nav prev" onclick={() => goSlide(slide - 1)} aria-label={$t('pd.ariaPrev')}><ChevronLeft size={22} /></button>{/if}
+						{#if slide < gallery.length - 1}<button class="dm-nav next" onclick={() => goSlide(slide + 1)} aria-label={$t('pd.ariaNext')}><ChevronRight size={22} /></button>{/if}
 						<div class="dm-dots">{#each gallery as _, i (i)}<span class:on={i === slide}></span>{/each}</div>
 					</div>
 				{:else}
@@ -1068,11 +1070,11 @@
 			{#if isDraft && isPostOwner}
 				<div class="draft-banner" role="status">
 					<div>
-						<strong>Ini masih draft</strong>
-						<small>Hanya Anda yang bisa melihatnya.</small>
+						<strong>{$t('pd.isDraft')}</strong>
+						<small>{$t('pd.draftOnlyYou')}</small>
 					</div>
 					<button type="button" disabled={publishing} onclick={publishDraft}>
-						{publishing ? 'Menerbitkan…' : 'Terbitkan'}
+						{publishing ? get(t)('pd.publishing') : get(t)('pd.publish')}
 					</button>
 				</div>
 			{/if}
@@ -1088,7 +1090,7 @@
 							<p class="mod-banner-reason">{data.post.moderationReason}</p>
 						{/if}
 						{#if data.post.moderationNote}
-							<div class="mod-banner-note"><span>Catatan moderator</span><p>{data.post.moderationNote}</p></div>
+							<div class="mod-banner-note"><span>{$t('pd.moderatorNote')}</span><p>{data.post.moderationNote}</p></div>
 						{/if}
 					</div>
 				</div>
@@ -1106,7 +1108,7 @@
 				{#if data.post.coAuthors && data.post.coAuthors.length > 0}<button
 						class="ds-costack"
 						onclick={() => (collabPopupOpen = true)}
-						aria-label="Lihat kolaborator"
+						aria-label={$t('post.ariaViewCollab')}
 						>{#each data.post.coAuthors.slice(0, 2) as ca (ca.id)}<Avatar
 								name={ca.username}
 								src={ca.avatarUrl}
@@ -1136,13 +1138,13 @@
 							ownerMenuOpen = true;
 							if (!collabLoaded) void loadCollaborators();
 						}}
-						aria-label="Kelola postingan"><MoreHorizontal size={20} /></button
+						aria-label={$t('pd.ariaManagePost')}><MoreHorizontal size={20} /></button
 					>{:else if data.post.viewerCollabStatus === 'accepted' && !leftCollab}<button
 						class="ds-leave"
 						disabled={leavingCollab}
 						onclick={leaveCollab}
-						aria-label="Batalkan kolaborasi"
-						><UserMinus size={15} /> {leavingCollab ? 'Membatalkan…' : 'Batalkan collab'}</button
+						aria-label={$t('pd.ariaCancelCollab')}
+						><UserMinus size={15} /> {leavingCollab ? get(t)('pd.cancelling') : get(t)('pd.cancelCollab')}</button
 					>{/if}
 				{#if $isModerator}
 					{#if isModerated}
@@ -1150,13 +1152,13 @@
 							class="ds-modmenu restore"
 							disabled={modBusy}
 							onclick={cancelModeration}
-							aria-label="Batalkan moderasi">{modBusy ? 'Memproses…' : 'Batalkan moderasi'}</button
+							aria-label={$t('pd.cancelModeration')}>{modBusy ? get(t)('pd.processing') : get(t)('pd.cancelModeration')}</button
 						>
 					{:else}
 						<button
 							class="ds-modmenu"
 							onclick={() => (moderationOpen = true)}
-							aria-label="Moderasi postingan"><ShieldAlert size={18} /></button
+							aria-label={$t('post.ariaModerate')}><ShieldAlert size={18} /></button
 						>
 					{/if}
 				{/if}
@@ -1254,17 +1256,17 @@
 									><Heart size={13} fill={comment.isLiked ? 'currentColor' : 'none'} />
 									{comment.likesCount}</button
 								><button onclick={() => startReply(comment.id, comment.user.username)}
-									>Balas</button
+									>{$t('cmt.reply')}</button
 								>
 								{#if comment.user.id === data.currentUser.id}{#if !comment.gifUrl}<button
-											onclick={() => editComment(comment.id)}>Edit</button
-										>{/if}<button onclick={() => deleteComment(comment.id)}>Hapus</button>{/if}
+											onclick={() => editComment(comment.id)}>{$t('common.edit')}</button
+										>{/if}<button onclick={() => deleteComment(comment.id)}>{$t('common.delete')}</button>{/if}
 							</footer>
 							{#if comment.replies.length > 0}<button
 									class="show-replies"
 									onclick={() => toggleReplies(comment.id)}
 									><span></span>{expandedReplies.has(comment.id)
-										? 'Sembunyikan balasan'
+										? get(t)('cmt.hideReplies')
 										: `Lihat ${comment.replies.length} balasan`}</button
 								>{/if}
 							{#if expandedReplies.has(comment.id)}
@@ -1302,9 +1304,9 @@
 												><Heart size={13} fill={reply.isLiked ? 'currentColor' : 'none'} />
 												{reply.likesCount}</button
 											>
-											<button class="reply-btn" onclick={() => startReply(comment.id, reply.user.username, reply.user.username)}>Balas</button>{#if reply.user.id === data.currentUser.id}{#if !reply.gifUrl}<button
-														onclick={() => editComment(reply.id, true)}>Edit</button
-													>{/if}<button onclick={() => deleteComment(reply.id, true)}>Hapus</button
+											<button class="reply-btn" onclick={() => startReply(comment.id, reply.user.username, reply.user.username)}>{$t('cmt.reply')}</button>{#if reply.user.id === data.currentUser.id}{#if !reply.gifUrl}<button
+														onclick={() => editComment(reply.id, true)}>{$t('common.edit')}</button
+													>{/if}<button onclick={() => deleteComment(reply.id, true)}>{$t('common.delete')}</button
 												>{/if}
 										</footer>
 									</div>
@@ -1314,22 +1316,22 @@
 						</div>
 					</article>
 				{/each}
-				{#if comments.length === 0}<p class="empty">Jadilah yang pertama berkomentar.</p>{/if}
+				{#if comments.length === 0}<p class="empty">{$t('pd.beFirst')}</p>{/if}
 				</div>
 			</div>
 			<div class="ds-actions">
 				<div class="ds-act-buttons">
-					<button class:on={liked} onclick={toggleLike} disabled={liking} aria-label="Suka"
+					<button class:on={liked} onclick={toggleLike} disabled={liking} aria-label={$t('post.like')}
 						><Heart size={24} fill={liked ? 'currentColor' : 'none'} /></button
 					>
-					<button onclick={openComments} aria-label="Komentar"><MessageCircle size={24} /></button>
-					<button onclick={() => (shareOpen = true)} aria-label="Bagikan"><Send size={22} /></button>
+					<button onclick={openComments} aria-label={$t('post.ariaComment')}><MessageCircle size={24} /></button>
+					<button onclick={() => (shareOpen = true)} aria-label={$t('common.share')}><Send size={22} /></button>
 					<button
 						class="ds-bookmark"
 						class:on={bookmarked}
 						onclick={toggleBookmark}
 						disabled={bookmarking}
-						aria-label="Simpan"><Bookmark size={23} fill={bookmarked ? 'currentColor' : 'none'} /></button
+						aria-label={$t('common.save')}><Bookmark size={23} fill={bookmarked ? 'currentColor' : 'none'} /></button
 					>
 				</div>
 				{#if likesCount > 0}<strong class="ds-likes">{likesCount.toLocaleString('id-ID')} suka</strong
@@ -1338,24 +1340,24 @@
 			</div>
 			<button class="mobile-compose-bar" onclick={() => (mobileCommentsOpen = true)}>
 				<Avatar name={data.currentUser.fullName} src={data.currentUser.avatarUrl} size="sm" />
-				<span>Tulis komentar…</span>
+				<span>{$t('pd.phWriteComment')}</span>
 			</button>
 			<div class="comment-compose">
 			{#if replyTo}<div class="replying">
 					Membalas {replyTo.name}<button
 						onclick={() => (replyTo = null)}
-						aria-label="Batal membalas"><X size={14} /></button
+						aria-label={$t('chat.ariaCancelReply')}><X size={14} /></button
 					>
 				</div>{/if}
 			<form class="comment-form" onsubmit={submitComment}>
 				<Avatar name={data.currentUser.fullName} src={data.currentUser.avatarUrl} size="sm" />
 				<label
-					><span class="sr-only">Tulis komentar</span><MentionTextarea
+					><span class="sr-only">{$t('pd.writeComment')}</span><MentionTextarea
 						bind:value={content}
 						name="comment"
 						maxlength={2000}
 						rows={1}
-						placeholder={replyTo ? 'Tulis balasan…' : 'Tulis komentar…'}
+						placeholder={replyTo ? get(t)('cmt.phReply') : get(t)('pd.phWriteComment')}
 						onEnter={() => submitComment()}
 					/></label
 				>
@@ -1364,9 +1366,9 @@
 					class="gif-btn"
 					onclick={() => (gifOpen = true)}
 					disabled={submitting}
-					aria-label="Kirim GIF">GIF</button
+					aria-label={$t('cmt.sendGif')}>GIF</button
 				>
-				<button type="submit" aria-label="Kirim komentar" disabled={!content.trim() || submitting}
+				<button type="submit" aria-label={$t('pd.ariaSendComment')} disabled={!content.trim() || submitting}
 					><Send size={18} /></button
 				>
 			</form>
@@ -1380,9 +1382,9 @@
 	<div class="edited-toast-scrim" role="presentation" onclick={() => (editedCountdown = 0)}>
 		<div class="edited-toast" role="status">
 			<span class="et-ring"><Check size={26} /></span>
-			<strong>Postingan diperbarui</strong>
+			<strong>{$t('pd.postUpdated')}</strong>
 			<small>Tertutup otomatis dalam {editedCountdown} detik…</small>
-			<button onclick={() => (editedCountdown = 0)}>Tutup</button>
+			<button onclick={() => (editedCountdown = 0)}>{$t('common.close')}</button>
 		</div>
 	</div>
 {/if}
@@ -1414,20 +1416,20 @@
 		use:portal
 		role="dialog"
 		aria-modal="true"
-		aria-label="Pemberitahuan moderasi"
+		aria-label={$t('pd.ariaModNotice')}
 	>
 		<div class="modpop-card">
 			<span class="modpop-ico"><ShieldAlert size={26} /></span>
-			<strong>Postingan Anda dimoderasi</strong>
+			<strong>{$t('pd.yourPostModerated')}</strong>
 			<p class="modpop-lead">
 				Postingan ini telah dimoderasi oleh sistem AI yang mendeteksi pelanggaran kebijakan
 				platform, sehingga tidak lagi tampil di aplikasi.
 			</p>
 			<div class="modpop-reason">
-				<small>Alasan moderasi</small>
-				<p>{data.post.moderationReason || 'Melanggar kebijakan platform.'}</p>
+				<small>{$t('pd.moderationReason')}</small>
+				<p>{data.post.moderationReason || get(t)('pd.violatedPolicy')}</p>
 				{#if data.post.moderationNote}
-					<div class="modpop-note"><span>Catatan moderator</span><p>{data.post.moderationNote}</p></div>
+					<div class="modpop-note"><span>{$t('pd.moderatorNote')}</span><p>{data.post.moderationNote}</p></div>
 				{/if}
 			</div>
 			<p class="modpop-policy">
@@ -1435,8 +1437,8 @@
 				postingan akan dihapus permanen.
 			</p>
 			<div class="modpop-actions">
-				<button class="modpop-close" onclick={() => (modPopupOpen = false)}>Tutup</button>
-				<button class="modpop-del" onclick={deleteFromPopup}><Trash2 size={16} /> Hapus</button>
+				<button class="modpop-close" onclick={() => (modPopupOpen = false)}>{$t('common.close')}</button>
+				<button class="modpop-del" onclick={deleteFromPopup}><Trash2 size={16} /> {$t('common.delete')}</button>
 			</div>
 		</div>
 	</div>
@@ -1453,23 +1455,23 @@
 
 {#if collabPopupOpen && data.post.coAuthors && data.post.coAuthors.length > 0}
 	<div class="collab-modal-scrim" role="presentation" onclick={() => (collabPopupOpen = false)}>
-		<div class="collab-modal" role="dialog" aria-modal="true" aria-label="Kolaborator" onclick={(e) => e.stopPropagation()}>
+		<div class="collab-modal" role="dialog" aria-modal="true" aria-label={$t('post.collaborator')} onclick={(e) => e.stopPropagation()}>
 			<header>
-				<strong>Kolaborasi</strong>
-				<button onclick={() => (collabPopupOpen = false)} aria-label="Tutup"><X size={19} /></button>
+				<strong>{$t('post.collab')}</strong>
+				<button onclick={() => (collabPopupOpen = false)} aria-label={$t('common.close')}><X size={19} /></button>
 			</header>
 			<ul>
 				<li>
 					<a href={`/u/${data.post.user.username}`}>
 						<Avatar name={data.post.user.fullName} src={data.post.user.avatarUrl} size="md" />
-						<span><strong>@{data.post.user.username}</strong><small>Pembuat</small></span>
+						<span><strong>@{data.post.user.username}</strong><small>{$t('post.creator')}</small></span>
 					</a>
 				</li>
 				{#each data.post.coAuthors as ca (ca.id)}
 					<li>
 						<a href={`/u/${ca.username}`}>
 							<Avatar name={ca.fullName} src={ca.avatarUrl} size="md" />
-							<span><strong>@{ca.username}</strong><small>Kolaborator</small></span>
+							<span><strong>@{ca.username}</strong><small>{$t('post.collaborator')}</small></span>
 						</a>
 					</li>
 				{/each}
@@ -1481,16 +1483,16 @@
 {#if editing}
 	<div use:portal>
 	<div class="edit-overlay" role="presentation" onclick={() => (editing = null)}></div>
-	<div class="edit-modal" role="dialog" aria-modal="true" aria-label="Edit komentar">
+	<div class="edit-modal" role="dialog" aria-modal="true" aria-label={$t('pd.editComment')}>
 		<header>
-			<strong>Edit komentar</strong>
-			<button onclick={() => (editing = null)} aria-label="Tutup"><X size={18} /></button>
+			<strong>{$t('pd.editComment')}</strong>
+			<button onclick={() => (editing = null)} aria-label={$t('common.close')}><X size={18} /></button>
 		</header>
 		<textarea
 			bind:value={editing.text}
 			rows="4"
 			maxlength="2000"
-			placeholder="Tulis komentar…"
+			placeholder={$t('pd.phWriteComment')}
 			onkeydown={(event) => {
 				if (event.key === 'Enter' && !event.shiftKey) {
 					event.preventDefault();
@@ -1499,9 +1501,9 @@
 			}}
 		></textarea>
 		<div class="edit-actions">
-			<button class="cancel" onclick={() => (editing = null)}>Batal</button>
+			<button class="cancel" onclick={() => (editing = null)}>{$t('common.cancel')}</button>
 			<button class="save" onclick={saveEdit} disabled={savingEdit || !editing.text.trim()}
-				>{savingEdit ? 'Menyimpan…' : 'Simpan'}</button
+				>{savingEdit ? get(t)('pd.saving') : get(t)('common.save')}</button
 			>
 		</div>
 	</div>

@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { env } from '$env/dynamic/public';
+	import { get } from 'svelte/store';
+	import { t } from '$lib/i18n';
 	import { Check, Copy, LoaderCircle, Search, Send, Share2, Users, X } from '@lucide/svelte';
 	import { untrack } from 'svelte';
 	import { clientRequest } from '$lib/api/client';
@@ -83,7 +85,7 @@
 								kind: 'user',
 								id: item.conversation.id,
 								name:
-									item.conversation.name || item.conversation.username || 'Pengguna Portal SI',
+									item.conversation.name || item.conversation.username || get(t)('share.psUser'),
 								handle: item.conversation.username ? `@${item.conversation.username}` : 'Pesan',
 								avatarUrl:
 									normalizeMediaUrl(item.conversation.profile_picture_thumb_url ?? item.conversation.profile_picture_url, mediaBaseUrl) ?? null,
@@ -103,7 +105,7 @@
 				);
 				if (active) recentTargets = targets;
 			} catch {
-				if (active) status = 'Daftar obrolan belum dapat dimuat.';
+				if (active) status = get(t)('share.chatsFailed');
 			} finally {
 				if (active) loading = false;
 			}
@@ -135,7 +137,7 @@
 				searchTargets = [...groups, ...response.data.map(userTarget)];
 			} catch (error) {
 				if (!(error instanceof DOMException && error.name === 'AbortError'))
-					status = 'Pencarian gagal.';
+					status = get(t)('share.searchFailed');
 			} finally {
 				if (!controller.signal.aborted) searching = false;
 			}
@@ -159,7 +161,7 @@
 			copied = true;
 			window.setTimeout(() => (copied = false), 1800);
 		} catch {
-			status = 'Tautan belum dapat disalin.';
+			status = get(t)('share.copyFailed');
 		}
 	}
 
@@ -168,7 +170,7 @@
 			if (navigator.share) await navigator.share({ url: shareUrl });
 		} catch (error) {
 			if (error instanceof DOMException && error.name === 'AbortError') return;
-			status = 'Bagikan gagal.';
+			status = get(t)('share.shareFailed');
 		}
 	}
 
@@ -195,7 +197,7 @@
 			status = `Postingan dikirim ke ${keys.length} obrolan.`;
 			window.setTimeout(onClose, 1500);
 		} catch {
-			status = 'Sebagian pesan gagal terkirim. Coba lagi.';
+			status = get(t)('share.partialFailed');
 		} finally {
 			sending = false;
 		}
@@ -217,51 +219,51 @@
 	class="share-overlay"
 	role="button"
 	tabindex="-1"
-	aria-label="Tutup"
+	aria-label={$t('common.close')}
 	onclick={onClose}
 	onkeydown={(event) => {
 		if (event.key === 'Escape') onClose();
 	}}
 ></div>
 
-<section class="share-sheet" role="dialog" aria-modal="true" aria-label="Bagikan postingan">
+<section class="share-sheet" role="dialog" aria-modal="true" aria-label={$t('share.aria')}>
 	{#if done}
 		<div class="sent-state">
 			<div class="sent-check"><Check size={34} /></div>
-			<strong>Terkirim!</strong>
+			<strong>{$t('share.sent')}</strong>
 			<span>{status}</span>
 		</div>
 	{:else}
 	<header>
-		<strong>Bagikan</strong>
-		<button onclick={onClose} aria-label="Tutup"><X size={19} /></button>
+		<strong>{$t('common.share')}</strong>
+		<button onclick={onClose} aria-label={$t('common.close')}><X size={19} /></button>
 	</header>
 
 	<div class="quick">
 		<button onclick={copyLink}>
 			<i>{#if copied}<Check size={19} />{:else}<Copy size={19} />{/if}</i>
-			<span>{copied ? 'Tersalin' : 'Salin tautan'}</span>
+			<span>{copied ? $t('share.copied') : $t('share.copyLink')}</span>
 		</button>
 		<button onclick={nativeShare}>
 			<i><Share2 size={19} /></i>
-			<span>Bagikan ke…</span>
+			<span>{$t('share.shareTo')}</span>
 		</button>
 	</div>
 
 	<div class="search">
 		<Search size={17} />
-		<input placeholder="Cari orang atau grup untuk dikirimi" bind:value={query} />
+		<input placeholder={$t('share.searchPlaceholder')} bind:value={query} />
 		{#if searching}<LoaderCircle class="spin" size={16} />{/if}
 	</div>
 
 	<div class="people">
 		{#if loading}
-			<p class="hint">Memuat obrolan…</p>
+			<p class="hint">{$t('share.loadingChats')}</p>
 		{:else if shownTargets.length === 0}
 			<p class="hint">
 				{query.trim().length >= 2
-					? 'Tidak ada orang atau grup yang cocok.'
-					: 'Belum ada obrolan terbaru. Cari nama teman untuk mengirim postingan ini.'}
+					? $t('share.noMatch')
+					: $t('share.noRecent')}
 			</p>
 		{:else}
 			{#each shownTargets as target (target.key)}
@@ -294,7 +296,7 @@
 	</div>
 
 	{#if selected.size > 0}
-		<input class="note" placeholder="Tambahkan pesan (opsional)" bind:value={note} />
+		<input class="note" placeholder={$t('share.addMessage')} bind:value={note} />
 	{/if}
 
 	{#if status && !done}<p class="status" aria-live="polite">{status}</p>{/if}

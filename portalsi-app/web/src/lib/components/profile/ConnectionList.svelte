@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { ArrowLeft } from '@lucide/svelte';
+	import { t } from '$lib/i18n';
 	import StoryAvatarLink from '$lib/components/story/StoryAvatarLink.svelte';
 	import UserBadges from '$lib/components/ui/UserBadges.svelte';
 	import FollowButton from '$lib/components/ui/FollowButton.svelte';
@@ -23,13 +24,13 @@
 <svelte:head><title>{title} — Portal SI</title></svelte:head>
 <main class="connections surface">
 	<header>
-		<a href={backHref} aria-label="Kembali"><ArrowLeft size={19} /></a>
+		<a href={backHref} aria-label={$t('common.back')}><ArrowLeft size={19} /></a>
 		<h1>{title}</h1>
 	</header>
 	{#if users.length > 1}
-		<nav class="sort-bar" aria-label="Urutkan">
+		<nav class="sort-bar" aria-label={$t('conn.ariaSort')}>
 			<button class:active={sortMode === 'unfollowed'} onclick={() => (sortMode = 'unfollowed')}
-				>Belum diikuti</button
+				>{$t('conn.notFollowed')}</button
 			>
 			<button class:active={sortMode === 'alphabet'} onclick={() => (sortMode = 'alphabet')}
 				>A–Z</button
@@ -54,7 +55,7 @@
 					></a
 				>
 				<FollowButton {user} size="sm" />
-			</div>{/each}{#if users.length === 0}<p>Belum ada pengguna di daftar ini.</p>{/if}
+			</div>{/each}{#if users.length === 0}<p>{$t('conn.empty')}</p>{/if}
 	</div>
 </main>
 

@@ -156,7 +156,7 @@
       return;
     }
     if (!hasCoords(ship)) {
-      toast.warn('Alamat pengiriman belum punya pin lokasi. Lengkapi di halaman profil terlebih dahulu.');
+      toast.warn(get(t)('lf.coNoPin'));
       return;
     }
     if (!pay) { toast.warn(get(t)('co.pickPayment')); return; }
@@ -278,8 +278,8 @@
               <Icon name="map-pin" size={18} class="mt-0.5 text-amber-700" />
               <div>
                 <h4 class="font-semibold text-amber-900">{$t('co.noAddr')}</h4>
-                <p class="mt-1 text-sm text-amber-800">Tambahkan alamat di profil dulu agar ongkir dan checkout bisa diproses dengan benar.</p>
-                <a href="/profile#addresses" class="btn-primary btn-sm mt-4"><Icon name="plus" size={14} /> Tambah alamat di profil</a>
+                <p class="mt-1 text-sm text-amber-800">{$t('lf.coAddAddrHint')}</p>
+                <a href="/profile#addresses" class="btn-primary btn-sm mt-4"><Icon name="plus" size={14} /> {$t('lf.coAddAddr')}</a>
               </div>
             </div>
           </div>
@@ -402,7 +402,7 @@
         {/if}
         <div class="flex items-start gap-2 mt-4 text-xs text-ink-500">
           <Icon name="shield-check" size={14} class="text-emerald-600 mt-0.5 shrink-0" />
-          <span>Transaksi diproses dengan enkripsi end-to-end.</span>
+          <span>{$t('lf.coEncrypted')}</span>
         </div>
       </div>
     </aside>

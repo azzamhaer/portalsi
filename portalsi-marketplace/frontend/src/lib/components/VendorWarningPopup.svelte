@@ -1,5 +1,6 @@
 <script lang="ts">
   import Icon from './Icon.svelte';
+  import { t } from '$lib/i18n';
   import { apiEndpoints } from '$lib/api';
   import { toast } from '$lib/stores.svelte';
 
@@ -33,11 +34,11 @@
           <Icon name="shield-alert" size={24} class="text-{severity}-600" />
         </div>
         <div class="flex-1">
-          <h2 class="font-display text-lg font-bold tracking-tightest">Peringatan dari Admin</h2>
+          <h2 class="font-display text-lg font-bold tracking-tightest">{$t('vwp.title')}</h2>
           {#if vendor.moderation_mode === 'LIMITED'}
-            <p class="text-xs text-amber-700 mt-1">Toko Anda saat ini <b>dibatasi</b>: produk masih terlihat tapi tidak bisa dipesan & chat ditolak.</p>
+            <p class="text-xs text-amber-700 mt-1">{$t('vwp.storeNow')} <b>{$t('vwp.restricted')}</b>{$t('vwp.restrictedTail')}</p>
           {:else if vendor.moderation_mode === 'DISABLED'}
-            <p class="text-xs text-red-700 mt-1">Toko Anda saat ini <b>tersembunyi total</b> dari listing publik & pencarian.</p>
+            <p class="text-xs text-red-700 mt-1">{$t('vwp.storeNow')} <b>{$t('vwp.hidden')}</b>{$t('vwp.hiddenTail')}</p>
           {/if}
         </div>
       </div>
@@ -46,11 +47,11 @@
         {vendor.admin_warning}
       </div>
 
-      <p class="text-xs text-ink-500 mb-4">Mohon segera periksa dan perbaiki sesuai ketentuan. Jika butuh klarifikasi, hubungi tim admin via halaman bantuan.</p>
+      <p class="text-xs text-ink-500 mb-4">{$t('vwp.pleaseFix')}</p>
 
       <div class="flex gap-2">
         <button on:click={dismiss} disabled={dismissing} class="btn-primary btn-md flex-1">
-          {dismissing ? 'Menyimpan…' : 'Saya mengerti'}
+          {dismissing ? $t('mk.saving') : $t('vwp.understand')}
         </button>
       </div>
     </div>

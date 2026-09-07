@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParticipants, useLocalParticipant, useTracks } from '@livekit/components-react';
 import { Track } from 'livekit-client';
 import { Users, X, Crown, Search, Mic, MicOff, Video, VideoOff, ScreenShare, Check, XCircle, Clock, Bell, Pin, PinOff } from 'lucide-react';
+import { useT } from '@/lib/i18n';
 
 interface WaitingUser { waitingId: string; name: string; ts: number; }
 

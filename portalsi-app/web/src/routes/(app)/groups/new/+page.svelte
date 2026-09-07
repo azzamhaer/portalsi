@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { env } from '$env/dynamic/public';
+	import { t } from '$lib/i18n';
 	import { ImagePlus, LoaderCircle, Search, Users, X } from '@lucide/svelte';
 	import SectionPage from '$lib/components/layout/SectionPage.svelte';
 	import Avatar from '$lib/components/ui/Avatar.svelte';
@@ -81,12 +82,12 @@
 		<div class="intro">
 			<span><Users size={24} /></span>
 			<div>
-				<strong>Grup baru</strong>
-				<p>Anda akan menjadi admin pertama grup.</p>
+				<strong>{$t('gnew.newGroup')}</strong>
+				<p>{$t('gnew.firstAdmin')}</p>
 			</div>
 		</div>
-		<label>Nama grup <input name="name" required maxlength="100" /></label>
-		<label>Deskripsi <textarea name="description" rows="4" maxlength="2000"></textarea></label>
+		<label>{$t('gnew.name')} <input name="name" required maxlength="100" /></label>
+		<label>{$t('form.desc')} <textarea name="description" rows="4" maxlength="2000"></textarea></label>
 		<div class="media-grid">
 			<label class="upload"
 				><ImagePlus size={18} /> Avatar JPG/PNG<input
@@ -105,7 +106,7 @@
 		</div>
 
 		<div class="member-field">
-			<span class="member-label">Undang anggota</span>
+			<span class="member-label">{$t('gnew.invite')}</span>
 			{#if selected.length}<div class="chips">
 					{#each selected as user (user.id)}
 						<span class="chip">
@@ -123,13 +124,13 @@
 				<Search size={18} />
 				<input
 					bind:value={query}
-					placeholder="Cari nama atau username…"
+					placeholder={$t('gnew.searchPh')}
 					autocomplete="off"
 					onkeydown={onSearchKeydown}
 				/>
 				{#if searching}<LoaderCircle class="member-spinner" size={16} />{/if}
 			</div>
-			{#if query.trim().length >= 2}<div class="results" aria-label="Hasil pencarian">
+			{#if query.trim().length >= 2}<div class="results" aria-label={$t('gnew.ariaResults')}>
 					{#each visibleResults as user (user.id)}<button
 							type="button"
 							class="result"
@@ -154,7 +155,7 @@
 
 		{#if form?.message}<p class="error" role="alert">{form.message}</p>{/if}
 		<div class="actions">
-			<a href="/messages">Batal</a><button type="submit">Buat grup</button>
+			<a href="/messages">{$t('common.cancel')}</a><button type="submit">{$t('gnew.create')}</button>
 		</div>
 	</form>
 </SectionPage>

@@ -1,5 +1,6 @@
 <script lang="ts">
   import ProductGrid from '$lib/components/ProductGrid.svelte';
+  import { t } from '$lib/i18n';
   import ProductFilterPanel from '$lib/components/ProductFilterPanel.svelte';
   import Pagination from '$lib/components/Pagination.svelte';
   import SmartSearch from '$lib/components/SmartSearch.svelte';
@@ -10,12 +11,12 @@
   let { data } = $props();
   let filtersOpen = $state(false);
 
-  const sorts = [
-    ['popular', 'Terpopuler', 'flame'],
-    ['cheap', 'Termurah', 'arrow-down'],
-    ['exp', 'Termahal', 'arrow-up'],
-    ['rating', 'Rating', 'star'],
-  ];
+  const sorts = $derived([
+    ['popular', $t('prod.sortPopular'), 'flame'],
+    ['cheap', $t('prod.sortCheapest'), 'arrow-down'],
+    ['exp', $t('prod.sortExpensive'), 'arrow-up'],
+    ['rating', $t('prod.sortRating'), 'star'],
+  ]);
 
   function setSort(v: string) {
     const u = new URL($page.url);
@@ -29,13 +30,13 @@
 
 <div class="container-x py-8">
   <div class="mb-6 max-w-3xl">
-    <SmartSearch placeholder="Cari kata kunci lain" initialQuery={data.q} />
+    <SmartSearch placeholder={$t('sr.searchOther')} initialQuery={data.q} />
   </div>
 
   <div class="mb-4 flex flex-wrap items-end justify-between gap-4">
     <div>
       <div class="section-eyebrow mb-2 flex items-center gap-2"><Icon name="search" size={12} /> Pencarian</div>
-      <h1 class="section-title">Hasil untuk "<span class="italic">{data.q}</span>"</h1>
+      <h1 class="section-title">{$t('sr.resultsFor')}<span class="italic">{data.q}</span>"</h1>
       <p class="mt-1 text-sm text-ink-500">{data.meta?.total ?? data.products.length} produk ditemukan</p>
     </div>
   </div>

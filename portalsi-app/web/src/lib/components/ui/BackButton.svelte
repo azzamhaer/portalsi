@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { get } from 'svelte/store';
+	import { t } from '$lib/i18n';
 	import { ArrowLeft } from '@lucide/svelte';
-	let { fallback = '/home', label = 'Kembali' }: { fallback?: string; label?: string } = $props();
+	let { fallback = '/home', label = get(t)('common.back') }: { fallback?: string; label?: string } = $props();
 	function back() {
 		if (history.length > 1) history.back();
 		else void goto(fallback);

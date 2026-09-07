@@ -3,6 +3,15 @@
 > File ini adalah memori proyek. Asisten membacanya otomatis — tidak perlu di-paste manual.
 > Sumber: PORTALSI_COWORK_HANDOFF.md + hasil scan struktur (Juli 2026). Perbarui bila ada perubahan.
 
+> **kbihuarrahman-mail/** (Sept 2026) — app email KLIEN, domain **kbihuarrahman.com**, arsitektur
+> BEDA dari mail Portal SI: **full Cloudflare** (Workers + D1 `kbihu_mail` + R2 `kbihu-mailstore`),
+> kirim via **Brevo HTTP API** (bukan SMTP), terima via **Cloudflare Email Routing → inbound worker**
+> (postal-mime). UI di-copy dari portalsi-mail tapi layer server ditulis ulang: `web/src/lib/server/
+> {auth,mailstore,brevo}.ts` (ganti portal.ts/mailbox.ts IMAP). Auth sendiri di D1 (PBKDF2 WebCrypto,
+> cookie sesi HMAC), bukan SSO. Admin pertama via `/setup`, mailbox lain via `/register` (admin-only).
+> Panduan deploy lengkap: `kbihuarrahman-mail/SETUP.md`. Brand UI: "KBIHU Ar-Rahman". Belum
+> di-build/verify di sandbox (registry npm @cloudflare/* diblokir) — user build via `wrangler` di lokal.
+
 ---
 
 ## 1. Ringkasan proyek
@@ -309,7 +318,17 @@ menyinkronkan lintas subdomain.)
 **Status rollout:** Landing ✅. Mail ✅ (portalsi-mail + sekolahimpian-mail; store `src/lib/i18n.ts`
 + `$t()`, toggle di Pengaturan→Tampilan). Meet ✅ (Next.js: `lib/i18n.tsx` = context `LangProvider`
 + hook `useT()` + komponen `LangToggle` floating hideable; init lang dari cookie via `cookies()` di
-`app/layout.tsx`; komponen client pakai `const { t } = useT()`). Berikutnya: **Marketplace** (~58 route)
-& **App** (~60 route) — keduanya besar, belum dikerjakan (+ App: fix bug bar user-online overflow
-kanan di desktop). Terjemahan Inggris harus natural/rapi, bukan harfiah.
+`app/layout.tsx`; komponen client pakai `const { t } = useT()`). Marketplace ✅ (store
+`frontend/src/lib/i18n.ts` = 885 key id/en, parity 885/885; cookie shared `portalsi_lang`
+`.portalsi.com` via `initLang` di `+layout.svelte` + baca cookie di `+layout.server.ts`; toggle di
+`profile/+page.svelte`; `$t()` di template, `get(t)()` di script/toast; SEMUA route buyer/auth/seller/
+admin + komponen (Header, SmartSearch, ProductForm, ReportButton, VendorWarningPopup,
+EmailVerificationGate, ShippingRouteMap, SellerTour, MapPicker, dll) sudah diterjemahkan). App
+✅ SELESAI: i18n penuh — `src/lib/i18n.ts` store+`$t` (**705 key, parity 705/705**), root
+`+layout.server.ts` baca cookie shared `portalsi_lang`, root `+layout.svelte` `initLang`, toggle di
+Settings→Preferences. SEMUA 50 route + 47 komponen dwibahasa (nav array→`$derived($t)`; teks tampil
+`$t()` reaktif; string script/ternary `get(t)()`). Residual string ID = 0. Bug bar user-online
+overflow kanan desktop ✅ FIXED (RightRail: cap 9 avatar + '+N', overflow hidden). App TIDAK bisa
+di-build di sandbox (rolldown) → build/verify di VPS. **SELURUH keluarga Portal SI kini dwibahasa
+ID/EN, cookie shared lintas subdomain.** Terjemahan Inggris natural/rapi, bukan harfiah.
 Cookie nama: `portalsi_lang` (semua *.portalsi.com), `sim_lang` (sekolahimpian).

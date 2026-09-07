@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { t } from '$lib/i18n';
+  import { get } from 'svelte/store';
   import SellerSidebar from '$lib/components/SellerSidebar.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import { apiEndpoints } from '$lib/api';
@@ -22,12 +24,12 @@
 
   async function submit(e: Event) {
     e.preventDefault();
-    if (amount < 10_000) { toast.error('Minimum penarikan Rp 10.000'); return; }
-    if (amount > data.available) { toast.error('Saldo tidak cukup'); return; }
+    if (amount < 10_000) { toast.error(get(t)('sw.minWithdraw')); return; }
+    if (amount > data.available) { toast.error(get(t)('sw.insufficientBalance')); return; }
     submitting = true;
     try {
       await apiEndpoints.sellerRequestWithdraw(amount);
-      toast.success('Permintaan penarikan diajukan');
+      toast.success(get(t)('sw.requested'));
       amount = 0;
       await load();
     } catch (e: any) { toast.error(e.message); } finally { submitting = false; }
@@ -37,7 +39,7 @@
     if (!confirm('Batalkan permintaan ini?')) return;
     try {
       await apiEndpoints.sellerCancelWithdraw(id);
-      toast.success('Dibatalkan');
+      toast.success(get(t)('sw.cancelled'));
       await load();
     } catch (e: any) { toast.error(e.message); }
   }
@@ -56,27 +58,27 @@
 <svelte:head><title>Penarikan Dana — Seller</title></svelte:head>
 
 <div class="container-x py-6 sm:py-8">
-  <h1 class="section-title mb-6 sm:mb-8">Seller Center</h1>
+  <h1 class="section-title mb-6 sm:mb-8">{$t('nav.sellerCenter')}</h1>
   <div class="grid lg:grid-cols-[230px_1fr] gap-6">
     <SellerSidebar />
     <div class="space-y-5">
       {#if loading}
-        <div class="card text-center text-ink-500 py-10">Memuat…</div>
+        <div class="card text-center text-ink-500 py-10">{$t('wl.loading')}</div>
       {:else if data}
         <!-- Saldo cards -->
         <div class="grid sm:grid-cols-3 gap-3">
           <div class="card">
-            <div class="text-xs uppercase tracking-widest text-ink-500">Pendapatan Kotor</div>
+            <div class="text-xs uppercase tracking-widest text-ink-500">{$t('sw.grossIncome')}</div>
             <div class="font-display text-xl font-bold tracking-tightest mt-2">{fmtRp(data.gross_earning)}</div>
-            <div class="text-xs text-ink-500 mt-1">Dari pesanan selesai atau otomatis cair setelah 7 hari sejak sampai</div>
+            <div class="text-xs text-ink-500 mt-1">{$t('sw.grossDesc')}</div>
           </div>
           <div class="card">
             <div class="text-xs uppercase tracking-widest text-ink-500">Komisi Platform ({data.commission_percent}%)</div>
             <div class="font-display text-xl font-bold tracking-tightest mt-2 text-red-600">−{fmtRp(data.commission)}</div>
-            <div class="text-xs text-ink-500 mt-1">Biaya layanan</div>
+            <div class="text-xs text-ink-500 mt-1">{$t('sw.serviceFee')}</div>
           </div>
           <div class="card bg-app-primary text-app-pfg">
-            <div class="text-xs uppercase tracking-widest text-white/60">Saldo Tersedia</div>
+            <div class="text-xs uppercase tracking-widest text-white/60">{$t('sw.availableBalance')}</div>
             <div class="font-display text-xl font-bold tracking-tightest mt-2">{fmtRp(data.available)}</div>
             <div class="text-xs text-white/60 mt-1">Sudah ditarik: {fmtRp(data.withdrawn)}</div>
           </div>
@@ -90,17 +92,17 @@
           </div>
           {#if !data.bank.name || !data.bank.account || !data.bank.holder}
             <div class="bg-amber-50 text-amber-800 text-sm p-3 rounded-xl mb-4">
-              Lengkapi data bank Anda dulu di <a href="/seller/profile" class="underline font-semibold">Profil Toko</a>.
+              Lengkapi data bank Anda dulu di <a href="/seller/profile" class="underline font-semibold">{$t('sw.storeProfile')}</a>.
             </div>
           {:else}
             <div class="bg-ink-50 p-3 rounded-xl mb-4 text-sm">
-              <div class="text-xs text-ink-500 mb-1">Dana akan ditransfer ke:</div>
+              <div class="text-xs text-ink-500 mb-1">{$t('sw.transferTo')}</div>
               <div class="font-semibold">{data.bank.name} • {data.bank.account}</div>
               <div class="text-ink-600">a.n. {data.bank.holder}</div>
             </div>
             <form on:submit={submit} class="space-y-3">
               <div>
-                <label class="label">Jumlah penarikan (Rp)</label>
+                <label class="label">{$t('sw.withdrawAmount')}</label>
                 <input bind:value={amount} type="number" min="10000" max={data.available} step="10000" class="input" />
                 <div class="text-xs text-ink-500 mt-1">
                   Min Rp 10.000 — Max {fmtRp(data.available)}
@@ -110,7 +112,7 @@
                 <button type="button" on:click={() => amount = Math.min(100_000, data.available)} class="text-xs px-3 py-1.5 rounded-full bg-ink-100 hover:bg-ink-200">Rp 100rb</button>
                 <button type="button" on:click={() => amount = Math.min(500_000, data.available)} class="text-xs px-3 py-1.5 rounded-full bg-ink-100 hover:bg-ink-200">Rp 500rb</button>
                 <button type="button" on:click={() => amount = Math.min(1_000_000, data.available)} class="text-xs px-3 py-1.5 rounded-full bg-ink-100 hover:bg-ink-200">Rp 1jt</button>
-                <button type="button" on:click={() => amount = data.available} class="text-xs px-3 py-1.5 rounded-full bg-app-primary text-app-pfg">Semua</button>
+                <button type="button" on:click={() => amount = data.available} class="text-xs px-3 py-1.5 rounded-full bg-app-primary text-app-pfg">{$t('ord.all')}</button>
               </div>
               <button disabled={submitting || data.available < 10000} class="btn-primary btn-md w-full sm:w-auto">
                 {submitting ? 'Mengajukan…' : 'Tarik Sekarang'}
@@ -121,16 +123,16 @@
 
         <!-- History -->
         <div class="card">
-          <h3 class="font-semibold mb-4">Riwayat Penarikan</h3>
+          <h3 class="font-semibold mb-4">{$t('sw.history')}</h3>
           {#if data.history.length === 0}
-            <p class="text-sm text-ink-500 text-center py-6">Belum ada riwayat.</p>
+            <p class="text-sm text-ink-500 text-center py-6">{$t('sw.noHistory')}</p>
           {:else}
             <div class="overflow-x-auto -mx-4 sm:mx-0">
               <table class="w-full text-sm min-w-[500px]">
                 <thead class="text-xs text-ink-500 border-b border-ink-100">
                   <tr>
-                    <th class="text-left py-2 font-medium px-4 sm:px-0">Tanggal</th>
-                    <th class="text-left py-2 font-medium">Jumlah</th>
+                    <th class="text-left py-2 font-medium px-4 sm:px-0">{$t('sw.date')}</th>
+                    <th class="text-left py-2 font-medium">{$t('sw.amount')}</th>
                     <th class="text-left py-2 font-medium">Status</th>
                     <th class="text-left py-2 font-medium">Catatan</th>
                     <th class="text-right py-2 font-medium px-4 sm:px-0"></th>
@@ -145,7 +147,7 @@
                       <td class="py-2.5 text-xs text-ink-500">{h.admin_note ?? '—'}</td>
                       <td class="py-2.5 text-right px-4 sm:px-0">
                         {#if h.status === 'PENDING'}
-                          <button on:click={() => cancel(h.id)} class="text-xs text-red-600 hover:underline">Batal</button>
+                          <button on:click={() => cancel(h.id)} class="text-xs text-red-600 hover:underline">{$t('od.cancel')}</button>
                         {/if}
                       </td>
                     </tr>

@@ -9,23 +9,23 @@
 		},
 		{
 			id: 'watermark',
-			label: 'Watermark / hak cipta platform lain',
-			text: 'Konten mengandung watermark atau tanda hak cipta dari platform lain (TikTok, CapCut, Instagram, dll.).'
+			label: get(t)('mod.wmTitle'),
+			text: get(t)('mod.wmDesc')
 		},
 		{
 			id: 'low_quality',
-			label: 'Kualitas rendah / tanpa nilai',
-			text: 'Kualitas konten terlalu rendah dan dianggap tidak memiliki nilai bagi komunitas.'
+			label: get(t)('mod.lqTitle'),
+			text: get(t)('mod.lqDesc')
 		},
 		{
 			id: 'reupload',
-			label: 'Repost / bukan karya sendiri',
-			text: 'Konten merupakan unggahan ulang / bukan karya orisinal pengunggah.'
+			label: get(t)('mod.repostTitle'),
+			text: get(t)('mod.repostDesc')
 		},
 		{
 			id: 'inappropriate',
-			label: 'Konten tidak pantas',
-			text: 'Konten tidak pantas atau melanggar pedoman komunitas Portal SI.'
+			label: get(t)('mod.inappTitle'),
+			text: get(t)('mod.inappDesc')
 		},
 		{
 			id: 'spam',
@@ -37,6 +37,8 @@
 
 <script lang="ts">
 	import { X, ShieldAlert, LoaderCircle } from '@lucide/svelte';
+	import { get } from 'svelte/store';
+	import { t } from '$lib/i18n';
 	import { clientRequest } from '$lib/api/client';
 	import { portal } from '$lib/actions/portal';
 
@@ -98,10 +100,10 @@
 		<header>
 			<span class="mod-ico"><ShieldAlert size={20} /></span>
 			<div>
-				<strong>Moderasi postingan</strong>
-				<small>Pilih alasan. Postingan akan dimoderasi & disembunyikan (retensi 30 hari).</small>
+				<strong>{$t('post.ariaModerate')}</strong>
+				<small>{$t('mod.pickReason')}</small>
 			</div>
-			<button class="mod-close" onclick={onClose} aria-label="Tutup"><X size={18} /></button>
+			<button class="mod-close" onclick={onClose} aria-label={$t('common.close')}><X size={18} /></button>
 		</header>
 
 		<div class="mod-reasons">
@@ -119,19 +121,19 @@
 		</div>
 
 		<label class="mod-note">
-			<span>Catatan tambahan (opsional)</span>
+			<span>{$t('mod.extraNote')}</span>
 			<textarea
 				bind:value={note}
 				rows="2"
 				maxlength="1000"
-				placeholder="Tulis alasan spesifik bila perlu…"
+				placeholder={$t('mod.notePh')}
 			></textarea>
 		</label>
 
 		{#if error}<p class="mod-error">{error}</p>{/if}
 
 		<div class="mod-actions">
-			<button class="ghost" type="button" onclick={onClose}>Batal</button>
+			<button class="ghost" type="button" onclick={onClose}>{$t('common.cancel')}</button>
 			<button class="danger" type="button" disabled={!canSubmit} onclick={submit}>
 				{#if submitting}<LoaderCircle size={16} class="mod-spin" /> Memproses…{:else}Moderasi &
 					sembunyikan{/if}

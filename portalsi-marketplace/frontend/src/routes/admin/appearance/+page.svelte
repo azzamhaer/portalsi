@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { t } from '$lib/i18n';
+  import { get } from 'svelte/store';
   import { apiEndpoints } from '$lib/api';
   import { toast, settings as settingsStore } from '$lib/stores.svelte';
   import Icon from '$lib/components/Icon.svelte';
@@ -34,7 +36,7 @@
       });
       const pub: any = await apiEndpoints.publicSettings();
       settingsStore.setAll(pub);
-      toast.success('Tampilan disimpan');
+      toast.success(get(t)('aap.saved'));
     } catch (e: any) { toast.error(e.message); } finally { saving = false; }
   }
 
@@ -49,7 +51,7 @@
       s.logo_url = r.logo_url;
       const pub: any = await apiEndpoints.publicSettings();
       settingsStore.setAll(pub);
-      toast.success('Logo diupload');
+      toast.success(get(t)('aap.logoUploaded'));
     } catch (e: any) { toast.error(e.message); }
   }
   async function uploadHero() {
@@ -60,7 +62,7 @@
       s.hero_image = r.hero_image;
       const pub: any = await apiEndpoints.publicSettings();
       settingsStore.setAll(pub);
-      toast.success('Hero diupload');
+      toast.success(get(t)('aap.heroUploaded'));
     } catch (e: any) { toast.error(e.message); }
   }
 
@@ -81,7 +83,7 @@
   }
   async function saveFaqs() {
     faqsSaving = true;
-    try { await apiEndpoints.adminSaveFaqs(faqs); toast.success('FAQ disimpan'); }
+    try { await apiEndpoints.adminSaveFaqs(faqs); toast.success(get(t)('aap.faqSaved')); }
     catch (e: any) { toast.error(e.message); } finally { faqsSaving = false; }
   }
 
@@ -99,15 +101,15 @@
   }
   function rmPm(i: number) { if (confirm('Hapus?')) pms = pms.filter((_, idx) => idx !== i); }
   function uploadPmIcon(i: number, file: File) {
-    if (file.size > 500_000) { toast.error('Maks 500KB'); return; }
+    if (file.size > 500_000) { toast.error(get(t)('aap.max500')); return; }
     const r = new FileReader();
     r.onload = () => { pms[i].icon = String(r.result); };
     r.readAsDataURL(file);
   }
   async function savePms() {
-    if (pms.some((x) => !x.code || !x.name)) { toast.error('Lengkapi code & nama'); return; }
+    if (pms.some((x) => !x.code || !x.name)) { toast.error(get(t)('aap.completeCodeName')); return; }
     pmsSaving = true;
-    try { await apiEndpoints.adminSavePaymentMethods(pms); toast.success('Metode pembayaran disimpan'); }
+    try { await apiEndpoints.adminSavePaymentMethods(pms); toast.success(get(t)('aap.pmSaved')); }
     catch (e: any) { toast.error(e.message); } finally { pmsSaving = false; }
   }
   function movePm(i: number, dir: number) {
@@ -122,7 +124,7 @@
   });
 </script>
 
-{#if !s}<div class="card text-center text-ink-500 py-10">Memuat…</div>
+{#if !s}<div class="card text-center text-ink-500 py-10">{$t('wl.loading')}</div>
 {:else}
   <div class="card !p-2 mb-5 flex gap-1 flex-wrap text-xs">
     {#each [['branding','Branding & Palette'],['home','Beranda (Hero)'],['payment','Pembayaran'],['faq','FAQ'],['pages','Intro Halaman'],['footer','Footer'],['visibility','Visibilitas Halaman']] as [k, l]}
@@ -133,17 +135,17 @@
   {#if tab === 'branding'}
     <div class="space-y-5">
       <div class="card">
-        <h3 class="font-semibold mb-4">Identitas Aplikasi</h3>
+        <h3 class="font-semibold mb-4">{$t('aap.appIdentity')}</h3>
         <div class="grid sm:grid-cols-2 gap-4">
-          <div><label class="label">Nama Aplikasi</label><input bind:value={s.app_name} class="input" /></div>
+          <div><label class="label">{$t('aap.appName')}</label><input bind:value={s.app_name} class="input" /></div>
           <div>
-            <label class="label">Tagline</label>
-            <input bind:value={s.tagline} class="input" placeholder="Kosongkan untuk sembunyikan" />
-            <p class="helper">Tampil sebagai badge "Marketplace untuk semua" di hero. Kosongkan kalau tidak ingin tampil.</p>
+            <label class="label">{$t('aap.tagline')}</label>
+            <input bind:value={s.tagline} class="input" placeholder={$t('aap.taglinePh')} />
+            <p class="helper">{$t('aap.taglineHint')}</p>
           </div>
         </div>
         <div class="mt-4">
-          <label class="label">Logo Aplikasi (sekaligus jadi favicon)</label>
+          <label class="label">{$t('aap.appLogo')}</label>
           <div class="grid sm:grid-cols-[120px_1fr] gap-3 items-center">
             <div class="aspect-square w-24 rounded-2xl bg-ink-50 border border-ink-200 grid place-items-center overflow-hidden">
               {#if s.logo_url}<img src={s.logo_url} alt="" class="w-full h-full object-cover" />
@@ -151,15 +153,15 @@
             </div>
             <div>
               <input type="file" accept="image/png,image/jpeg,image/webp" on:change={(e: any) => logoFile = e.target.files?.[0] ?? null} class="text-sm mb-2" />
-              <button on:click={uploadLogo} disabled={!logoFile} class="btn-outline btn-sm">Upload</button>
-              <p class="helper">PNG/JPG/WebP, maks 1MB. Format ini aman tampil di navbar, footer, favicon, dan email.</p>
+              <button on:click={uploadLogo} disabled={!logoFile} class="btn-outline btn-sm">{$t('aset.upload')}</button>
+              <p class="helper">{$t('aap.logoHint')}</p>
             </div>
           </div>
         </div>
       </div>
 
       <div class="card">
-        <h3 class="font-semibold mb-4">Color Palette</h3>
+        <h3 class="font-semibold mb-4">{$t('aap.colorPalette')}</h3>
         <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {#each palettes as p}
             <button on:click={() => pickPalette(p)} class="text-left p-4 rounded-2xl border-2 transition" class:border-ink-950={s.palette===p.key} class:border-transparent={s.palette!==p.key}>
@@ -174,35 +176,35 @@
           {/each}
         </div>
         <div class="grid sm:grid-cols-3 gap-3 mt-4">
-          <div><label class="label">Primary</label><input type="color" bind:value={s.primary_color} class="w-full h-12 rounded-xl border border-ink-200" /></div>
-          <div><label class="label">Foreground</label><input type="color" bind:value={s.primary_fg} class="w-full h-12 rounded-xl border border-ink-200" /></div>
-          <div><label class="label">Accent</label><input type="color" bind:value={s.accent_color} class="w-full h-12 rounded-xl border border-ink-200" /></div>
+          <div><label class="label">{$t('aap.primary')}</label><input type="color" bind:value={s.primary_color} class="w-full h-12 rounded-xl border border-ink-200" /></div>
+          <div><label class="label">{$t('aap.foreground')}</label><input type="color" bind:value={s.primary_fg} class="w-full h-12 rounded-xl border border-ink-200" /></div>
+          <div><label class="label">{$t('aap.accent')}</label><input type="color" bind:value={s.accent_color} class="w-full h-12 rounded-xl border border-ink-200" /></div>
         </div>
       </div>
 
       <div class="flex justify-end">
-        <button on:click={save} disabled={saving} class="btn-primary btn-md">{saving ? 'Menyimpan…' : 'Simpan'}</button>
+        <button on:click={save} disabled={saving} class="btn-primary btn-md">{saving ? $t('mk.saving') : $t('pf.save')}</button>
       </div>
     </div>
   {:else if tab === 'home'}
     <div class="space-y-5">
       <div class="card">
-        <h3 class="font-semibold mb-4">Halaman Beranda — Hero Section</h3>
+        <h3 class="font-semibold mb-4">{$t('aap.heroSection')}</h3>
         <label class="mb-4 flex items-center justify-between gap-4 rounded-2xl border border-ink-100 bg-ink-50 px-4 py-3">
           <span>
-            <span class="block text-sm font-semibold">Tampilkan hero di homepage</span>
-            <span class="block text-xs text-ink-500">Matikan kalau ingin mobile langsung fokus ke kategori produk.</span>
+            <span class="block text-sm font-semibold">{$t('aap.showHero')}</span>
+            <span class="block text-xs text-ink-500">{$t('aap.showHeroHint')}</span>
           </span>
           <input type="checkbox" bind:checked={s.hero_enabled} class="h-5 w-5" />
         </label>
         <div class="grid sm:grid-cols-2 gap-4">
-          <div><label class="label">Judul Hero</label><input bind:value={s.hero_title} class="input" /></div>
-          <div><label class="label">Subjudul Hero</label><input bind:value={s.hero_subtitle} class="input" /></div>
-          <div><label class="label">Teks tombol CTA</label><input bind:value={s.hero_cta_label} class="input" /></div>
-          <div><label class="label">Link tombol CTA</label><input bind:value={s.hero_cta_href} class="input" placeholder="/products" /></div>
+          <div><label class="label">{$t('aap.heroTitle')}</label><input bind:value={s.hero_title} class="input" /></div>
+          <div><label class="label">{$t('aap.heroSubtitle')}</label><input bind:value={s.hero_subtitle} class="input" /></div>
+          <div><label class="label">{$t('aap.ctaText')}</label><input bind:value={s.hero_cta_label} class="input" /></div>
+          <div><label class="label">{$t('aap.ctaLink')}</label><input bind:value={s.hero_cta_href} class="input" placeholder="/products" /></div>
         </div>
         <div class="mt-4">
-          <label class="label">Gambar Hero (opsional)</label>
+          <label class="label">{$t('aap.heroImg')}</label>
           <div class="grid sm:grid-cols-[180px_1fr] gap-3 items-center">
             <div class="aspect-[4/3] rounded-2xl bg-ink-50 border border-ink-200 grid place-items-center overflow-hidden">
               {#if s.hero_image}<img src={s.hero_image} alt="" class="w-full h-full object-cover" />
@@ -210,48 +212,48 @@
             </div>
             <div>
               <input type="file" accept="image/*" on:change={(e: any) => heroFile = e.target.files?.[0] ?? null} class="text-sm mb-2" />
-              <button on:click={uploadHero} disabled={!heroFile} class="btn-outline btn-sm">Upload</button>
-              {#if s.hero_image}<button type="button" on:click={() => s.hero_image = ''} class="btn-sm bg-red-50 text-red-700 hover:bg-red-100 ml-2">Hapus</button>{/if}
-              <p class="helper">JPG/PNG, maks 4MB. Tampil di beranda. Kalau kosong, default ke pola gradient.</p>
+              <button on:click={uploadHero} disabled={!heroFile} class="btn-outline btn-sm">{$t('aset.upload')}</button>
+              {#if s.hero_image}<button type="button" on:click={() => s.hero_image = ''} class="btn-sm bg-red-50 text-red-700 hover:bg-red-100 ml-2">{$t('aap.remove')}</button>{/if}
+              <p class="helper">{$t('aap.heroImgHint')}</p>
             </div>
           </div>
         </div>
       </div>
       <div class="flex justify-end">
-        <button on:click={save} disabled={saving} class="btn-primary btn-md">{saving ? 'Menyimpan…' : 'Simpan'}</button>
+        <button on:click={save} disabled={saving} class="btn-primary btn-md">{saving ? $t('mk.saving') : $t('pf.save')}</button>
       </div>
     </div>
   {:else if tab === 'pages'}
     <div class="space-y-5">
       <div class="card">
-        <h3 class="font-semibold mb-3">Intro Halaman Pembayaran</h3>
-        <p class="text-xs text-ink-500 mb-2">Tampil di atas daftar metode pembayaran. Kosongkan untuk sembunyikan.</p>
-        <textarea bind:value={s.payment_intro} class="input" rows={4} placeholder="Contoh: Semua metode pembayaran kami diamankan dengan enkripsi end-to-end..."></textarea>
+        <h3 class="font-semibold mb-3">{$t('aap.payIntro')}</h3>
+        <p class="text-xs text-ink-500 mb-2">{$t('aap.payIntroHint')}</p>
+        <textarea bind:value={s.payment_intro} class="input" rows={4} placeholder={$t('aap.payIntroPh')}></textarea>
       </div>
       <div class="card">
-        <h3 class="font-semibold mb-3">Intro Halaman Bantuan</h3>
-        <p class="text-xs text-ink-500 mb-2">Tampil di atas FAQ. Kosongkan untuk sembunyikan.</p>
-        <textarea bind:value={s.help_intro} class="input" rows={4} placeholder="Contoh: Butuh bantuan? Tim CS kami online 24/7..."></textarea>
+        <h3 class="font-semibold mb-3">{$t('aap.helpIntro')}</h3>
+        <p class="text-xs text-ink-500 mb-2">{$t('aap.helpIntroHint')}</p>
+        <textarea bind:value={s.help_intro} class="input" rows={4} placeholder={$t('aap.helpIntroPh')}></textarea>
       </div>
       <div class="flex justify-end">
-        <button on:click={save} disabled={saving} class="btn-primary btn-md">{saving ? 'Menyimpan…' : 'Simpan'}</button>
+        <button on:click={save} disabled={saving} class="btn-primary btn-md">{saving ? $t('mk.saving') : $t('pf.save')}</button>
       </div>
     </div>
   {:else if tab === 'payment'}
     <div class="space-y-3">
       <div class="card text-xs text-ink-500 bg-amber-50 text-amber-800">
-        <b>Catatan:</b> Daftar di sini ditampilkan di halaman <code>/payment-info</code> sebagai info publik. Saat checkout, metode pembayaran sebenarnya tetap diatur oleh integrasi Tripay (sandbox/production).
+        <b>{$t('aap.note')}</b> Daftar di sini ditampilkan di halaman <code>/payment-info</code> sebagai info publik. Saat checkout, metode pembayaran sebenarnya tetap diatur oleh integrasi Tripay (sandbox/production).
       </div>
       <div class="flex justify-between items-center flex-wrap gap-2">
-        <h3 class="font-semibold">Daftar Metode Bayar (Tampilan Publik)</h3>
+        <h3 class="font-semibold">{$t('aap.pmPublicList')}</h3>
         <div class="flex gap-2">
-          <button on:click={addPm} class="btn-outline btn-sm"><Icon name="plus" size={14} /> Tambah</button>
-          <button on:click={savePms} disabled={pmsSaving} class="btn-primary btn-sm">{pmsSaving ? 'Menyimpan…' : 'Simpan'}</button>
+          <button on:click={addPm} class="btn-outline btn-sm"><Icon name="plus" size={14} /> {$t('mk.add')}</button>
+          <button on:click={savePms} disabled={pmsSaving} class="btn-primary btn-sm">{pmsSaving ? $t('mk.saving') : $t('pf.save')}</button>
         </div>
       </div>
       {#if !pmsLoaded}<div class="card text-center py-10 text-ink-500">Memuat…</div>
       {:else if pms.length === 0}
-        <div class="card text-center py-10 text-ink-500">Belum ada metode. Klik Tambah.</div>
+        <div class="card text-center py-10 text-ink-500">{$t('lf.noMethods')}</div>
       {:else}
         {#each pms as m, i}
           <div class="card">
@@ -301,13 +303,13 @@
       <div class="flex justify-between items-center">
         <h3 class="font-semibold">FAQ Halaman Bantuan</h3>
         <div class="flex gap-2">
-          <button on:click={addFaq} class="btn-outline btn-sm"><Icon name="plus" size={14} /> Tambah</button>
-          <button on:click={saveFaqs} disabled={faqsSaving} class="btn-primary btn-sm">{faqsSaving ? 'Menyimpan…' : 'Simpan'}</button>
+          <button on:click={addFaq} class="btn-outline btn-sm"><Icon name="plus" size={14} /> {$t('mk.add')}</button>
+          <button on:click={saveFaqs} disabled={faqsSaving} class="btn-primary btn-sm">{faqsSaving ? $t('mk.saving') : $t('pf.save')}</button>
         </div>
       </div>
       {#if !faqsLoaded}<div class="card text-center py-10 text-ink-500">Memuat…</div>
       {:else if faqs.length === 0}
-        <div class="card text-center py-10 text-ink-500">Belum ada FAQ. Klik Tambah.</div>
+        <div class="card text-center py-10 text-ink-500">{$t('lf.noFaqs')}</div>
       {:else}
         {#each faqs as f, i}
           <div class="card">
@@ -343,11 +345,11 @@
       <div class="card">
         <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
           <h3 class="font-semibold">Kolom Footer</h3>
-          <button type="button" on:click={() => s.footer_columns = [...(s.footer_columns ?? []), { title: 'Kolom Baru', links: [] }]} class="btn-outline btn-sm"><Icon name="plus" size={12} /> Tambah Kolom</button>
+          <button type="button" on:click={() => s.footer_columns = [...(s.footer_columns ?? []), { title: 'Kolom Baru', links: [] }]} class="btn-outline btn-sm"><Icon name="plus" size={12} /> {$t('lf.addColumn')}</button>
         </div>
-        <p class="helper mb-3">Maks 3 kolom akan ditampilkan di footer. Kalau kosong, pakai default (Belanja, Pembayaran, Bantuan).</p>
+        <p class="helper mb-3">{$t('lf.footerColsHint')}</p>
         {#if !s.footer_columns?.length}
-          <div class="bg-ink-50 p-3 rounded-xl text-xs text-ink-500">Belum ada kolom kustom. Footer akan pakai default.</div>
+          <div class="bg-ink-50 p-3 rounded-xl text-xs text-ink-500">{$t('lf.noCustomCols')}</div>
         {:else}
           {#each s.footer_columns as col, ci}
             <div class="border border-ink-100 rounded-2xl p-3 mb-3">
@@ -363,21 +365,21 @@
                     <button type="button" on:click={() => col.links = col.links.filter((_: any, i: number) => i !== li)} class="text-red-600 hover:bg-red-50 w-8 h-8 grid place-items-center rounded-full shrink-0"><Icon name="x" size={12} /></button>
                   </div>
                 {/each}
-                <button type="button" on:click={() => col.links = [...(col.links ?? []), { label: '', href: '' }]} class="text-xs text-ink-500 hover:text-ink-950 flex items-center gap-1"><Icon name="plus" size={11} /> Tambah link</button>
+                <button type="button" on:click={() => col.links = [...(col.links ?? []), { label: '', href: '' }]} class="text-xs text-ink-500 hover:text-ink-950 flex items-center gap-1"><Icon name="plus" size={11} /> {$t('lf.addLink')}</button>
               </div>
             </div>
           {/each}
         {/if}
       </div>
       <div class="flex justify-end">
-        <button on:click={save} disabled={saving} class="btn-primary btn-md">{saving ? 'Menyimpan…' : 'Simpan'}</button>
+        <button on:click={save} disabled={saving} class="btn-primary btn-md">{saving ? $t('mk.saving') : $t('pf.save')}</button>
       </div>
     </div>
   {:else if tab === 'visibility'}
     <div class="space-y-5">
       <div class="card">
-        <h3 class="font-semibold mb-2">Visibilitas Halaman</h3>
-        <p class="text-xs text-ink-500 mb-4">Centang halaman yang ingin <b>disembunyikan</b> dari menu navigasi & link. Halaman akan tetap accessible via URL langsung — hanya tidak muncul di navbar/footer.</p>
+        <h3 class="font-semibold mb-2">{$t('lf.pageVisibility')}</h3>
+        <p class="text-xs text-ink-500 mb-4">{$t('lf.hidePagesPre')} <b>{$t('lf.hidden')}</b>{$t('lf.hidePagesPost')}</p>
         {#each [['vendors','Halaman Toko (/vendors)'],['payment-info','Halaman Pembayaran (/payment-info)'],['help','Halaman Bantuan (/help)'],['about','Halaman Tentang (/about)']] as [key, label]}
           <label class="flex items-center gap-3 p-3 border border-ink-100 rounded-xl mb-2 cursor-pointer hover:bg-ink-50">
             <input
@@ -393,7 +395,7 @@
         {/each}
       </div>
       <div class="flex justify-end">
-        <button on:click={save} disabled={saving} class="btn-primary btn-md">{saving ? 'Menyimpan…' : 'Simpan'}</button>
+        <button on:click={save} disabled={saving} class="btn-primary btn-md">{saving ? $t('mk.saving') : $t('pf.save')}</button>
       </div>
     </div>
   {/if}

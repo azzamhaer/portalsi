@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { env } from '$env/dynamic/public';
+	import { get } from 'svelte/store';
+	import { t } from '$lib/i18n';
 	import { ArrowLeft, LoaderCircle, Search } from '@lucide/svelte';
 	import { untrack } from 'svelte';
 	import { clientRequest } from '$lib/api/client';
@@ -36,11 +38,11 @@
 					{ schema: userSearchResponseSchema, signal: controller.signal }
 				);
 				users = response.data.map((user) => mapCompactUser(user, mediaBaseUrl));
-				if (!users.length) message = 'Tidak ada pengguna yang cocok.';
+				if (!users.length) message = get(t)('exp.noUsers');
 			} catch (error) {
 				if (!(error instanceof DOMException && error.name === 'AbortError')) {
 					users = [];
-					message = 'Pencarian pengguna belum dapat dimuat.';
+					message = get(t)('mnew.searchFailed');
 				}
 			} finally {
 				if (!controller.signal.aborted) searching = false;
@@ -59,20 +61,20 @@
 
 <main class="new-message surface">
 	<header>
-		<a href="/messages" aria-label="Kembali"><ArrowLeft size={20} /></a>
-		<h1>Pesan baru</h1>
+		<a href="/messages" aria-label={$t('common.back')}><ArrowLeft size={20} /></a>
+		<h1>{$t('mnew.title')}</h1>
 	</header>
 	<form class="search" onsubmit={(event) => event.preventDefault()}>
 		<label
-			><Search size={18} /><span class="sr-only">Cari pengguna</span><input
+			><Search size={18} /><span class="sr-only">{$t('mnew.searchUsers')}</span><input
 				bind:value={query}
 				maxlength="80"
-				placeholder="Cari nama atau username"
+				placeholder={$t('mnew.searchPh')}
 			/>{#if searching}<LoaderCircle class="spin" size={17} />{/if}</label
 		>
 	</form>
 	<section>
-		<h2>{query ? 'Hasil pencarian' : 'Teman bersama'}</h2>
+		<h2>{query ? get(t)('mnew.results') : get(t)('mnew.mutualFriends')}</h2>
 		{#each users as user (user.id)}<div class="user-row">
 				<StoryAvatarLink
 					userId={user.id}
@@ -93,8 +95,8 @@
 			</div>{/each}
 		{#if message}<p aria-live="polite">{message}</p>{:else if users.length === 0}<p>
 				{query.trim()
-					? 'Tidak ada pengguna yang cocok.'
-					: 'Cari nama atau username untuk memulai percakapan pertama.'}
+					? get(t)('exp.noUsers')
+					: get(t)('mnew.emptyHint')}
 			</p>{/if}
 	</section>
 </main>

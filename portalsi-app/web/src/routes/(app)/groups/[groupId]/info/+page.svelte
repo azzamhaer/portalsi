@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { env } from '$env/dynamic/public';
+	import { get } from 'svelte/store';
+	import { t } from '$lib/i18n';
 	import {
 		ArrowLeft,
 		Crown,
@@ -87,7 +89,7 @@
 
 <main class="info-page">
 	<a class="back" href={`/messages/groups/${data.group.id}`}
-		><ArrowLeft size={18} /> Kembali ke percakapan</a
+		><ArrowLeft size={18} /> {$t('ginfo.backToChat')}</a
 	>
 	<section class="hero surface">
 		{#if data.group.coverUrl}<img
@@ -98,7 +100,7 @@
 		<div class="identity">
 			<Avatar name={data.group.name} src={data.group.avatarUrl ?? undefined} size="lg" />
 			<div>
-				<p>Info grup</p>
+				<p>{$t('chat.ariaGroupInfo')}</p>
 				<h1>{data.group.name}</h1>
 				<span
 					>{data.members.length} anggota · Anda {data.role === 'admin' ? 'admin' : 'anggota'}</span
@@ -114,18 +116,18 @@
 
 	{#if data.isOwner}
 		<details class="surface panel">
-			<summary>Edit info grup</summary>
+			<summary>{$t('ginfo.edit')}</summary>
 			<form method="POST" action="?/update" enctype="multipart/form-data">
-				<label>Nama <input name="name" required maxlength="100" value={data.group.name} /></label>
+				<label>{$t('ginfo.name')} <input name="name" required maxlength="100" value={data.group.name} /></label>
 				<label
-					>Deskripsi <textarea name="description" rows="3">{data.group.description ?? ''}</textarea
+					>{$t('form.desc')} <textarea name="description" rows="3">{data.group.description ?? ''}</textarea
 					></label
 				>
 				<div class="file-grid">
-					<label>Avatar <input name="avatar" type="file" accept="image/jpeg,image/png" /></label
-					><label>Sampul <input name="cover" type="file" accept="image/jpeg,image/png" /></label>
+					<label>{$t('ginfo.avatar')} <input name="avatar" type="file" accept="image/jpeg,image/png" /></label
+					><label>{$t('ginfo.cover')} <input name="cover" type="file" accept="image/jpeg,image/png" /></label>
 				</div>
-				<button type="submit">Simpan perubahan</button>
+				<button type="submit">{$t('ginfo.saveChanges')}</button>
 			</form>
 		</details>
 	{/if}
@@ -137,7 +139,7 @@
 				<div class="member-search">
 					{#if selected.length}<div
 							class="selected-members"
-							aria-label="Anggota yang akan ditambahkan"
+							aria-label={$t('ginfo.ariaToAdd')}
 						>
 							{#each selected as user (user.id)}<span class="member-chip">
 									<Avatar name={user.fullName} src={user.avatarUrl} size="sm" />
@@ -155,9 +157,9 @@
 							value={query}
 							oninput={(event) => (query = event.currentTarget.value)}
 							onkeydown={onSearchKeydown}
-							placeholder="Cari nama atau username…"
+							placeholder={$t('gnew.searchPh')}
 							autocomplete="off"
-							aria-label="Cari calon anggota"
+							aria-label={$t('ginfo.ariaSearch')}
 						/>
 						{#if searching}<LoaderCircle class="member-spinner" size={16} />{:else if query}<button
 								type="button"
@@ -166,10 +168,10 @@
 									query = '';
 									results = [];
 								}}
-								aria-label="Hapus pilihan"><X size={15} /></button
+								aria-label={$t('ginfo.ariaClearSel')}><X size={15} /></button
 							>{/if}
 					</div>
-					{#if query.trim().length >= 2}<div class="results" aria-label="Hasil pencarian">
+					{#if query.trim().length >= 2}<div class="results" aria-label={$t('gnew.ariaResults')}>
 							{#each visibleResults as user (user.id)}<button
 									type="button"
 									class="result"
@@ -192,8 +194,8 @@
 					<input type="hidden" name="identifiers" value={identifiers} />
 				</div>
 				<div class="add-row">
-					<select name="role" aria-label="Peran anggota"
-						><option value="member">Anggota</option><option value="admin">Admin</option></select
+					<select name="role" aria-label={$t('ginfo.ariaRole')}
+						><option value="member">{$t('ginfo.member')}</option><option value="admin">{$t('ginfo.admin')}</option></select
 					><button type="submit" disabled={!selected.length}
 						>Tambahkan {selected.length || ''}</button
 					>
@@ -219,7 +221,7 @@
 							>{member.fullName}
 							{#if member.is_verified}<VerifiedBadge />{/if}</strong
 						><a href={`/u/${member.username}`}>@{member.username}</a><small
-							>{member.role === 'admin' ? 'Admin' : 'Anggota'}{member.is_muted
+							>{member.role === 'admin' ? 'Admin' : get(t)('ginfo.member')}{member.is_muted
 								? ' · dibisukan'
 								: ''}</small
 						>

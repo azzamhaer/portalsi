@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
+	import { get } from 'svelte/store';
 	import { clientRequest } from '$lib/api/client';
 	import {
 		notificationPreferencesResponseSchema,
@@ -13,6 +14,7 @@
 		disablePush
 	} from '$lib/push';
 	import type { PageProps } from './$types';
+	import { t, lang, setLang } from '$lib/i18n';
 
 	let { data }: PageProps = $props();
 
@@ -38,23 +40,23 @@
 			if (pushOn) {
 				await disablePush();
 				pushOn = false;
-				pushMsg = 'Notifikasi perangkat dimatikan.';
+				pushMsg = get(t)('pref.pushOff');
 			} else {
 				const res = await enablePush();
 				if (res === 'granted') {
 					pushOn = true;
-					pushMsg = 'Notifikasi perangkat aktif.';
+					pushMsg = get(t)('pref.pushOn');
 				} else if (res === 'denied') {
 					pushBlocked = pushPermission() === 'denied';
 					pushMsg = pushBlocked
-						? 'Izin diblokir di browser. Aktifkan lewat pengaturan situs.'
-						: 'Izin belum diberikan.';
+						? get(t)('pref.permBlocked')
+						: get(t)('pref.permNotGiven');
 				} else if (res === 'no-key') {
-					pushMsg = 'Notifikasi belum dikonfigurasi di server.';
+					pushMsg = get(t)('pref.noKey');
 				} else if (res === 'unsupported') {
-					pushMsg = 'Perangkat/browser ini belum mendukung notifikasi.';
+					pushMsg = get(t)('pref.unsupported');
 				} else {
-					pushMsg = 'Gagal mengaktifkan. Coba lagi.';
+					pushMsg = get(t)('pref.enableFailed');
 				}
 			}
 		} finally {
@@ -75,13 +77,13 @@
 	let statusOk = $state(true);
 
 	const newPostOptions = [
-		{ value: 'all', label: 'Semua', hint: 'Dari semua orang yang saya ikuti.' },
+		{ value: 'all', label: get(t)('common.all'), hint: get(t)('pref.optAllHint') },
 		{
 			value: 'mutual',
-			label: 'Saling mengikuti',
-			hint: 'Hanya dari akun yang juga mengikuti saya.'
+			label: get(t)('pref.optMutual'),
+			hint: get(t)('pref.optMutualHint')
 		},
-		{ value: 'off', label: 'Nonaktif', hint: 'Jangan beri tahu saat mereka memposting.' }
+		{ value: 'off', label: get(t)('pref.optOff'), hint: get(t)('pref.optOffHint') }
 	] as const;
 
 	async function save() {
@@ -108,10 +110,10 @@
 			mentions = p.mentions;
 			follows = p.follows;
 			statusOk = true;
-			status = 'Preferensi notifikasi tersimpan ke akun Anda.';
+			status = get(t)('pref.saved');
 		} catch {
 			statusOk = false;
-			status = 'Preferensi belum dapat disimpan. Coba lagi.';
+			status = get(t)('pref.saveFailed');
 		} finally {
 			saving = false;
 		}
@@ -121,25 +123,31 @@
 <svelte:head><title>Preferensi notifikasi — Portal SI</title></svelte:head>
 
 <main class="preferences surface">
-	<a class="back" href="/settings">← Pengaturan</a>
-	<h1>Preferensi notifikasi</h1>
-	<p class="lead">
-		Atur notifikasi yang masuk ke tab notifikasi Anda. Tersimpan di akun dan berlaku di semua
-		perangkat.
-	</p>
+	<a class="back" href="/settings">← {$t('nav.settings')}</a>
+	<h1>{$t('pref.title')}</h1>
+	<p class="lead">{$t('pref.lead')}</p>
 
-	{#if !data.available}<p class="warn" aria-live="polite">
-			Preferensi tersimpan mungkin belum termuat. Menyimpan akan tetap memperbaruinya.
-		</p>{/if}
+	{#if !data.available}<p class="warn" aria-live="polite">{$t('pref.warn')}</p>{/if}
+
+	<div class="lang-card">
+		<div class="lang-text">
+			<strong>{$t('lang.title')}</strong>
+			<small>{$t('lang.note')}</small>
+		</div>
+		<div class="lang-seg" role="group" aria-label={$t('lang.title')}>
+			<button type="button" class:on={$lang === 'id'} onclick={() => setLang('id')}>Indonesia</button>
+			<button type="button" class:on={$lang === 'en'} onclick={() => setLang('en')}>English</button>
+		</div>
+	</div>
 
 	{#if pushReady}
 		<div class="push-card">
 			<div class="push-text">
-				<strong>Notifikasi perangkat ini</strong>
+				<strong>{$t('pref.deviceNotif')}</strong>
 				<small>
 					Terima notifikasi walau aplikasi ditutup. Berlaku hanya di perangkat & browser ini.
 					{#if pushBlocked}<span class="push-warn"
-							>Izin diblokir — aktifkan lewat pengaturan situs di browser.</span
+							>{$t('pref.blocked')}</span
 						>{/if}
 				</small>
 			</div>
@@ -164,10 +172,8 @@
 		}}
 	>
 		<fieldset>
-			<legend>Pengingat postingan baru dari…</legend>
-			<p class="field-hint">
-				Notifikasi seperti “… membagikan postingan baru”. Kurangi bila terasa terlalu ramai.
-			</p>
+			<legend>{$t('pref.newPostFrom')}</legend>
+			<p class="field-hint">{$t('pref.newPostHint')}</p>
 			<div class="segmented">
 				{#each newPostOptions as option (option.value)}
 					<label class="segment" class:selected={newPostReminders === option.value}>
@@ -184,36 +190,36 @@
 		</fieldset>
 
 		<fieldset>
-			<legend>Jenis notifikasi lain</legend>
+			<legend>{$t('pref.otherTypes')}</legend>
 			<label class="toggle"
 				><input type="checkbox" bind:checked={likes} /><span
-					><strong>Suka</strong><small>Saat seseorang menyukai postingan Anda.</small></span
+					><strong>{$t('pref.likes')}</strong><small>{$t('pref.likeDesc')}</small></span
 				></label
 			>
 			<label class="toggle"
 				><input type="checkbox" bind:checked={comments} /><span
-					><strong>Komentar &amp; balasan</strong><small
-						>Komentar pada postingan Anda dan balasan komentar.</small
+					><strong>{$t('pref.commentsReplies')}</strong><small
+						>{$t('pref.commentsDesc')}</small
 					></span
 				></label
 			>
 			<label class="toggle"
 				><input type="checkbox" bind:checked={mentions} /><span
-					><strong>Sebutan (mention)</strong><small
-						>Saat Anda disebut di postingan, komentar, atau cerita.</small
+					><strong>{$t('pref.mentions')}</strong><small
+						>{$t('pref.mentionsDesc')}</small
 					></span
 				></label
 			>
 			<label class="toggle"
 				><input type="checkbox" bind:checked={follows} /><span
-					><strong>Pengikut baru</strong><small
-						>Saat seseorang mulai mengikuti Anda. (Permintaan mengikuti selalu tampil.)</small
+					><strong>{$t('pref.newFollowers')}</strong><small
+						>{$t('pref.followsDesc')}</small
 					></span
 				></label
 			>
 		</fieldset>
 
-		<button type="submit" disabled={saving}>{saving ? 'Menyimpan…' : 'Simpan preferensi'}</button>
+		<button type="submit" disabled={saving}>{saving ? $t('pref.saving') : $t('pref.savePrefs')}</button>
 		{#if status}<p class="status" class:error={!statusOk} aria-live="polite">{status}</p>{/if}
 	</form>
 </main>
@@ -246,7 +252,8 @@
 		color: var(--color-primary-strong);
 		font-size: 0.76rem;
 	}
-	.push-card {
+	.push-card,
+	.lang-card {
 		display: flex;
 		align-items: center;
 		gap: 14px;
@@ -254,6 +261,39 @@
 		padding: 14px 16px;
 		background: var(--color-canvas-deep, #f6f1e8);
 		border-radius: 14px;
+	}
+	.lang-text {
+		flex: 1;
+		min-width: 0;
+		display: grid;
+		gap: 2px;
+	}
+	.lang-text small {
+		color: var(--color-muted);
+		font-size: 0.8rem;
+	}
+	.lang-seg {
+		display: inline-flex;
+		flex: 0 0 auto;
+		background: var(--color-surface, #fff);
+		border: 1px solid var(--color-border, #e2d9c8);
+		border-radius: 999px;
+		padding: 3px;
+	}
+	.lang-seg button {
+		border: 0;
+		background: transparent;
+		padding: 7px 14px;
+		border-radius: 999px;
+		font: inherit;
+		font-size: 0.82rem;
+		font-weight: 600;
+		color: var(--color-muted);
+		cursor: pointer;
+	}
+	.lang-seg button.on {
+		background: var(--color-accent, #1f6feb);
+		color: #fff;
 	}
 	.push-text {
 		flex: 1;

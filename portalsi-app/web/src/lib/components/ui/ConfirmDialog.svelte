@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { AlertTriangle, HelpCircle, X } from '@lucide/svelte';
+	import { get } from 'svelte/store';
+	import { t } from '$lib/i18n';
 	import { confirmState, resolveConfirmation } from '$lib/ui/confirm';
 </script>
 
@@ -15,7 +17,7 @@
 			onkeydown={(event) => event.stopPropagation()}
 			tabindex="-1"
 		>
-			<button class="close" onclick={() => resolveConfirmation(false)} aria-label="Tutup dialog"
+			<button class="close" onclick={() => resolveConfirmation(false)} aria-label={$t('ui.ariaCloseDialog')}
 				><X size={18} /></button
 			>
 			<span class="icon"
@@ -30,7 +32,7 @@
 					>{$confirmState.cancelLabel ?? 'Batal'}</button
 				>
 				<button class="confirm" onclick={() => resolveConfirmation(true)}
-					>{$confirmState.confirmLabel ?? 'Lanjutkan'}</button
+					>{$confirmState.confirmLabel ?? get(t)('common.continue')}</button
 				>
 			</div>
 		</div>

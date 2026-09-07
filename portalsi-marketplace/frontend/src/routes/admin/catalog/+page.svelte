@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { t } from '$lib/i18n';
+  import { get } from 'svelte/store';
   import { apiEndpoints } from '$lib/api';
   import { toast, confirmDialog } from '$lib/stores.svelte';
   import Icon from '$lib/components/Icon.svelte';
@@ -57,7 +59,7 @@
   }
 
   async function saveTag() {
-    if (!tagForm.name.trim()) return toast.warn('Nama tag wajib diisi');
+    if (!tagForm.name.trim()) return toast.warn(get(t)('acat.tagNameReq'));
     savingTag = true;
     try {
       await apiEndpoints.adminSaveTag(tagForm.id, { name: tagForm.name, slug: tagForm.slug });
@@ -73,15 +75,15 @@
 
   async function deleteTag(id: number) {
     const ok = await confirmDialog.ask({
-      title: 'Hapus tag ini?',
-      message: 'Produk yang memakai tag ini akan dilepas dari tag tersebut.',
-      confirmText: 'Hapus tag',
+      title: get(t)('acat.delTagTitle'),
+      message: get(t)('acat.delTagMsg'),
+      confirmText: get(t)('acat.delTag'),
       tone: 'danger',
     });
     if (!ok) return;
     try {
       await apiEndpoints.adminDeleteTag(id);
-      toast.success('Tag dihapus');
+      toast.success(get(t)('acat.tagDeleted'));
       await load();
     } catch (e: any) {
       toast.error(e.message);
@@ -107,7 +109,7 @@
   }
 
   async function saveCategory() {
-    if (!categoryForm.name.trim()) return toast.warn('Nama kategori wajib diisi');
+    if (!categoryForm.name.trim()) return toast.warn(get(t)('acat.catNameReq'));
     savingCategory = true;
     try {
       await apiEndpoints.adminSaveCategory(categoryForm.id, {
@@ -132,15 +134,15 @@
 
   async function deleteCategory(id: string) {
     const ok = await confirmDialog.ask({
-      title: 'Hapus kategori ini?',
-      message: 'Kategori yang masih punya produk atau subkategori tidak bisa dihapus.',
-      confirmText: 'Hapus kategori',
+      title: get(t)('acat.delCatTitle'),
+      message: get(t)('acat.delCatMsg'),
+      confirmText: get(t)('acat.delCat'),
       tone: 'danger',
     });
     if (!ok) return;
     try {
       await apiEndpoints.adminDeleteCategory(id);
-      toast.success('Kategori dihapus');
+      toast.success(get(t)('acat.catDeleted'));
       await load();
     } catch (e: any) {
       toast.error(e.message);
@@ -148,16 +150,16 @@
   }
 </script>
 
-<svelte:head><title>Katalog Admin</title></svelte:head>
+<svelte:head><title>{$t('acat.title')}</title></svelte:head>
 
 {#if loading}
-  <div class="card py-10 text-center text-ink-500">Memuat...</div>
+  <div class="card py-10 text-center text-ink-500">{$t('ch.loading')}</div>
 {:else}
   <div class="space-y-6">
     <div>
-      <div class="section-eyebrow mb-2">Admin</div>
-      <h1 class="section-title">Kategori & Tag</h1>
-      <p class="mt-1 text-sm text-ink-500">Kategori homepage diarahkan ke tag produk. Contoh: kategori Handphone memakai tag handphone, subkategori Samsung memakai tag samsung.</p>
+      <div class="section-eyebrow mb-2">{$t('au.admin')}</div>
+      <h1 class="section-title">{$t('acat.catAndTag')}</h1>
+      <p class="mt-1 text-sm text-ink-500">{$t('acat.intro')}</p>
     </div>
 
     <div class="grid gap-5 lg:grid-cols-[360px_1fr]">
@@ -165,11 +167,11 @@
         <div class="card">
           <h2 class="mb-4 font-semibold">{tagForm.id ? 'Edit Tag' : 'Buat Tag'}</h2>
           <div class="space-y-3">
-            <div><label class="label">Nama tag</label><input bind:value={tagForm.name} class="input" placeholder="Handphone" /></div>
-            <div><label class="label">Slug</label><input bind:value={tagForm.slug} class="input" placeholder="handphone" /></div>
+            <div><label class="label">{$t('acat.tagName')}</label><input bind:value={tagForm.name} class="input" placeholder="Handphone" /></div>
+            <div><label class="label">{$t('acat.slug')}</label><input bind:value={tagForm.slug} class="input" placeholder="handphone" /></div>
             <div class="flex gap-2">
-              <button type="button" on:click={saveTag} disabled={savingTag} class="btn-primary btn-sm">{savingTag ? 'Menyimpan...' : 'Simpan Tag'}</button>
-              {#if tagForm.id}<button type="button" on:click={resetTag} class="btn-outline btn-sm">Batal</button>{/if}
+              <button type="button" on:click={saveTag} disabled={savingTag} class="btn-primary btn-sm">{savingTag ? $t('mk.saving') : $t('mk.saveTag')}</button>
+              {#if tagForm.id}<button type="button" on:click={resetTag} class="btn-outline btn-sm">{$t('od.cancel')}</button>{/if}
             </div>
           </div>
         </div>
@@ -178,29 +180,29 @@
           <h2 class="mb-4 font-semibold">{categoryForm.id ? 'Edit Kategori' : 'Buat Kategori'}</h2>
           <div class="space-y-3">
             <div>
-              <label class="label">Parent</label>
+              <label class="label">{$t('acat.parent')}</label>
               <select bind:value={categoryForm.parent_id} class="input">
-                <option value="">Kategori utama</option>
+                <option value="">{$t('acat.mainCat')}</option>
                 {#each categories as c}
                   {#if c.id !== categoryForm.id}<option value={c.id}>{c.name}</option>{/if}
                 {/each}
               </select>
             </div>
-            <div><label class="label">Nama kategori</label><input bind:value={categoryForm.name} class="input" placeholder="Handphone" /></div>
-            <div><label class="label">Slug kategori</label><input bind:value={categoryForm.slug} class="input" placeholder="handphone" /></div>
+            <div><label class="label">{$t('acat.catName')}</label><input bind:value={categoryForm.name} class="input" placeholder="Handphone" /></div>
+            <div><label class="label">{$t('acat.catSlug')}</label><input bind:value={categoryForm.slug} class="input" placeholder="handphone" /></div>
             <div>
-              <label class="label">Tag tujuan produk</label>
+              <label class="label">{$t('acat.tagTarget')}</label>
               <input bind:value={categoryForm.tag_slug} list="admin-tags" class="input" placeholder="handphone" />
               <datalist id="admin-tags">
                 {#each tags as t}<option value={t.slug}>{t.name}</option>{/each}
               </datalist>
-              <p class="helper">Klik kategori akan membuka produk dengan tag ini.</p>
+              <p class="helper">{$t('acat.clickOpens')}</p>
             </div>
             <div>
               <label class="label">Icon kategori</label>
               <div class="mb-2 flex flex-wrap items-center gap-2 rounded-xl bg-ink-50 px-3 py-2 text-xs text-ink-600">
                 <Icon name="external-link" size={12} />
-                <span>Cari nama icon di</span>
+                <span>{$t('acat.searchIcon')}</span>
                 <a href="https://lucide.dev/icons/" target="_blank" rel="noreferrer" class="font-semibold text-ink-950 underline">Lucide Icons</a>
                 <span>lalu tempel namanya di bawah.</span>
               </div>
@@ -214,13 +216,13 @@
               <input bind:value={categoryForm.icon} class="input input-sm mt-2" placeholder="custom lucide icon, contoh: smartphone" />
             </div>
             <div>
-              <label class="label">Urutan</label><input type="number" bind:value={categoryForm.sort_order} class="input" />
+              <label class="label">{$t('acat.order')}</label><input type="number" bind:value={categoryForm.sort_order} class="input" />
             </div>
             <label class="flex items-center gap-2 text-sm"><input type="checkbox" bind:checked={categoryForm.is_active} /> Aktif</label>
             <label class="flex items-center gap-2 text-sm"><input type="checkbox" bind:checked={categoryForm.featured_home} /> Tampilkan di homepage</label>
             <div class="flex gap-2">
-              <button type="button" on:click={saveCategory} disabled={savingCategory} class="btn-primary btn-sm">{savingCategory ? 'Menyimpan...' : 'Simpan Kategori'}</button>
-              {#if categoryForm.id}<button type="button" on:click={resetCategory} class="btn-outline btn-sm">Batal</button>{/if}
+              <button type="button" on:click={saveCategory} disabled={savingCategory} class="btn-primary btn-sm">{savingCategory ? $t('mk.saving') : $t('mk.saveCat')}</button>
+              {#if categoryForm.id}<button type="button" on:click={resetCategory} class="btn-outline btn-sm">{$t('od.cancel')}</button>{/if}
             </div>
           </div>
         </div>
@@ -229,7 +231,7 @@
       <div class="space-y-5">
         <div class="card">
           <div class="mb-4 flex items-center justify-between gap-3">
-            <h2 class="font-semibold">Daftar kategori</h2>
+            <h2 class="font-semibold">{$t('acat.catList')}</h2>
             <span class="text-xs text-ink-500">{flatCategories.length} item</span>
           </div>
           <div class="space-y-2">
@@ -241,8 +243,8 @@
                     <div class="flex flex-wrap items-center gap-2">
                       <b>{c.name}</b>
                       <span class="pill-ink">#{c.tag_slug || c.slug}</span>
-                      {#if !c.is_active}<span class="pill-red">Nonaktif</span>{/if}
-                      {#if c.featured_home}<span class="pill-green">Homepage</span>{/if}
+                      {#if !c.is_active}<span class="pill-red">{$t('acat.inactive')}</span>{/if}
+                      {#if c.featured_home}<span class="pill-green">{$t('acat.homepage')}</span>{/if}
                     </div>
                     <div class="text-xs text-ink-500">/{c.slug} · urutan {c.sort_order ?? 0}</div>
                   </div>
@@ -270,7 +272,7 @@
 
         <div class="card">
           <div class="mb-4 flex items-center justify-between gap-3">
-            <h2 class="font-semibold">Daftar tag</h2>
+            <h2 class="font-semibold">{$t('acat.tagList')}</h2>
             <span class="text-xs text-ink-500">{tags.length} tag</span>
           </div>
           <div class="flex flex-wrap gap-2">

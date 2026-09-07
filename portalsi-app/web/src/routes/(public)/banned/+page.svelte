@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { LoaderCircle, LogOut, ShieldAlert } from '@lucide/svelte';
+	import { get } from 'svelte/store';
+	import { t } from '$lib/i18n';
 	import AuthShell from '$lib/components/auth/AuthShell.svelte';
 	import type { PageProps } from './$types';
 
@@ -12,9 +14,9 @@
 	let messageValue = $state('');
 
 	const statusLabel: Record<string, string> = {
-		pending: 'Menunggu peninjauan',
-		approved: 'Disetujui',
-		rejected: 'Ditolak'
+		pending: get(t)('ban.pending'),
+		approved: get(t)('ban.approved'),
+		rejected: get(t)('ban.rejected')
 	};
 
 	const hasPending = $derived(data.appeals.some((a) => a.status === 'pending'));
@@ -25,7 +27,7 @@
 <AuthShell>
 	<div class="heading">
 		<div class="badge"><ShieldAlert size={22} /></div>
-		<h1>Akun kamu diblokir</h1>
+		<h1>{$t('ban.title')}</h1>
 		<p>
 			{#if data.username}Hai @{data.username}, akun{:else}Akun{/if} kamu untuk sementara tidak dapat
 			mengakses Portal SI.
@@ -33,19 +35,19 @@
 	</div>
 
 	<div class="reason">
-		<span>Alasan</span>
-		<p>{data.banReason || 'Tidak ada alasan spesifik yang dicantumkan admin.'}</p>
+		<span>{$t('ban.reason')}</span>
+		<p>{data.banReason || get(t)('ban.noReason')}</p>
 	</div>
 
 	{#if f?.success}
-		<div class="ok" role="status">Banding kamu terkirim. Tim akan meninjau akunmu.</div>
+		<div class="ok" role="status">{$t('ban.appealSent')}</div>
 	{:else if f?.message}
 		<div class="form-alert" role="alert">{f.message}</div>
 	{/if}
 
 	{#if data.appeals.length > 0}
 		<div class="appeals">
-			<span class="appeals-title">Riwayat banding</span>
+			<span class="appeals-title">{$t('ban.history')}</span>
 			{#each data.appeals as appeal (appeal.appeal_id)}
 				<div class="appeal">
 					<div class="appeal-head">
@@ -61,15 +63,15 @@
 	{/if}
 
 	{#if hasPending}
-		<p class="switch">Banding kamu sedang ditinjau. Kamu akan diberi tahu setelah ada keputusan.</p>
+		<p class="switch">{$t('ban.underReview')}</p>
 	{:else}
 		<form method="POST" onsubmit={() => (submitting = true)}>
 			<label>
-				<span>Ajukan banding</span>
+				<span>{$t('ban.submitAppeal')}</span>
 				<textarea
 					name="message"
 					rows="4"
-					placeholder="Jelaskan kenapa akunmu sebaiknya ditinjau ulang…"
+					placeholder={$t('ban.appealPh')}
 					bind:value={messageValue}
 				></textarea>
 			</label>
@@ -79,7 +81,7 @@
 		</form>
 	{/if}
 
-	<a class="logout" href="/logout" data-sveltekit-preload-data="off"><LogOut size={16} /> Keluar dari akun</a>
+	<a class="logout" href="/logout" data-sveltekit-preload-data="off"><LogOut size={16} /> {$t('auth.signOut')}</a>
 </AuthShell>
 
 <style>

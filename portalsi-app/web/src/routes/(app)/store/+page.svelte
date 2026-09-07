@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { ExternalLink, ShieldCheck, ShoppingBag } from '@lucide/svelte';
+	import { t } from '$lib/i18n';
 	import SectionPage from '$lib/components/layout/SectionPage.svelte';
 </script>
 
@@ -12,13 +13,13 @@
 	<section class="store-hero surface">
 		<div>
 			<span><ShoppingBag size={28} /></span>
-			<h2>Kunjungi Portal SI Store</h2>
-			<p>Temukan buku, perlengkapan belajar, dan produk komunitas melalui situs store resmi.</p>
+			<h2>{$t('store.visit')}</h2>
+			<p>{$t('store.sub')}</p>
 			<a href="https://store.portalsi.com/" target="_blank" rel="noopener noreferrer"
-				>Buka store resmi <ExternalLink size={17} /></a
-			><small><ShieldCheck size={14} /> Anda akan membuka store.portalsi.com</small>
+				>{$t('store.openOfficial')} <ExternalLink size={17} /></a
+			><small><ShieldCheck size={14} /> {$t('store.leaving')}</small>
 		</div>
-		<div class="phone-shot" aria-label="Pratinjau mobile Portal SI Store">
+		<div class="phone-shot" aria-label={$t('store.ariaPreview')}>
 			<div class="phone-bar"><i></i><span>9:41</span><b>● ●</b></div>
 			<div class="shot-head">
 				<img src="/assets/logo-mark.png" alt="" /><span
@@ -26,11 +27,11 @@
 				><ShoppingBag size={18} />
 			</div>
 			<div class="shot-hero">
-				<small>KOLEKSI PILIHAN</small><strong>Belajar nyaman,<br />tampil bermakna.</strong><button
-					>Belanja sekarang</button
+				<small>{$t('store.heroCollection')}</small><strong>{$t('store.hero1')}<br />tampil bermakna.</strong><button
+					>{$t('store.shopNow')}</button
 				>
 			</div>
-			<div class="shot-categories"><span>Semua</span><span>Buku</span><span>Aksesori</span></div>
+			<div class="shot-categories"><span>{$t('common.all')}</span><span>{$t('store.books')}</span><span>{$t('store.accessories')}</span></div>
 			<div class="shot-grid">
 				<article><i></i><b>Notebook Portal</b><small>Rp49.000</small></article>
 				<article><i></i><b>Tote Bag SI</b><small>Rp79.000</small></article>

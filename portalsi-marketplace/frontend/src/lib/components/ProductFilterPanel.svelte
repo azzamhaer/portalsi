@@ -1,5 +1,6 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
+  import { t } from '$lib/i18n';
   import { page } from '$app/stores';
   import Icon from './Icon.svelte';
 
@@ -70,7 +71,7 @@
   <div class="space-y-3">
     <div>
       <label class="label">Kata kunci</label>
-      <input bind:value={search} class="input input-sm" placeholder="Nama produk, brand, deskripsi" />
+      <input bind:value={search} class="input input-sm" placeholder={$t('pfp.searchPh')} />
     </div>
     <div>
       <label class="label">Kategori</label>

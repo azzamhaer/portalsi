@@ -1,5 +1,7 @@
 <script lang="ts">
   import Icon from '$lib/components/Icon.svelte';
+  import { t } from '$lib/i18n';
+  import { get } from 'svelte/store';
   import { goto } from '$app/navigation';
 
   let { data } = $props();
@@ -20,16 +22,16 @@
 
   function typeLabel(type: string) {
     const labels: Record<string, string> = {
-      REPORT_RESPONSE: 'Laporan',
-      PRODUCT_ACTION: 'Moderasi produk',
-      VENDOR_ACTION: 'Moderasi toko',
-      VENDOR_VERIFICATION: 'Verifikasi toko',
-      VENDOR_PENDING_APPROVAL: 'Approval vendor',
-      PASSWORD_CHANGED: 'Keamanan akun',
-      EMAIL_CHANGED: 'Keamanan akun'
+      REPORT_RESPONSE: get(t)('ntd.report'),
+      PRODUCT_ACTION: get(t)('ntd.modProduct'),
+      VENDOR_ACTION: get(t)('ntd.modStore'),
+      VENDOR_VERIFICATION: get(t)('ntd.verifyStore'),
+      VENDOR_PENDING_APPROVAL: get(t)('ntd.approval'),
+      PASSWORD_CHANGED: get(t)('ntd.security'),
+      EMAIL_CHANGED: get(t)('ntd.security')
     };
-    if (type.startsWith('ORDER_')) return 'Pesanan';
-    if (type.startsWith('WITHDRAW_')) return 'Penarikan dana';
+    if (type.startsWith('ORDER_')) return get(t)('ntd.order');
+    if (type.startsWith('WITHDRAW_')) return get(t)('ntd.withdrawal');
     return labels[type] || type.replaceAll('_', ' ');
   }
 
@@ -72,13 +74,13 @@
     <div class="p-5 sm:p-6 grid lg:grid-cols-[1fr_280px] gap-6">
       <div class="space-y-5 min-w-0">
         <section>
-          <h2 class="text-sm font-semibold mb-2">Isi notifikasi</h2>
+          <h2 class="text-sm font-semibold mb-2">{$t('ntd.content')}</h2>
           <div class="rounded-2xl bg-ink-50 p-4 text-sm leading-relaxed text-ink-700 whitespace-pre-line">{n.message}</div>
         </section>
 
         {#if n.facts?.length}
           <section>
-            <h2 class="text-sm font-semibold mb-2">Detail</h2>
+            <h2 class="text-sm font-semibold mb-2">{$t('ntd.detail')}</h2>
             <div class="grid sm:grid-cols-2 gap-2">
               {#each n.facts as fact}
                 <div class="rounded-2xl border border-ink-100 p-3">
@@ -92,21 +94,21 @@
 
         {#if n.context?.report}
           <section>
-            <h2 class="text-sm font-semibold mb-2">Rincian laporan</h2>
+            <h2 class="text-sm font-semibold mb-2">{$t('ntd.reportDetail')}</h2>
             <div class="rounded-2xl border border-ink-100 p-4 space-y-3">
               <div>
-                <div class="text-[11px] uppercase tracking-widest text-ink-400">Laporan Anda</div>
+                <div class="text-[11px] uppercase tracking-widest text-ink-400">{$t('ntd.yourReport')}</div>
                 <p class="text-sm text-ink-700 whitespace-pre-line">{n.context.report.description}</p>
               </div>
               {#if n.context.report.admin_response}
                 <div>
-                  <div class="text-[11px] uppercase tracking-widest text-ink-400">Jawaban admin</div>
+                  <div class="text-[11px] uppercase tracking-widest text-ink-400">{$t('ntd.adminAnswer')}</div>
                   <p class="text-sm text-ink-700 whitespace-pre-line">{n.context.report.admin_response}</p>
                 </div>
               {/if}
               {#if n.context.report.target}
                 <div class="rounded-xl bg-ink-50 p-3">
-                  <div class="text-[11px] uppercase tracking-widest text-ink-400">Objek laporan</div>
+                  <div class="text-[11px] uppercase tracking-widest text-ink-400">{$t('ntd.reportObject')}</div>
                   <div class="text-sm font-semibold">{n.context.report.target.name}</div>
                   <div class="text-xs text-ink-500">{n.context.report.target.type} #{n.context.report.target.id}</div>
                 </div>
@@ -118,7 +120,7 @@
 
       <aside class="space-y-3">
         <div class="rounded-2xl border border-ink-100 p-4">
-          <h2 class="text-sm font-semibold mb-3">Aksi</h2>
+          <h2 class="text-sm font-semibold mb-3">{$t('ntd.action')}</h2>
           {#if n.actions?.length}
             <div class="space-y-2">
               {#each n.actions as action, i}
@@ -129,17 +131,17 @@
               {/each}
             </div>
           {:else}
-            <div class="text-sm text-ink-500">Tidak ada aksi lanjutan untuk notifikasi ini.</div>
+            <div class="text-sm text-ink-500">{$t('ntd.noAction')}</div>
           {/if}
         </div>
 
         <div class="rounded-2xl border border-ink-100 p-4 text-sm">
           <div class="flex items-center justify-between py-2 border-b border-ink-100">
-            <span class="text-ink-500">Status baca</span>
-            <span class="font-medium">{n.read_at ? 'Sudah dibaca' : 'Belum dibaca'}</span>
+            <span class="text-ink-500">{$t('ntd.readStatus')}</span>
+            <span class="font-medium">{n.read_at ? $t('ntd.read') : $t('ntd.unread')}</span>
           </div>
           <div class="flex items-center justify-between py-2">
-            <span class="text-ink-500">ID notifikasi</span>
+            <span class="text-ink-500">{$t('ntd.notifId')}</span>
             <span class="font-mono text-xs">#{n.id}</span>
           </div>
         </div>

@@ -1,10 +1,12 @@
 <script lang="ts">
 	import { FileText, Pencil, Plus, Trash2 } from '@lucide/svelte';
+	import { get } from 'svelte/store';
+	import { t } from '$lib/i18n';
 	import SectionPage from '$lib/components/layout/SectionPage.svelte';
 	import type { PageProps } from './$types';
 	import { confirmButtonAction } from '$lib/ui/confirm';
 	let { data, form }: PageProps = $props();
-	const labels = { quran: 'Al-Qur’an', it: 'Teknologi', bahasa: 'Bahasa', karakter: 'Karakter' };
+	const labels = { quran: get(t)('pf.catQuran'), it: get(t)('pf.catTech'), bahasa: get(t)('pf.catLang'), karakter: get(t)('pf.catChar') };
 </script>
 
 <svelte:head><title>Portfolio — Portal SI</title></svelte:head><SectionPage
@@ -12,10 +14,10 @@
 	title="Portfolio"
 	description="Dokumentasi karya, pencapaian, dan proses belajar."
 	>{#snippet actions()}{#if data.canCreate}<a class="new" href="/portfolio/new"
-				><Plus size={17} />Tambah karya</a
+				><Plus size={17} />{$t('pf.addWork')}</a
 			>{/if}{/snippet}
 	<nav>
-		<a class:active={!data.aspect} href="/portfolio">Semua</a
+		<a class:active={!data.aspect} href="/portfolio">{$t('common.all')}</a
 		>{#each Object.entries(labels) as [key, label] (key)}<a
 				class:active={data.aspect === key}
 				href={`/portfolio?aspect=${key}`}>{label}</a
@@ -30,12 +32,12 @@
 							class="media pdf"
 							href={item.mediaUrl}
 							target="_blank"
-							rel="noreferrer"><FileText size={30} /><span>Buka PDF</span></a
+							rel="noreferrer"><FileText size={30} /><span>{$t('pf.openPdf')}</span></a
 						>{:else}<img src={item.mediaUrl} alt={item.title} />{/if}{/if}
 				<div>
-					<small>{labels[item.aspect]} · {item.year || 'Tanpa tahun'}</small>
+					<small>{labels[item.aspect]} · {item.year || get(t)('pf.noYear')}</small>
 					<h2>{item.title}</h2>
-					<p>{item.description || 'Tanpa deskripsi.'}</p>
+					<p>{item.description || get(t)('pf.noDesc')}</p>
 					{#if item.user_name}<a href={`/u/${item.user_name}`}>@{item.user_name}</a>{/if}
 					{#if item.signed_by}<p class="signature">
 							Ditandatangani oleh <a href={`/u/${item.signed_by.username}`}
@@ -46,19 +48,19 @@
 							<summary><Pencil size={13} /> Kelola</summary>
 							<form method="POST" action={`?/update&id=${item.id}`} enctype="multipart/form-data">
 								<label
-									>Kategori <select name="aspect" value={item.aspect}
-										><option value="quran">Al-Qur’an</option><option value="it">Teknologi</option
-										><option value="bahasa">Bahasa</option><option value="karakter">Karakter</option
+									>{$t('form.category')} <select name="aspect" value={item.aspect}
+										><option value="quran">{$t('pf.catQuran')}</option><option value="it">{$t('pf.catTech')}</option
+										><option value="bahasa">{$t('pf.catLang')}</option><option value="karakter">{$t('pf.catChar')}</option
 										></select
 									></label
 								><label
-									>Judul <input name="title" maxlength="255" required value={item.title} /></label
+									>{$t('form.title')} <input name="title" maxlength="255" required value={item.title} /></label
 								><label
-									>Deskripsi <textarea name="description" rows="3"
+									>{$t('form.desc')} <textarea name="description" rows="3"
 										>{item.description ?? ''}</textarea
 									></label
 								><label
-									>Tahun <input
+									>{$t('form.year')} <input
 										name="year"
 										type="number"
 										min="2000"
@@ -66,24 +68,24 @@
 										value={item.year ?? ''}
 									/></label
 								><label
-									>Ganti media <input
+									>{$t('form.changeMedia')} <input
 										name="media"
 										type="file"
 										accept="image/jpeg,image/png,application/pdf"
 									/></label
 								>
 								<div>
-									<button type="submit">Simpan</button><button
+									<button type="submit">{$t('common.save')}</button><button
 										class="delete"
 										type="submit"
 										formaction={`?/delete&id=${item.id}`}
 										onclick={(event) =>
 											confirmButtonAction(event, {
-												title: 'Hapus portfolio?',
+												title: get(t)('pf.delTitle'),
 												description: 'Karya ini akan dihapus permanen dari portfolio.',
 												confirmLabel: 'Hapus karya',
 												tone: 'danger'
-											})}><Trash2 size={13} /> Hapus</button
+											})}><Trash2 size={13} /> {$t('common.delete')}</button
 									>
 								</div>
 							</form>

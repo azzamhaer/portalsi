@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { t } from '$lib/i18n';
+  import { get } from 'svelte/store';
   import { apiEndpoints } from '$lib/api';
   import { toast } from '$lib/stores.svelte';
   import Icon from '$lib/components/Icon.svelte';
@@ -26,17 +28,17 @@
     items = items.filter((_, idx) => idx !== i);
   }
   async function uploadIcon(i: number, file: File) {
-    if (file.size > 500_000) { toast.error('Maks 500KB'); return; }
+    if (file.size > 500_000) { toast.error(get(t)('adm.pmMax500')); return; }
     const reader = new FileReader();
     reader.onload = () => { items[i].icon = String(reader.result); };
     reader.readAsDataURL(file);
   }
   async function save() {
-    if (items.some((x) => !x.code || !x.name)) { toast.error('Lengkapi code & nama'); return; }
+    if (items.some((x) => !x.code || !x.name)) { toast.error(get(t)('adm.pmCompleteCodeName')); return; }
     saving = true;
     try {
       await apiEndpoints.adminSavePaymentMethods(items);
-      toast.success('Metode pembayaran disimpan');
+      toast.success(get(t)('adm.pmSaved'));
     } catch (e: any) { toast.error(e.message); } finally { saving = false; }
   }
   function move(i: number, dir: number) {
@@ -48,21 +50,21 @@
   }
 </script>
 
-{#if loading}<div class="card text-center text-ink-500 py-10">Memuat…</div>
+{#if loading}<div class="card text-center text-ink-500 py-10">{$t('wl.loading')}</div>
 {:else}
   <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
-    <h3 class="font-semibold">Metode Pembayaran</h3>
+    <h3 class="font-semibold">{$t('adm.pmTitle')}</h3>
     <div class="flex gap-2">
-      <button on:click={add} class="btn-outline btn-sm"><Icon name="plus" size={14} /> Tambah</button>
-      <button on:click={save} disabled={saving} class="btn-primary btn-sm">{saving ? 'Menyimpan…' : 'Simpan Semua'}</button>
+      <button on:click={add} class="btn-outline btn-sm"><Icon name="plus" size={14} /> {$t('mk.add')}</button>
+      <button on:click={save} disabled={saving} class="btn-primary btn-sm">{saving ? $t('mk.saving') : $t('mk.saveAll')}</button>
     </div>
   </div>
 
-  <p class="text-xs text-ink-500 mb-4">Tetapkan opsi pembayaran yang ditampilkan ke pembeli di halaman <code>/payment-info</code> dan saat checkout. Grouping otomatis berdasarkan kolom <b>Kategori</b>.</p>
+  <p class="text-xs text-ink-500 mb-4">{$t('adm.pmDesc')}<code>/payment-info</code>{$t('lf.pmMid')}<b>{$t('nav.categories')}</b>.</p>
 
   {#if items.length === 0}
     <div class="card text-center text-ink-500 py-10">
-      Belum ada metode pembayaran. Klik <b>Tambah</b> untuk menambah.
+      Belum ada metode pembayaran. Klik <b>{$t('pf.add')}</b> untuk menambah.
     </div>
   {:else}
     <div class="space-y-3">
@@ -89,11 +91,11 @@
               <input type="file" accept="image/*" on:change={(e: any) => uploadIcon(i, e.target.files?.[0])} class="text-[10px] mt-1 w-16" />
             </div>
             <div class="grid sm:grid-cols-2 gap-3">
-              <div><label class="label">Kode (unik)</label><input bind:value={m.code} class="input font-mono text-xs" placeholder="BCAVA" /></div>
-              <div><label class="label">Nama metode</label><input bind:value={m.name} class="input" placeholder="BCA Virtual Account" /></div>
+              <div><label class="label">{$t('adm.pmCode')}</label><input bind:value={m.code} class="input font-mono text-xs" placeholder="BCAVA" /></div>
+              <div><label class="label">{$t('adm.pmName')}</label><input bind:value={m.name} class="input" placeholder="BCA Virtual Account" /></div>
               <div>
-                <label class="label">Kategori</label>
-                <input bind:value={m.group} class="input" list="pm-groups" placeholder="Virtual Account / E-Wallet / QRIS / dst" />
+                <label class="label">{$t('nav.categories')}</label>
+                <input bind:value={m.group} class="input" list="pm-groups" placeholder={$t('adm.pmCategoryPlaceholder')} />
                 <datalist id="pm-groups">
                   <option value="Virtual Account" />
                   <option value="E-Wallet" />
@@ -114,8 +116,8 @@
       {/each}
     </div>
     <div class="mt-4 flex gap-2 justify-end">
-      <button on:click={add} class="btn-outline btn-sm"><Icon name="plus" size={14} /> Tambah</button>
-      <button on:click={save} disabled={saving} class="btn-primary btn-sm">{saving ? 'Menyimpan…' : 'Simpan Semua'}</button>
+      <button on:click={add} class="btn-outline btn-sm"><Icon name="plus" size={14} /> {$t('mk.add')}</button>
+      <button on:click={save} disabled={saving} class="btn-primary btn-sm">{saving ? $t('mk.saving') : $t('mk.saveAll')}</button>
     </div>
   {/if}
 {/if}

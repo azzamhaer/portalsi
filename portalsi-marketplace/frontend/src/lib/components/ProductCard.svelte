@@ -1,5 +1,6 @@
 <script lang="ts">
   import Icon from './Icon.svelte';
+  import { t } from '$lib/i18n';
   import { fmtRp, calcDiscount } from '$lib/utils';
   import { wishlist } from '$lib/stores.svelte';
   import { apiEndpoints } from '$lib/api';
@@ -29,7 +30,7 @@
       <span class="absolute top-2 left-2 sm:top-3 sm:left-3 bg-app-primary text-app-pfg text-[10px] font-semibold px-2 py-1 rounded-full">−{disc}%</span>
     {/if}
     {#if isOutOfStock}
-      <span class="absolute bottom-2 left-2 sm:bottom-3 sm:left-3 rounded-full bg-red-600 px-2.5 py-1 text-[10px] font-semibold text-white">Stok habis</span>
+      <span class="absolute bottom-2 left-2 sm:bottom-3 sm:left-3 rounded-full bg-red-600 px-2.5 py-1 text-[10px] font-semibold text-white">{$t('pc.outOfStock')}</span>
     {/if}
     <button on:click={toggleWish}
             class="absolute top-2 right-2 sm:top-3 sm:right-3 w-8 h-8 grid place-items-center rounded-full backdrop-blur-md hover:scale-110 transition shadow-soft

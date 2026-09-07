@@ -1,0 +1,9 @@
+# Salin ke `.dev.vars` untuk pengembangan lokal (wrangler dev membaca file ini).
+# JANGAN commit .dev.vars yang berisi nilai asli.
+
+# API key Brevo (transactional). Ambil di Brevo → SMTP & API → API Keys.
+BREVO_API_KEY="xkeysib-xxxxxxxx"
+
+# Kunci acak panjang untuk menandatangani cookie sesi. Buat dengan:
+#   openssl rand -hex 32
+SESSION_SECRET="ganti-dengan-random-hex-64-karakter"

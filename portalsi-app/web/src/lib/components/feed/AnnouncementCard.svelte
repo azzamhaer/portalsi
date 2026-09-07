@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { ArrowUpRight, Megaphone, Pin } from '@lucide/svelte';
+	import { t } from '$lib/i18n';
 	import type { AnnouncementPreview } from '$lib/types/domain';
 
 	let { announcements }: { announcements: AnnouncementPreview[] } = $props();
@@ -38,7 +39,7 @@
 		<div
 			class="track"
 			role="region"
-			aria-label="Slider pengumuman"
+			aria-label={$t('ann.ariaSlider')}
 			bind:this={trackEl}
 			onscroll={onScroll}
 			onpointerdown={() => (holding = true)}
@@ -56,12 +57,12 @@
 						<h2>{item.title}</h2>
 						<p>{item.content}</p>
 					</div>
-					<a href="/announcements" aria-label="Lihat semua pengumuman"><ArrowUpRight size={20} /></a>
+					<a href="/announcements" aria-label={$t('ann.ariaSeeAll')}><ArrowUpRight size={20} /></a>
 				</article>
 			{/each}
 		</div>
 		{#if announcements.length > 1}
-			<div class="dots" aria-label="Navigasi pengumuman">
+			<div class="dots" aria-label={$t('ann.ariaNav')}>
 				{#each announcements as _, index (index)}
 					<button
 						type="button"

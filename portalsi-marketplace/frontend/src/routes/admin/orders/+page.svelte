@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { t } from '$lib/i18n';
+  import { get } from 'svelte/store';
   import { apiEndpoints } from '$lib/api';
   import { fmtRp, statusPill, ORDER_STATUS_LABEL } from '$lib/utils';
   import { toast } from '$lib/stores.svelte';
@@ -34,33 +36,33 @@
   function setPage(p: number) { page = p; load(); }
 
   async function changeStatus(o: any, newStatus: string) {
-    try { await apiEndpoints.adminUpdateOrder(o.id, { status: newStatus }); toast.success('Status diubah'); load(); }
+    try { await apiEndpoints.adminUpdateOrder(o.id, { status: newStatus }); toast.success(get(t)('adm.statusChanged')); load(); }
     catch (e: any) { toast.error(e.message); }
   }
 </script>
 
 <div class="card flex items-center gap-3 mb-4 flex-wrap">
-  <h3 class="font-semibold shrink-0">Semua Pesanan</h3>
+  <h3 class="font-semibold shrink-0">{$t('adm.allOrders')}</h3>
   <div class="flex items-center gap-2 flex-1 min-w-[200px] bg-ink-50 rounded-full px-3">
     <Icon name="search" size={14} class="text-ink-400" />
-    <input bind:value={search} on:input={onSearchInput} class="flex-1 bg-transparent text-sm py-2 outline-none" placeholder="Cari no order, no resi (JNE/JNT/dll), nama, email pembeli" />
+    <input bind:value={search} on:input={onSearchInput} class="flex-1 bg-transparent text-sm py-2 outline-none" placeholder={$t('adm.searchOrders')} />
     {#if search}
       <button on:click={() => { search = ''; page = 1; load(); }} class="text-ink-400 hover:text-ink-700"><Icon name="x" size={14} /></button>
     {/if}
   </div>
   <select bind:value={status} on:change={() => { page = 1; load(); }} class="input-sm input w-48">
-    <option value="">Semua status</option>
+    <option value="">{$t('adm.allStatus')}</option>
     {#each Object.entries(ORDER_STATUS_LABEL) as [k, v]}<option value={k}>{v}</option>{/each}
   </select>
 </div>
 
-{#if loading}<div class="card text-center text-ink-500 py-10">Memuat…</div>
+{#if loading}<div class="card text-center text-ink-500 py-10">{$t('wl.loading')}</div>
 {:else}
   <div class="card overflow-x-auto">
     <p class="text-xs text-ink-500 mb-3">{meta.total} pesanan · halaman {meta.current_page} dari {meta.last_page}</p>
     <table class="w-full text-sm min-w-[700px]">
       <thead class="text-xs text-ink-500 border-b border-ink-100">
-        <tr><th class="text-left py-2">Order</th><th class="text-left py-2">Resi</th><th class="text-left py-2">Pembeli</th><th class="text-left py-2">Total</th><th class="text-left py-2">Status</th><th class="text-left py-2">Aksi</th></tr>
+        <tr><th class="text-left py-2">{$t('sd.order')}</th><th class="text-left py-2">{$t('adm.tracking')}</th><th class="text-left py-2">{$t('adm.buyer')}</th><th class="text-left py-2">{$t('cart.total')}</th><th class="text-left py-2">{$t('sel.status')}</th><th class="text-left py-2">{$t('sp.action')}</th></tr>
       </thead>
       <tbody>
         {#each orders as o (o.id)}

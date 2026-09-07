@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Mail } from '@lucide/svelte';
+	import { t } from '$lib/i18n';
 	import AuthFields from '$lib/components/auth/AuthFields.svelte';
 	import AuthShell from '$lib/components/auth/AuthShell.svelte';
 	import type { PageProps } from './$types';
@@ -11,8 +12,8 @@
 <AuthShell mode="simple">
 	<div class="mail-icon"><Mail size={26} /></div>
 	<div class="heading">
-		<p class="eyebrow">Pemulihan akun</p>
-		<h1>Lupa kata sandi?</h1>
+		<p class="eyebrow">{$t('auth.accountRecovery')}</p>
+		<h1>{$t('auth.forgotPw')}</h1>
 		<p>
 			Masukkan email yang terikat ke akun. Kami akan mengirim tautan untuk membuat kata sandi baru.
 		</p>
@@ -27,7 +28,7 @@
 	<form method="POST">
 		<AuthFields>
 			<label
-				><span>Email akun</span><input
+				><span>{$t('auth.accountEmail')}</span><input
 					name="email"
 					type="email"
 					autocomplete="email"
@@ -36,10 +37,10 @@
 				/>{#if form?.errors?.email}<small class="field-error">{form.errors.email[0]}</small
 					>{/if}</label
 			>
-			<button class="auth-primary" type="submit">Kirim tautan pemulihan</button>
+			<button class="auth-primary" type="submit">{$t('auth.sendRecovery')}</button>
 		</AuthFields>
 	</form>
-	<p class="switch">Sudah ingat? <a href="/login">Kembali ke halaman masuk</a></p>
+	<p class="switch">{$t('auth.rememberedQ')}<a href="/login">{$t('auth.backToLogin')}</a></p>
 </AuthShell>
 
 <style>

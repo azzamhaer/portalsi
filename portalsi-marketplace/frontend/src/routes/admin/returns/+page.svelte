@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { t } from '$lib/i18n';
+  import { get } from 'svelte/store';
   import { apiEndpoints } from '$lib/api';
   import { toast, confirmDialog } from '$lib/stores.svelte';
   import { fmtRp } from '$lib/utils';
@@ -24,16 +26,16 @@
       tone: status === 'REFUNDED' ? 'default' : 'danger',
     });
     if (!ok) return;
-    try { await apiEndpoints.adminApproveReturn(id, status); toast.success('Status diperbarui'); load(); }
+    try { await apiEndpoints.adminApproveReturn(id, status); toast.success(get(t)('adm.statusUpdated')); load(); }
     catch (e: any) { toast.error(e.message); }
   }
 </script>
 
-<div class="card mb-4"><h3 class="font-semibold">Permintaan Pengembalian</h3></div>
+<div class="card mb-4"><h3 class="font-semibold">{$t('adm.returnRequests')}</h3></div>
 
-{#if loading}<div class="card text-center text-ink-500 py-10">Memuat…</div>
+{#if loading}<div class="card text-center text-ink-500 py-10">{$t('wl.loading')}</div>
 {:else if returns.length === 0}
-  <div class="card text-center py-12 text-ink-500">Tidak ada permintaan return.</div>
+  <div class="card text-center py-12 text-ink-500">{$t('adm.noReturns')}</div>
 {:else}
   <div class="space-y-3">
     {#each returns as r (r.id)}
@@ -45,12 +47,12 @@
           </div>
           <span class="pill-{r.status === 'PENDING' ? 'amber' : r.status === 'APPROVED' ? 'green' : r.status === 'REJECTED' ? 'red' : 'blue'}">{r.status}</span>
         </div>
-        <p class="text-sm mb-3"><b>Alasan:</b> {r.reason}</p>
+        <p class="text-sm mb-3"><b>{$t('adm.reason')}</b> {r.reason}</p>
         <p class="text-xs text-ink-500">Total order: {fmtRp(r.order?.total ?? 0)}</p>
         {#if r.status === 'PENDING'}
           <div class="flex gap-2 mt-3">
-            <button on:click={() => approve(r.id, 'REFUNDED')} class="btn-primary btn-sm">Refund ke Saldo</button>
-            <button on:click={() => approve(r.id, 'REJECTED')} class="btn-outline btn-sm">Tolak</button>
+            <button on:click={() => approve(r.id, 'REFUNDED')} class="btn-primary btn-sm">{$t('adm.refundToBalance')}</button>
+            <button on:click={() => approve(r.id, 'REJECTED')} class="btn-outline btn-sm">{$t('adm.reject')}</button>
           </div>
         {/if}
       </div>

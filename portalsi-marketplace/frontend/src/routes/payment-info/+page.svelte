@@ -1,5 +1,6 @@
 <script lang="ts">
   import Icon from '$lib/components/Icon.svelte';
+  import { t } from '$lib/i18n';
   import { fmtRp } from '$lib/utils';
   import { settings } from '$lib/stores.svelte';
   let { data } = $props();
@@ -21,9 +22,9 @@
 
 <div class="container-x py-12 max-w-5xl">
   <div class="text-center mb-14">
-    <div class="section-eyebrow mb-2">Pembayaran</div>
-    <h1 class="font-display text-4xl md:text-5xl font-bold tracking-tightest mb-4">Bayar dengan caramu.</h1>
-    <p class="text-lg text-ink-600 max-w-2xl mx-auto">{(data.methods ?? []).length}+ metode pembayaran. Aman, cepat, otomatis.</p>
+    <div class="section-eyebrow mb-2">{$t('pi.eyebrow')}</div>
+    <h1 class="font-display text-4xl md:text-5xl font-bold tracking-tightest mb-4">{$t('pi.heading')}</h1>
+    <p class="text-lg text-ink-600 max-w-2xl mx-auto">{(data.methods ?? []).length}{$t('pi.methodsSuffix')}</p>
     {#if settings.paymentIntro}
       <div class="mt-6 max-w-3xl mx-auto text-left text-sm text-ink-700 bg-ink-50 rounded-2xl p-5 whitespace-pre-line">{settings.paymentIntro}</div>
     {/if}
@@ -47,7 +48,7 @@
             {/if}
             <div class="flex-1 min-w-0">
               <b class="text-sm block truncate">{m.name}</b>
-              <small class="text-xs text-ink-500">Biaya: {m.fee_pct ? m.fee_pct + '%' : fmtRp(m.fee_flat)}</small>
+              <small class="text-xs text-ink-500">{$t('pi.fee')} {m.fee_pct ? m.fee_pct + '%' : fmtRp(m.fee_flat)}</small>
             </div>
           </div>
         {/each}
@@ -58,15 +59,15 @@
   <section class="mt-16 grid md:grid-cols-3 gap-6 py-12 border-t border-ink-100">
     <div class="flex gap-4">
       <Icon name="shield-check" size={28} class="text-emerald-600 shrink-0" />
-      <div><b class="block mb-1">Enkripsi End-to-End</b><p class="text-sm text-ink-500">TLS 1.3 dan signature HMAC-SHA256.</p></div>
+      <div><b class="block mb-1">{$t('pi.e2e')}</b><p class="text-sm text-ink-500">{$t('pi.e2eDesc')}</p></div>
     </div>
     <div class="flex gap-4">
       <Icon name="clock" size={28} class="text-blue-600 shrink-0" />
-      <div><b class="block mb-1">Konfirmasi Real-Time</b><p class="text-sm text-ink-500">Status terupdate dalam hitungan detik.</p></div>
+      <div><b class="block mb-1">{$t('pi.realtime')}</b><p class="text-sm text-ink-500">{$t('pi.realtimeDesc')}</p></div>
     </div>
     <div class="flex gap-4">
       <Icon name="landmark" size={28} class="text-amber-600 shrink-0" />
-      <div><b class="block mb-1">Escrow System</b><p class="text-sm text-ink-500">Dana ditahan sampai barang Anda terima.</p></div>
+      <div><b class="block mb-1">{$t('pi.escrow')}</b><p class="text-sm text-ink-500">{$t('pi.escrowDesc')}</p></div>
     </div>
   </section>
 </div>

@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { env } from '$env/dynamic/public';
+	import { get } from 'svelte/store';
+	import { t } from '$lib/i18n';
 	import { untrack } from 'svelte';
 	import { replaceState } from '$app/navigation';
 	import { Hash, LoaderCircle, Play, Search as SearchIcon, X } from '@lucide/svelte';
@@ -19,7 +21,7 @@
 		{ id: 'all', label: 'Semua' },
 		{ id: 'users', label: 'Akun' },
 		{ id: 'tags', label: 'Tag' },
-		{ id: 'posts', label: 'Konten' }
+		{ id: 'posts', label: get(t)('srch.content') }
 	];
 
 	let query = $state(untrack(() => data.initialQuery));
@@ -88,8 +90,8 @@
 			bind:this={inputEl}
 			bind:value={query}
 			oninput={syncUrl}
-			placeholder="Cari akun, #tag, atau konten…"
-			aria-label="Kotak pencarian"
+			placeholder={$t('srch.ph')}
+			aria-label={$t('srch.boxAria')}
 			autocomplete="off"
 		/>
 		{#if query}<button
@@ -99,11 +101,11 @@
 					syncUrl();
 					inputEl?.focus();
 				}}
-				aria-label="Bersihkan"><X size={17} /></button
+				aria-label={$t('srch.clear')}><X size={17} /></button
 			>{/if}
 	</div>
 
-	<nav class="search-tabs" aria-label="Jenis pencarian">
+	<nav class="search-tabs" aria-label={$t('srch.typeAria')}>
 		{#each tabs as t (t.id)}
 			<button
 				class:active={tab === t.id}
@@ -118,7 +120,7 @@
 	{#if query.trim().length < 1}
 		<div class="search-hint">
 			<SearchIcon size={30} />
-			<p>Cari orang, tagar, atau kata dalam postingan.</p>
+			<p>{$t('srch.hint')}</p>
 		</div>
 	{:else if loading && !hasAny}
 		<div class="search-hint"><LoaderCircle class="spin" size={26} /></div>
@@ -128,7 +130,7 @@
 		<div class="search-results">
 			{#if showUsers && results.users.length > 0}
 				<section>
-					{#if tab === 'all'}<h2>Akun</h2>{/if}
+					{#if tab === 'all'}<h2>{$t('srch.accounts')}</h2>{/if}
 					<ul class="user-list">
 						{#each results.users as u (u.user_id)}
 							<li>
@@ -154,7 +156,7 @@
 
 			{#if showTags && results.hashtags.length > 0}
 				<section>
-					{#if tab === 'all'}<h2>Tag</h2>{/if}
+					{#if tab === 'all'}<h2>{$t('srch.tag')}</h2>{/if}
 					<ul class="tag-list">
 						{#each results.hashtags as t (t.tag)}
 							<li>
@@ -173,7 +175,7 @@
 
 			{#if showPosts && results.posts.length > 0}
 				<section>
-					{#if tab === 'all'}<h2>Konten</h2>{/if}
+					{#if tab === 'all'}<h2>{$t('srch.content')}</h2>{/if}
 					<div class="post-grid">
 						{#each results.posts as p (p.post_id)}
 							<a href={`/posts/${p.post_id}`} aria-label={`Postingan @${p.user.username}`}>

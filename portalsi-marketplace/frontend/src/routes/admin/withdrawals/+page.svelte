@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { t } from '$lib/i18n';
+  import { get } from 'svelte/store';
   import Icon from '$lib/components/Icon.svelte';
   import { apiEndpoints } from '$lib/api';
   import { toast } from '$lib/stores.svelte';
@@ -24,7 +26,7 @@
   async function process() {
     try {
       await apiEndpoints.adminProcessWithdraw(selected.display_id ?? selected.id, actionStatus, actionNote || undefined);
-      toast.success('Status diperbarui');
+      toast.success(get(t)('adm.statusUpdated'));
       selected = null; actionNote = '';
       await load();
     } catch (e: any) { toast.error(e.message); }
@@ -46,28 +48,28 @@
 <div class="space-y-5">
   <div class="card">
     <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
-      <h3 class="font-semibold">Permintaan Penarikan Dana</h3>
+      <h3 class="font-semibold">{$t('aw.title')}</h3>
       <select bind:value={filter} class="input !py-1.5 !text-xs max-w-[150px]">
-        <option value="">Semua status</option>
-        <option value="PENDING">Menunggu</option>
-        <option value="APPROVED">Disetujui</option>
-        <option value="PAID">Dibayar</option>
-        <option value="REJECTED">Ditolak</option>
+        <option value="">{$t('adm.allStatus')}</option>
+        <option value="PENDING">{$t('aw.pending')}</option>
+        <option value="APPROVED">{$t('aw.approved')}</option>
+        <option value="PAID">{$t('aw.paid')}</option>
+        <option value="REJECTED">{$t('aw.rejected')}</option>
       </select>
     </div>
 
-    {#if loading}<div class="text-center py-10 text-ink-500">Memuat…</div>
+    {#if loading}<div class="text-center py-10 text-ink-500">{$t('wl.loading')}</div>
     {:else if list.data.length === 0}
-      <div class="text-center py-10 text-ink-500">Tidak ada permintaan.</div>
+      <div class="text-center py-10 text-ink-500">{$t('aw.none')}</div>
     {:else}
       <div class="overflow-x-auto -mx-4 sm:mx-0">
         <table class="w-full text-sm min-w-[700px]">
           <thead class="text-xs text-ink-500 border-b border-ink-100">
             <tr>
-              <th class="text-left py-2 font-medium px-4 sm:px-0">Tanggal</th>
-              <th class="text-left py-2 font-medium">Pemohon</th>
-              <th class="text-left py-2 font-medium">Jumlah</th>
-              <th class="text-left py-2 font-medium">Rekening Tujuan</th>
+              <th class="text-left py-2 font-medium px-4 sm:px-0">{$t('sw.date')}</th>
+              <th class="text-left py-2 font-medium">{$t('aw.applicant')}</th>
+              <th class="text-left py-2 font-medium">{$t('sw.amount')}</th>
+              <th class="text-left py-2 font-medium">{$t('aw.destAccount')}</th>
               <th class="text-left py-2 font-medium">Status</th>
               <th class="text-right py-2 font-medium px-4 sm:px-0">Aksi</th>
             </tr>
@@ -116,17 +118,17 @@
           <label class="label">Status baru</label>
           <select bind:value={actionStatus} class="input">
             <option value="APPROVED">Disetujui (siap transfer)</option>
-            <option value="PAID">Dibayar (sudah ditransfer)</option>
+            <option value="PAID">{$t('lf.wPaidStatus')}</option>
             <option value="REJECTED">Ditolak</option>
           </select>
         </div>
         <div>
           <label class="label">Catatan (opsional)</label>
-          <textarea bind:value={actionNote} class="input" rows={2} placeholder="Contoh: ditransfer 14:30 via BCA"></textarea>
+          <textarea bind:value={actionNote} class="input" rows={2} placeholder={$t('lf.wNotePh')}></textarea>
         </div>
         <div class="flex gap-2 pt-2">
-          <button on:click={() => selected = null} class="btn-outline btn-md flex-1">Batal</button>
-          <button on:click={process} class="btn-primary btn-md flex-1">Simpan</button>
+          <button on:click={() => selected = null} class="btn-outline btn-md flex-1">{$t('od.cancel')}</button>
+          <button on:click={process} class="btn-primary btn-md flex-1">{$t('pf.save')}</button>
         </div>
       </div>
     </div>

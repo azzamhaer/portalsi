@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { env } from '$env/dynamic/public';
+	import { get } from 'svelte/store';
+	import { t } from '$lib/i18n';
 	import { CornerDownRight, Heart, LoaderCircle, Send, X } from '@lucide/svelte';
 	import { untrack } from 'svelte';
 	import { clientRequest } from '$lib/api/client';
@@ -228,9 +230,9 @@
 
 	async function remove(id: number, reply: boolean) {
 		const ok = await confirmAction({
-			title: 'Hapus komentar?',
-			description: 'Komentar ini akan dihapus dari percakapan.',
-			confirmLabel: 'Hapus',
+			title: get(t)('cmt.delTitle'),
+			description: get(t)('cmt.delMsg'),
+			confirmLabel: get(t)('common.delete'),
 			tone: 'danger'
 		});
 		if (!ok) return;
@@ -253,19 +255,19 @@
 		class="comments-sheet"
 		role="dialog"
 		aria-modal="true"
-		aria-label="Komentar"
+		aria-label={$t('post.ariaComment')}
 		onclick={(e) => e.stopPropagation()}
 	>
 		<header>
 			<strong>Komentar{#if totalCount > 0}<span>{totalCount}</span>{/if}</strong>
-			<button class="close-btn" onclick={onClose} aria-label="Tutup komentar"><X size={20} /></button>
+			<button class="close-btn" onclick={onClose} aria-label={$t('cmt.ariaClose')}><X size={20} /></button>
 		</header>
 
 		<div class="comments-list">
 			{#if loading}
 				<div class="c-state"><LoaderCircle class="spin" size={22} /></div>
 			{:else if comments.length === 0}
-				<div class="c-state">Belum ada komentar. Jadilah yang pertama!</div>
+				<div class="c-state">{$t('cmt.empty')}</div>
 			{:else}
 				{#each comments as item (item.id)}
 					<article class="c-item">
@@ -279,15 +281,15 @@
 							<footer>
 								<time>{item.createdLabel}</time>
 								{#if item.likesCount > 0}<span>{item.likesCount} suka</span>{/if}
-								<button onclick={() => startReply(item.id, item.name)}>Balas</button>
+								<button onclick={() => startReply(item.id, item.name)}>{$t('cmt.reply')}</button>
 								{#if item.userId === currentUserId}
-									<button onclick={() => startEdit(item, false)}>Edit</button>
-									<button onclick={() => remove(item.id, false)}>Hapus</button>
+									<button onclick={() => startEdit(item, false)}>{$t('common.edit')}</button>
+									<button onclick={() => remove(item.id, false)}>{$t('common.delete')}</button>
 								{/if}
 							</footer>
 							{#if item.replies.length > 0}
 								<button class="show-replies" onclick={() => (item.showReplies = !item.showReplies)}>
-									<span></span>{item.showReplies ? 'Sembunyikan balasan' : `Lihat ${item.replies.length} balasan`}
+									<span></span>{item.showReplies ? get(t)('cmt.hideReplies') : `Lihat ${item.replies.length} balasan`}
 								</button>
 							{/if}
 							{#if item.showReplies}
@@ -303,10 +305,10 @@
 											<footer>
 												<time>{reply.createdLabel}</time>
 												{#if reply.likesCount > 0}<span>{reply.likesCount} suka</span>{/if}
-												<button onclick={() => startReply(item.id, reply.name, reply.username)}>Balas</button>
+												<button onclick={() => startReply(item.id, reply.name, reply.username)}>{$t('cmt.reply')}</button>
 												{#if reply.userId === currentUserId}
-													<button onclick={() => startEdit(reply, true)}>Edit</button>
-													<button onclick={() => remove(reply.id, true)}>Hapus</button>
+													<button onclick={() => startEdit(reply, true)}>{$t('common.edit')}</button>
+													<button onclick={() => remove(reply.id, true)}>{$t('common.delete')}</button>
 												{/if}
 											</footer>
 										</div>
@@ -314,7 +316,7 @@
 											class="c-like"
 											class:liked={reply.isLiked}
 											onclick={() => toggleLike(reply)}
-											aria-label={reply.isLiked ? 'Batal suka' : 'Suka'}
+											aria-label={reply.isLiked ? get(t)('cmt.unlike') : 'Suka'}
 										>
 											<Heart size={14} fill={reply.isLiked ? 'currentColor' : 'none'} />
 										</button>
@@ -326,7 +328,7 @@
 							class="c-like"
 							class:liked={item.isLiked}
 							onclick={() => toggleLike(item)}
-							aria-label={item.isLiked ? 'Batal suka' : 'Suka'}
+							aria-label={item.isLiked ? get(t)('cmt.unlike') : 'Suka'}
 						>
 							<Heart size={15} fill={item.isLiked ? 'currentColor' : 'none'} />
 						</button>
@@ -337,8 +339,8 @@
 
 		{#if replyTo || editing}
 			<div class="compose-hint">
-				{editing ? 'Mengedit komentar' : `Membalas ${replyTo?.name}`}
-				<button onclick={cancelCompose} aria-label="Batal"><X size={14} /></button>
+				{editing ? get(t)('cmt.editing') : `Membalas ${replyTo?.name}`}
+				<button onclick={cancelCompose} aria-label={$t('common.cancel')}><X size={14} /></button>
 			</div>
 		{/if}
 		<form
@@ -349,7 +351,7 @@
 			}}
 		>
 			{#if !editing}
-				<button type="button" class="gif-btn" onclick={() => (gifOpen = true)} aria-label="Kirim GIF"
+				<button type="button" class="gif-btn" onclick={() => (gifOpen = true)} aria-label={$t('cmt.sendGif')}
 					>GIF</button
 				>
 			{/if}
@@ -357,10 +359,10 @@
 				bind:this={inputEl}
 				bind:value={draft}
 				maxlength="500"
-				placeholder={editing ? 'Edit komentar…' : replyTo ? 'Tulis balasan…' : 'Tambahkan komentar…'}
-				aria-label="Tulis komentar"
+				placeholder={editing ? get(t)('cmt.phEdit') : replyTo ? get(t)('cmt.phReply') : get(t)('cmt.phAdd')}
+				aria-label={$t('cmt.ariaWrite')}
 			/>
-			<button type="submit" disabled={!draft.trim() || sending} aria-label="Kirim">
+			<button type="submit" disabled={!draft.trim() || sending} aria-label={$t('common.send')}>
 				{#if sending}<LoaderCircle class="spin" size={18} />{:else}<Send size={18} />{/if}
 			</button>
 		</form>

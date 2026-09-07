@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { t } from '$lib/i18n';
   import Icon from '$lib/components/Icon.svelte';
   import SellerSidebar from '$lib/components/SellerSidebar.svelte';
   import { apiEndpoints, getToken } from '$lib/api';
@@ -34,33 +35,33 @@
   });
 </script>
 
-<svelte:head><title>Chat Pembeli</title></svelte:head>
+<svelte:head><title>{$t('sch.buyerChats')}</title></svelte:head>
 
 <div class="container-x py-6 sm:py-8">
-  <h1 class="section-title mb-6 sm:mb-8">Seller Center</h1>
+  <h1 class="section-title mb-6 sm:mb-8">{$t('nav.sellerCenter')}</h1>
   <div class="grid lg:grid-cols-[230px_1fr] gap-6">
     <SellerSidebar />
     <section class="min-w-0">
       <div class="mb-5">
-        <div class="eyebrow">Inbox</div>
-        <h2 class="font-display text-3xl font-bold tracking-tightest">Chat Pembeli</h2>
-        <p class="text-sm text-ink-500 mt-1">Kelola pertanyaan pembeli tanpa keluar dari dashboard seller.</p>
+        <div class="eyebrow">{$t('sch.inbox')}</div>
+        <h2 class="font-display text-3xl font-bold tracking-tightest">{$t('sch.buyerChats')}</h2>
+        <p class="text-sm text-ink-500 mt-1">{$t('sch.subtitle')}</p>
       </div>
 
       {#if loading}
-        <div class="card text-center text-ink-500 py-10">Memuat...</div>
+        <div class="card text-center text-ink-500 py-10">{$t('ch.loading')}</div>
       {:else if error}
         <div class="card text-center py-12">
           <Icon name="message-circle-warning" size={42} class="mx-auto text-amber-500 mb-3" />
-          <h3 class="font-semibold mb-1">Chat belum bisa dimuat</h3>
+          <h3 class="font-semibold mb-1">{$t('ch.cantLoad')}</h3>
           <p class="text-sm text-ink-500 mb-4">{error}</p>
-          <button type="button" on:click={load} class="btn-outline btn-sm">Coba lagi</button>
+          <button type="button" on:click={load} class="btn-outline btn-sm">{$t('ch.retry')}</button>
         </div>
       {:else if threads.length === 0}
         <div class="card text-center py-16">
           <Icon name="message-circle" size={48} class="mx-auto text-ink-300 mb-3" />
-          <h3 class="font-semibold mb-1">Belum ada percakapan</h3>
-          <p class="text-sm text-ink-500">Chat pembeli akan tampil di sini ketika mereka mengirim pertanyaan.</p>
+          <h3 class="font-semibold mb-1">{$t('ch.empty')}</h3>
+          <p class="text-sm text-ink-500">{$t('sch.emptyDesc')}</p>
         </div>
       {:else}
         <div class="card !p-2">

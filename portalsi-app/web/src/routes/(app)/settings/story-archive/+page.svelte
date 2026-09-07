@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { Music2, Play } from '@lucide/svelte';
+	import { get } from 'svelte/store';
+	import { t } from '$lib/i18n';
 	import { untrack } from 'svelte';
 	import { page } from '$app/state';
 	import SectionPage from '$lib/components/layout/SectionPage.svelte';
@@ -39,20 +41,20 @@
 			>
 				{#if story.thumbUrl}<img
 						src={story.thumbUrl}
-						alt={story.caption || 'Cerita tersimpan'}
+						alt={story.caption || get(t)('sarch.savedStories')}
 					/>{:else}<div><Music2 size={28} /></div>{/if}{#if story.type === 'video'}<Play
 						class="type"
 						size={18}
 						fill="currentColor"
 					/>{:else if story.type === 'music'}<Music2 class="type" size={16} />{/if}
-				<p>{story.caption || 'Tanpa caption'}</p>
+				<p>{story.caption || get(t)('sarch.noCaption')}</p>
 			</button>{/each}
 	</section>
-	{#if stories.length === 0}<p class="empty surface">Belum ada cerita di arsip.</p>{/if}
+	{#if stories.length === 0}<p class="empty surface">{$t('sarch.empty')}</p>{/if}
 	<nav>
-		{#if data.page > 1}<a href={`/settings/story-archive?page=${data.page - 1}`}>Sebelumnya</a
+		{#if data.page > 1}<a href={`/settings/story-archive?page=${data.page - 1}`}>{$t('pd.ariaPrev')}</a
 			>{/if}<span>Halaman {data.page}</span>{#if data.hasNext}<a
-				href={`/settings/story-archive?page=${data.page + 1}`}>Berikutnya</a
+				href={`/settings/story-archive?page=${data.page + 1}`}>{$t('pd.ariaNext')}</a
 			>{/if}
 	</nav></SectionPage
 >

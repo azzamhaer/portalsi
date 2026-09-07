@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { env } from '$env/dynamic/public';
+	import { get } from 'svelte/store';
+	import { t } from '$lib/i18n';
 	import {
 		Copy,
 		FileText,
@@ -87,7 +89,7 @@
 				const confirmed = await confirmAction({
 					title: `Berhenti mengikuti ${data.profile.fullName}?`,
 					description: `Anda tetap dapat mengikuti kembali kapan saja.`,
-					confirmLabel: 'Berhenti mengikuti',
+					confirmLabel: get(t)('uu.unfollow'),
 					tone: 'danger'
 				});
 				if (!confirmed) return;
@@ -101,9 +103,9 @@
 				const confirmed = await confirmAction({
 					title: `Ikuti ${data.profile.fullName}?`,
 					description: data.profile.isPrivate
-						? 'Akun ini privat. Permintaan Anda akan menunggu persetujuan.'
+						? get(t)('uu.privateReq')
 						: `Postingan ${data.profile.fullName} akan mulai muncul di beranda Anda.`,
-					confirmLabel: data.profile.isPrivate ? 'Kirim permintaan' : 'Ya, ikuti'
+					confirmLabel: data.profile.isPrivate ? get(t)('uu.sendRequest') : get(t)('uu.yesFollow')
 				});
 				if (!confirmed) return;
 				const response = await clientRequest<{ status?: string; message?: string }>(
@@ -118,7 +120,7 @@
 				// Sudah follow / permintaan sudah ada — sinkronkan state diam-diam.
 				if (data.profile.isPrivate) pending = true;
 				else following = true;
-			} else statusMessage = 'Perubahan belum dapat disimpan.';
+			} else statusMessage = get(t)('uu.saveFailed');
 		} finally {
 			connectionBusy = false;
 		}
@@ -140,7 +142,7 @@
 			);
 			nextPage = (response.pagination?.current_page ?? nextPage) + 1;
 		} catch {
-			statusMessage = 'Postingan berikutnya belum dapat dimuat.';
+			statusMessage = get(t)('home.loadMoreFailed');
 		} finally {
 			loadingPosts = false;
 		}
@@ -189,11 +191,11 @@
 						disabled={!data.canFollow || connectionBusy}
 					>
 						{#if following}<UserCheck size={18} /> Diikuti{:else}<UserPlus size={18} />
-							{pending ? 'Diminta' : data.followsYou ? 'Ikuti balik' : 'Ikuti'}{/if}
+							{pending ? get(t)('uu.requested') : data.followsYou ? get(t)('rail.followBack') : 'Ikuti'}{/if}
 					</button>
 					<a
 						class="icon-action"
-						aria-label="Kirim pesan"
+						aria-label={$t('chat.ariaSend')}
 						href={`/messages/direct/${data.profile.id}?name=${encodeURIComponent(data.profile.fullName)}&username=${encodeURIComponent(data.profile.username)}${data.profile.avatarUrl ? `&avatar=${encodeURIComponent(data.profile.avatarUrl)}` : ''}`}
 						><MessageCircle size={19} /></a
 					>
@@ -202,7 +204,7 @@
 						><UserPlus size={18} /> Ikuti</a
 					>
 				{/if}
-				<button class="icon-action" onclick={shareProfile} aria-label="Bagikan profil"
+				<button class="icon-action" onclick={shareProfile} aria-label={$t('prof.ariaShare')}
 					><Share2 size={18} /></button
 				>
 			</div>
@@ -217,7 +219,7 @@
 						class="dot">·</span
 					><span class="private-tag"><Lock size={12} /> Private</span>{/if}
 			</p>
-			<p class="bio"><MentionText text={data.profile.bio || 'Belum ada bio.'} /></p>
+			<p class="bio"><MentionText text={data.profile.bio || get(t)('prof.noBio')} /></p>
 			<div class="stats">
 				<span><strong>{data.profile.postsCount.toLocaleString('id-ID')}</strong> Postingan</span>
 				<a href={`/u/${data.profile.username}/followers`}
@@ -233,7 +235,7 @@
 			{#if statusMessage}<p class="status" aria-live="polite">{statusMessage}</p>{/if}
 		</div>
 	</section>
-	<nav aria-label="Konten profil">
+	<nav aria-label={$t('prof.contentAria')}>
 		<button class:active={activeTab === 'posts'} onclick={() => selectTab('posts')}
 			><Grid3X3 size={17} /> Postingan</button
 		>
@@ -259,7 +261,7 @@
 								if (!post.isVideo && img.src !== post.mediaUrl) img.src = post.mediaUrl;
 								else if (!img.src.endsWith('/assets/logo.png')) img.src = '/assets/logo.png';
 							}}
-						/>{/if}{#if post.isVideo}<span aria-label="Video"><Play size={16} fill="currentColor" /></span>{:else if post.isMultiple}<span aria-label="Beberapa foto"><Copy size={14} /></span>{/if}{#if post.isModerated}<span class="mod-badge"><ShieldAlert size={12} /> Dimoderasi</span>{/if}</a
+						/>{/if}{#if post.isVideo}<span aria-label={$t('media.video')}><Play size={16} fill="currentColor" /></span>{:else if post.isMultiple}<span aria-label={$t('media.photos')}><Copy size={14} /></span>{/if}{#if post.isModerated}<span class="mod-badge"><ShieldAlert size={12} /> Dimoderasi</span>{/if}</a
 				>{/each}
 		</section>
 		<InfiniteScrollTrigger
@@ -272,8 +274,8 @@
 	{:else if activeTab === 'posts'}
 		<section class="empty surface">
 			{#if data.profile.isPrivate}<Lock size={24} />{:else}<Image size={24} />{/if}<strong
-				>{data.profile.isPrivate ? 'Akun ini privat' : 'Belum ada postingan'}</strong
-			><span>{data.profile.message || 'Postingan akan muncul di sini.'}</span>
+				>{data.profile.isPrivate ? get(t)('uu.private') : get(t)('prof.noPosts')}</strong
+			><span>{data.profile.message || get(t)('uu.postsHere')}</span>
 		</section>
 	{:else if data.portfolio.length > 0}
 		<section class="portfolio-grid">
@@ -293,15 +295,15 @@
 					<span class="card-body">
 						<small>{portfolioLabels[item.aspect]} · {item.year || '—'}</small>
 						<span class="card-title">{item.title}</span>
-						<span class="card-desc">{item.description || 'Tanpa deskripsi.'}</span>
+						<span class="card-desc">{item.description || get(t)('pf.noDesc')}</span>
 					</span>
 				</button>
 			{/each}
 		</section>
 	{:else}
 		<section class="empty surface">
-			<FolderKanban size={24} /><strong>Belum ada portfolio</strong><span
-				>Karya dan pencapaian pengguna ini akan muncul di sini.</span
+			<FolderKanban size={24} /><strong>{$t('uu.noPortfolio')}</strong><span
+				>{$t('uu.noPortfolioSub')}</span
 			>
 		</section>
 	{/if}
@@ -319,7 +321,7 @@
 			aria-label={selectedPortfolio.title}
 			onclick={(e) => e.stopPropagation()}
 		>
-			<button class="dialog-close" onclick={() => (selectedPortfolio = null)} aria-label="Tutup"
+			<button class="dialog-close" onclick={() => (selectedPortfolio = null)} aria-label={$t('common.close')}
 				>×</button
 			>
 			{#if selectedPortfolio.mediaUrl && selectedPortfolio.mediaUrl.toLowerCase().includes('.pdf')}
@@ -327,7 +329,7 @@
 					class="dialog-media pdf"
 					href={selectedPortfolio.mediaUrl}
 					target="_blank"
-					rel="noreferrer"><FileText size={34} /><span>Buka PDF</span></a
+					rel="noreferrer"><FileText size={34} /><span>{$t('pf.openPdf')}</span></a
 				>
 			{:else if selectedPortfolio.mediaUrl}
 				<img class="dialog-media" src={selectedPortfolio.mediaUrl} alt={selectedPortfolio.title} />
@@ -335,7 +337,7 @@
 			<div class="dialog-body">
 				<small>{portfolioLabels[selectedPortfolio.aspect]} · {selectedPortfolio.year || '—'}</small>
 				<h2>{selectedPortfolio.title}</h2>
-				<p>{selectedPortfolio.description || 'Tanpa deskripsi.'}</p>
+				<p>{selectedPortfolio.description || get(t)('pf.noDesc')}</p>
 				{#if selectedPortfolio.signed_by}<small class="signature"
 						>Signed by {selectedPortfolio.signed_by.full_name ||
 							`@${selectedPortfolio.signed_by.username}`}{selectedPortfolio.signed_by.role ===

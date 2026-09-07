@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { t } from '$lib/i18n';
+  import { get } from 'svelte/store';
   import SellerSidebar from '$lib/components/SellerSidebar.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import { fmtRp, statusPill, ORDER_STATUS_LABEL } from '$lib/utils';
@@ -61,9 +63,9 @@
 
   async function ship(id: number) {
     const ok = await confirmDialog.ask({
-      title: 'Kirim pesanan?',
-      message: 'Status akan berubah dari Diproses ke Dikirim. Setelah itu pesanan hanya bisa selesai saat buyer konfirmasi diterima.',
-      confirmText: 'Kirim',
+      title: get(t)('so.shipQ'),
+      message: get(t)('so.shipMsg'),
+      confirmText: get(t)('so.ship'),
     });
     if (!ok) return;
     try {
@@ -77,14 +79,14 @@
 
   async function processOrder(id: number) {
     const ok = await confirmDialog.ask({
-      title: 'Proses pesanan?',
-      message: 'Status pesanan akan berubah menjadi Diproses. Setelah itu pesanan bisa dikirim.',
-      confirmText: 'Proses',
+      title: get(t)('so.processQ'),
+      message: get(t)('so.processMsg'),
+      confirmText: get(t)('so.process'),
     });
     if (!ok) return;
     try {
       await apiEndpoints.sellerProcessOrder(id);
-      toast.success('Pesanan siap diproses');
+      toast.success(get(t)('so.readyProcessed'));
       load();
     } catch (e: any) {
       toast.error(e.message || 'Gagal memproses pesanan');
@@ -93,14 +95,14 @@
 
   async function arrive(id: number) {
     const ok = await confirmDialog.ask({
-      title: 'Pesanan telah sampai?',
-      message: 'Buyer baru bisa mengonfirmasi diterima setelah status ini diubah menjadi Telah Sampai.',
-      confirmText: 'Tandai sampai',
+      title: get(t)('so.arrivedQ'),
+      message: get(t)('so.arrivedMsg'),
+      confirmText: get(t)('so.markArrived'),
     });
     if (!ok) return;
     try {
       await apiEndpoints.sellerArriveOrder(id);
-      toast.success('Pesanan ditandai telah sampai');
+      toast.success(get(t)('so.markedArrived'));
       load();
     } catch (e: any) {
       toast.error(e.message || 'Gagal mengubah status pesanan');
@@ -111,25 +113,25 @@
 <svelte:head><title>Pesanan Masuk - MPSI Seller</title></svelte:head>
 
 <div class="container-x py-8">
-  <h1 class="section-title mb-8">Pesanan Masuk</h1>
+  <h1 class="section-title mb-8">{$t('so.incoming')}</h1>
   <div class="grid lg:grid-cols-[230px_1fr] gap-6">
     <SellerSidebar />
     <div class="space-y-5">
       <div class="card !p-3">
         <div class="flex items-center gap-2 rounded-2xl bg-ink-50 px-3">
           <Icon name="search" size={14} class="text-ink-400" />
-          <input bind:value={search} on:input={onSearchInput} class="flex-1 bg-transparent py-2 text-sm outline-none" placeholder="Cari pesanan, buyer, produk, resi" />
+          <input bind:value={search} on:input={onSearchInput} class="flex-1 bg-transparent py-2 text-sm outline-none" placeholder={$t('so.searchOrder')} />
           {#if search}
             <button type="button" on:click={() => { search = ''; load(); }} class="text-ink-400 hover:text-ink-700"><Icon name="x" size={14} /></button>
           {/if}
         </div>
       </div>
       {#if loading}
-        <div class="card text-center text-ink-500 py-12">Memuat...</div>
+        <div class="card text-center text-ink-500 py-12">{$t('ch.loading')}</div>
       {:else if items.length === 0}
         <div class="card text-center py-12 text-ink-500">
           <Icon name="package-open" size={48} class="mx-auto text-ink-300 mb-3" />
-          <p>Belum ada pesanan.</p>
+          <p>{$t('so.noOrders')}</p>
         </div>
       {:else}
         <div class="space-y-4">
@@ -178,26 +180,26 @@
 
               {#if order?.notes}
                 <div class="mt-4 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                  <b>Catatan buyer:</b> {order.notes}
+                  <b>{$t('so.buyerNote')}</b> {order.notes}
                 </div>
               {/if}
 
               <details class="mt-4 md:hidden">
-                <summary class="cursor-pointer rounded-xl bg-ink-50 px-3 py-2 text-sm font-medium">Detail buyer, alamat, dan pengiriman</summary>
+                <summary class="cursor-pointer rounded-xl bg-ink-50 px-3 py-2 text-sm font-medium">{$t('so.buyerDetails')}</summary>
                 <div class="grid gap-4 py-4">
                   <section>
-                    <div class="mb-1 text-xs font-semibold uppercase tracking-wider text-ink-400">Akun pembeli</div>
+                    <div class="mb-1 text-xs font-semibold uppercase tracking-wider text-ink-400">{$t('so.buyerAccount')}</div>
                     <div class="text-sm font-semibold">{buyer?.name ?? address?.recipient ?? '-'}</div>
                     <div class="mt-1 text-xs text-ink-500">{buyer?.email ?? '-'}</div>
                     <div class="text-xs text-ink-500">{buyer?.phone || address?.phone || '-'}</div>
                   </section>
                   <section>
-                    <div class="mb-1 text-xs font-semibold uppercase tracking-wider text-ink-400">Alamat pengiriman</div>
+                    <div class="mb-1 text-xs font-semibold uppercase tracking-wider text-ink-400">{$t('so.shippingAddr')}</div>
                     <div class="text-sm font-semibold">{address?.recipient ?? '-'}</div>
                     <div class="mt-1 text-xs leading-relaxed text-ink-600">{addressText(address)}</div>
                   </section>
                   <section>
-                    <div class="mb-1 text-xs font-semibold uppercase tracking-wider text-ink-400">Pembayaran & ekspedisi</div>
+                    <div class="mb-1 text-xs font-semibold uppercase tracking-wider text-ink-400">{$t('so.paymentShipping')}</div>
                     <div class="text-sm">{order?.payment?.method_name ?? '-'}</div>
                     <div class="mt-1 text-xs text-ink-500">Payment: {order?.payment?.status ?? '-'}</div>
                     <div class="text-xs text-ink-500">{order?.courier_name ?? '-'} {order?.courier_service ? `- ${order.courier_service}` : ''}</div>
@@ -207,7 +209,7 @@
 
               <div class="hidden gap-4 py-4 md:grid md:grid-cols-3">
                 <section>
-                  <div class="mb-1 text-xs font-semibold uppercase tracking-wider text-ink-400">Akun pembeli</div>
+                  <div class="mb-1 text-xs font-semibold uppercase tracking-wider text-ink-400">{$t('so.buyerAccount')}</div>
                   <div class="text-sm font-semibold">{buyer?.name ?? address?.recipient ?? '-'}</div>
                   <div class="mt-1 text-xs text-ink-500">{buyer?.email ?? '-'}</div>
                   <div class="text-xs text-ink-500">{buyer?.phone || address?.phone || '-'}</div>

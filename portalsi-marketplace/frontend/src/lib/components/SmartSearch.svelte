@@ -1,5 +1,6 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
+  import { t } from '$lib/i18n';
   import { apiEndpoints } from '$lib/api';
   import Icon from './Icon.svelte';
 
@@ -57,7 +58,7 @@
       class="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-ink-400"
       placeholder={placeholder}
     />
-    <button type="submit" class="btn-primary btn-sm h-10 px-4">Cari</button>
+    <button type="submit" class="btn-primary btn-sm h-10 px-4">{$t('header.search')}</button>
   </form>
 
   {#if open}
@@ -72,7 +73,7 @@
             </span>
             <span class="min-w-0 flex-1">
               <span class="block text-sm font-semibold">Cari kata kunci "{q.trim()}"</span>
-              <span class="block text-xs text-ink-500">Lihat semua hasil yang cocok</span>
+              <span class="block text-xs text-ink-500">{$t('header.seeAllResults')}</span>
             </span>
             <Icon name="arrow-right" size={15} class="text-ink-400" />
           </button>

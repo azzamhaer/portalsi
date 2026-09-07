@@ -1,12 +1,14 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import { get } from 'svelte/store';
+	import { t } from '$lib/i18n';
 	import { ArrowLeft, Quote } from '@lucide/svelte';
 	let { children, mode = 'login' }: { children: Snippet; mode?: 'login' | 'register' | 'simple' } =
 		$props();
 </script>
 
 <main class="auth-shell">
-	<section class="auth-visual" aria-label="Tentang Portal SI">
+	<section class="auth-visual" aria-label={$t('auth2.ariaAbout')}>
 		<a class="brand" href="/welcome"
 			><img src="/assets/logo-mark.png" alt="" /><span>Portal <b>SI</b></span></a
 		>
@@ -14,10 +16,10 @@
 			<span class="quote"><Quote size={22} fill="currentColor" /></span>
 			<p>
 				{mode === 'register'
-					? 'Satu ruang untuk karya, percakapan, dan perjalanan belajar yang layak diingat.'
-					: 'Bertumbuh tidak pernah benar-benar sendirian. Ada komunitas yang ikut menjaga langkah.'}
+					? get(t)('auth2.tagline1')
+					: get(t)('auth2.tagline2')}
 			</p>
-			<small>Ruang digital keluarga besar Portal SI</small>
+			<small>{$t('auth2.subtitle')}</small>
 		</div>
 		<img
 			class="visual-image"
@@ -27,7 +29,7 @@
 	</section>
 
 	<section class="form-side">
-		<a class="back" href="/welcome"><ArrowLeft size={17} /> Kembali</a>
+		<a class="back" href="/welcome"><ArrowLeft size={17} /> {$t('common.back')}</a>
 		<div class="mobile-brand"><img src="/assets/logo-mark.png" alt="" /><b>Portal SI</b></div>
 		<div class="form-wrap">{@render children()}</div>
 	</section>

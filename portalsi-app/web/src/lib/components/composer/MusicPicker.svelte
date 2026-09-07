@@ -13,6 +13,7 @@
 
 <script lang="ts">
 	import { LoaderCircle, Music2, X } from '@lucide/svelte';
+	import { t } from '$lib/i18n';
 
 	// $bindable() tanpa parameter tipe generik — tipenya diambil dari anotasi props.
 	let {
@@ -84,7 +85,7 @@
 			bind:value={query}
 			maxlength="80"
 			{disabled}
-			placeholder="Cari judul lagu atau artis"
+			placeholder={$t('music.searchPh')}
 			onkeydown={(event) => {
 				if (event.key === 'Enter') event.preventDefault();
 			}}
@@ -101,14 +102,14 @@
 				<strong>{selected.title}</strong>
 				<small>{selected.artist} · {formatTime(selected.durationSeconds)}</small>
 			</span>
-			<button type="button" {disabled} onclick={() => (selected = null)} aria-label="Hapus musik"
+			<button type="button" {disabled} onclick={() => (selected = null)} aria-label={$t('music.remove')}
 				><X size={15} /></button
 			>
 		</div>
 	{/if}
 
 	{#if results.length}
-		<div class="mp-list" aria-label="Hasil musik">
+		<div class="mp-list" aria-label={$t('music.ariaResults')}>
 			{#each results as track (track.id)}
 				<button
 					type="button"
@@ -126,10 +127,10 @@
 		</div>
 	{:else if query.trim().length < 2 && (recommended.length || recoLoading)}
 		<div class="mp-reco-head">
-			<span>Rekomendasi</span>{#if recoLoading}<LoaderCircle class="mp-spinner" size={13} />{/if}
+			<span>{$t('story.recommendations')}</span>{#if recoLoading}<LoaderCircle class="mp-spinner" size={13} />{/if}
 		</div>
 		{#if recommended.length}
-			<div class="mp-list" aria-label="Rekomendasi musik">
+			<div class="mp-list" aria-label={$t('music.ariaRecs')}>
 				{#each recommended as track (track.id)}
 					<button
 						type="button"

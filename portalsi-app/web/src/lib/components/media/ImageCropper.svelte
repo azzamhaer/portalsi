@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Move, ZoomIn } from '@lucide/svelte';
+	import { t } from '$lib/i18n';
 	import { SvelteMap } from 'svelte/reactivity';
 	import type { CropRegion } from '$lib/utils/image-crop';
 
@@ -179,10 +180,10 @@
 			max="4"
 			step="0.02"
 			bind:value={zoom}
-			aria-label="Perbesar gambar"
+			aria-label={$t('crop.ariaZoom')}
 		/>
 	</label>
-	<p class="hint"><Move size={12} /> Seret untuk menggeser · cubit atau scroll untuk zoom.</p>
+	<p class="hint"><Move size={12} /> {$t('crop.hint')}</p>
 </section>
 
 <style>

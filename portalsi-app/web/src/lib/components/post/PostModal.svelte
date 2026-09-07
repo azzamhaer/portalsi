@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { X } from '@lucide/svelte';
+	import { t } from '$lib/i18n';
 	import { fade, fly } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
 	import PostDetailView from '$lib/components/post/PostDetailView.svelte';
@@ -58,7 +59,7 @@
 		style:transition={dragging ? 'none' : 'transform 220ms cubic-bezier(0.2,0.9,0.3,1)'}
 		role="dialog"
 		aria-modal="true"
-		aria-label="Detail postingan"
+		aria-label={$t('pd.ariaPostDetail')}
 	>
 		<div class="pm-grabber" aria-hidden="true"><span></span></div>
 		<div
@@ -75,7 +76,7 @@
 </div>
 
 <!-- Tombol tutup di luar panel (panel ber-transform), agar 'fixed' relatif ke layar, tidak terpotong. -->
-<button class="pm-close" onclick={onClose} aria-label="Tutup"><X size={20} /></button>
+<button class="pm-close" onclick={onClose} aria-label={$t('common.close')}><X size={20} /></button>
 
 <style>
 	.pm-overlay {

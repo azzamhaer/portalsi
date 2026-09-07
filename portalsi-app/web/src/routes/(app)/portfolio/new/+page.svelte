@@ -1,45 +1,46 @@
 <script lang="ts">
 	import type { PageProps } from './$types';
+	import { t } from '$lib/i18n';
 	let { data, form }: PageProps = $props();
 </script>
 
 <svelte:head><title>Tambah portfolio — Portal SI</title></svelte:head>
 <main class="form surface">
 	<a href="/portfolio">← Portfolio</a>
-	<h1>Tambah karya</h1>
+	<h1>{$t('pf.addWork')}</h1>
 	<form method="POST" enctype="multipart/form-data">
 		<label
-			><span>Untuk pengguna</span><input
+			><span>{$t('pfn.forUser')}</span><input
 				name="target_username"
 				required
 				value={data.username}
-				placeholder="username pemilik portfolio"
+				placeholder={$t('pfn.usernamePh')}
 			/><small
-				>Guru, dev, dan akun terverifikasi dapat menerbitkan portfolio untuk pengguna mana pun.</small
+				>{$t('pfn.hint')}</small
 			></label
 		>
 		<label
-			><span>Aspek</span><select name="aspect" required
-				><option value="quran">Al-Qur’an</option><option value="it">Teknologi</option><option
-					value="bahasa">Bahasa</option
-				><option value="karakter">Karakter</option></select
+			><span>{$t('pfn.aspect')}</span><select name="aspect" required
+				><option value="quran">{$t('pf.catQuran')}</option><option value="it">{$t('pf.catTech')}</option><option
+					value="bahasa">{$t('pf.catLang')}</option
+				><option value="karakter">{$t('pf.catChar')}</option></select
 			></label
-		><label><span>Judul</span><input name="title" required maxlength="255" /></label><label
-			><span>Deskripsi</span><textarea name="description" rows="5"></textarea></label
+		><label><span>{$t('form.title')}</span><input name="title" required maxlength="255" /></label><label
+			><span>{$t('form.desc')}</span><textarea name="description" rows="5"></textarea></label
 		><label
-			><span>Tahun</span><input
+			><span>{$t('form.year')}</span><input
 				name="year"
 				type="number"
 				min="2000"
 				max={new Date().getFullYear()}
 			/></label
 		><label
-			><span>Media gambar atau PDF</span><input
+			><span>{$t('pfn.media')}</span><input
 				name="media"
 				type="file"
 				accept="image/jpeg,image/png,application/pdf"
 			/></label
-		>{#if form?.message}<p>{form.message}</p>{/if}<button>Publikasikan karya</button>
+		>{#if form?.message}<p>{form.message}</p>{/if}<button>{$t('pfn.publish')}</button>
 	</form>
 </main>
 

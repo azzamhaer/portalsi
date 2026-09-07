@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { t } from '$lib/i18n';
   import Icon from '$lib/components/Icon.svelte';
   import LoginRequired from '$lib/components/LoginRequired.svelte';
   import AdminBlock from '$lib/components/AdminBlock.svelte';
@@ -24,22 +25,22 @@
 {#if !auth.user}
   <LoginRequired
     icon="heart"
-    title="Login untuk melihat wishlist"
-    description="Simpan produk favorit Anda dan akses dari perangkat manapun setelah masuk."
+    title={$t('wl.loginTitle')}
+    description={$t('wl.loginDesc')}
   />
 {:else if auth.user.role === 'ADMIN'}
-  <AdminBlock title="Admin tidak punya wishlist" description="Akun admin tidak bisa menyimpan wishlist. Gunakan akun pembeli." />
+  <AdminBlock title={$t('wl.adminTitle')} description={$t('wl.adminDesc')} />
 {:else}
   <div class="container-x py-8">
-    <h1 class="section-title mb-8">Wishlist</h1>
+    <h1 class="section-title mb-8">{$t('wl.title')}</h1>
     {#if loading}
-      <div class="text-center py-20 text-ink-500">Memuat…</div>
+      <div class="text-center py-20 text-ink-500">{$t('wl.loading')}</div>
     {:else if items.length === 0}
       <div class="text-center py-20">
         <Icon name="heart" size={56} class="mx-auto text-ink-300 mb-4" />
-        <h3 class="text-lg font-semibold mb-1">Wishlist masih kosong</h3>
-        <p class="text-sm text-ink-500 mb-5">Tambahkan produk favorit Anda dari halaman produk.</p>
-        <a href="/products" class="btn-primary btn-md">Mulai Belanja</a>
+        <h3 class="text-lg font-semibold mb-1">{$t('wl.empty')}</h3>
+        <p class="text-sm text-ink-500 mb-5">{$t('wl.emptyDesc')}</p>
+        <a href="/products" class="btn-primary btn-md">{$t('cart.startShopping')}</a>
       </div>
     {:else}
       <ProductGrid products={items} />

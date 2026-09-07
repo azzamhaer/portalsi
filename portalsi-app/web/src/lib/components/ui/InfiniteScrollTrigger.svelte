@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { t } from '$lib/i18n';
 	let {
 		hasMore,
 		loading,
@@ -37,7 +38,7 @@
 </script>
 
 <div class="infinite-trigger" bind:this={trigger} aria-live="polite">
-	{#if loading}<span></span>{label}{:else if hasMore}<i>Scroll untuk memuat lebih banyak</i>{/if}
+	{#if loading}<span></span>{label}{:else if hasMore}<i>{$t('ist.scrollMore')}</i>{/if}
 </div>
 
 <style>

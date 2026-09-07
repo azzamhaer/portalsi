@@ -8,6 +8,8 @@
 
 <script lang="ts">
 	import { env } from '$env/dynamic/public';
+	import { get } from 'svelte/store';
+	import { t } from '$lib/i18n';
 	import { beforeNavigate } from '$app/navigation';
 	import { LoaderCircle, Search, SlidersHorizontal, X } from '@lucide/svelte';
 	import { clientRequest } from '$lib/api/client';
@@ -239,7 +241,7 @@
 			hasMore = response.current_page * response.per_page < response.total;
 			nextPage = response.current_page + 1;
 		} catch {
-			loadMoreError = 'Postingan berikutnya belum dapat dimuat.';
+			loadMoreError = get(t)('home.loadMoreFailed');
 		} finally {
 			loadingMore = false;
 		}
@@ -252,11 +254,11 @@
 </svelte:head>
 
 <div class="home-layout">
-	<section class="feed-column" aria-label="Beranda">
+	<section class="feed-column" aria-label={$t('nav.home')}>
 		<header class="desktop-feed-header">
 			<div>
 				<p class="eyebrow">{data.dateLabel}</p>
-				<h1>Assalamu’alaikum, <span class="greet-name">{greetingName}</span></h1>
+				<h1>{$t('home.greeting')}<span class="greet-name">{greetingName}</span></h1>
 			</div>
 			<div class="search-wrap" use:clickOutside={closeSearchPanel}>
 				<div class="search-box">
@@ -265,7 +267,7 @@
 					<input
 						id="home-search"
 						bind:value={homeQuery}
-						placeholder="Cari"
+						placeholder={$t('nav.search')}
 						onfocus={() => (searchFocused = true)}
 						onkeydown={(event) => {
 							if (event.key === 'Enter') {
@@ -279,7 +281,7 @@
 						<button
 							type="button"
 							class="search-close"
-							aria-label="Tutup pencarian"
+							aria-label={$t('home.closeSearch')}
 							onclick={closeSearchPanel}><X size={16} /></button
 						>
 					{/if}
@@ -287,16 +289,16 @@
 						class:active={showSearchOptions}
 						aria-pressed={showSearchOptions}
 						type="button"
-						aria-label="Atur pencarian"
+						aria-label={$t('home.searchSettings')}
 						onclick={() => (showSearchOptions = !showSearchOptions)}
 						><SlidersHorizontal size={17} /></button
 					>
 				</div>
 				{#if showSearchOptions}<div class="search-options surface">
-						<span>Pencarian langsung menampilkan pengguna.</span><a
+						<span>{$t('home.searchUsersHint')}</span><a
 							href={`/explore${homeQuery.trim() ? `?q=${encodeURIComponent(homeQuery.trim())}` : ''}`}
 							onclick={() => rememberSearch()}
-							>Cari konten di Jelajah</a
+							>{$t('home.searchInExplore')}</a
 						>
 					</div>{/if}
 				{#if homeQuery.trim().length >= 2}<div class="home-results surface">
@@ -322,7 +324,7 @@
 								Tidak ada pengguna yang cocok.
 							</p>{/if}
 					</div>{:else if searchFocused && searchHistory.length}<div class="home-results surface history">
-						<header><span>Riwayat pencarian</span><button onclick={() => void clearSearchHistory()}>Hapus semua</button></header>
+						<header><span>{$t('home.searchHistory')}</span><button onclick={() => void clearSearchHistory()}>{$t('home.clearAll')}</button></header>
 						{#each searchHistory as item (item.id)}
 							<div class="history-row">
 								{#if item.user}
@@ -364,7 +366,7 @@
 		{#if data.unavailable.length > 0}
 			<div class="partial-error" role="status">
 				<span>Sebagian konten belum dapat dimuat: {data.unavailable.join(', ')}.</span>
-				<a href="/home">Coba lagi</a>
+				<a href="/home">{$t('common.retry')}</a>
 			</div>
 		{/if}
 
@@ -374,9 +376,9 @@
 		<div class="feed-label">
 			<div>
 				<span></span>
-				<h2>Untuk Anda</h2>
+				<h2>{$t('home.forYou')}</h2>
 			</div>
-			<a href="/explore">Jelajahi lainnya</a>
+			<a href="/explore">{$t('home.exploreMore')}</a>
 		</div>
 
 		<div class="feed-list">
@@ -398,13 +400,13 @@
 		{#if !hasMore && !loadingMore}<div class="feed-end" class:empty={posts.length === 0}>
 				<img src="/assets/logo-mark.png" alt="" />
 				{#if posts.length === 0}
-					<strong>Belum ada postingan untuk ditampilkan</strong>
-					<span>Ikuti teman atau kembali beberapa saat lagi.</span>
+					<strong>{$t('home.emptyTitle')}</strong>
+					<span>{$t('home.emptySub')}</span>
 				{:else}
-					<strong>Anda sudah sampai di sini</strong>
-					<span>Temukan lebih banyak cerita dari komunitas Portal SI.</span>
+					<strong>{$t('home.endTitle')}</strong>
+					<span>{$t('home.endSub')}</span>
 				{/if}
-				<a href="/explore">Buka Jelajah</a>
+				<a href="/explore">{$t('home.openExplore')}</a>
 			</div>{/if}
 	</section>
 

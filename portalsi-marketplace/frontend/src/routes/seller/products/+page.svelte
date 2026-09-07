@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { t } from '$lib/i18n';
+  import { get } from 'svelte/store';
   import SellerSidebar from '$lib/components/SellerSidebar.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import { fmtRp } from '$lib/utils';
@@ -17,7 +19,7 @@
 
   async function del(id: number, name: string) {
     if (!confirm(`Hapus produk "${name}"?`)) return;
-    try { await apiEndpoints.sellerDeleteProduct(id); toast.success('Produk dihapus'); load(); }
+    try { await apiEndpoints.sellerDeleteProduct(id); toast.success(get(t)('sp.deleted')); load(); }
     catch (e: any) { toast.error(e.message); }
   }
 </script>
@@ -25,33 +27,33 @@
 <svelte:head><title>Produk Saya — MPSI Seller</title></svelte:head>
 
 <div class="container-x py-8">
-  <h1 class="section-title mb-8">Seller Center</h1>
+  <h1 class="section-title mb-8">{$t('nav.sellerCenter')}</h1>
   <div class="grid lg:grid-cols-[230px_1fr] gap-6">
     <SellerSidebar />
     <div class="space-y-5">
       <div class="card flex items-center justify-between flex-wrap gap-3">
         <h3 class="font-semibold">Produk Saya ({products.length})</h3>
-        <a href="/seller/products/new" class="btn-primary btn-md"><Icon name="plus" size={14} /> Tambah Produk</a>
+        <a href="/seller/products/new" class="btn-primary btn-md"><Icon name="plus" size={14} /> {$t('lf.addProduct')}</a>
       </div>
-      {#if loading}<div class="card text-center text-ink-500 py-12">Memuat…</div>
+      {#if loading}<div class="card text-center text-ink-500 py-12">{$t('wl.loading')}</div>
       {:else if products.length === 0}
         <div class="card text-center py-12 text-ink-500">
-          <p class="mb-4">Belum ada produk.</p>
-          <a href="/seller/products/new" class="btn-primary btn-md"><Icon name="plus" size={14} /> Tambah Produk</a>
+          <p class="mb-4">{$t('sp.noProducts')}</p>
+          <a href="/seller/products/new" class="btn-primary btn-md"><Icon name="plus" size={14} /> {$t('lf.addProduct')}</a>
         </div>
       {:else}
         <div class="card overflow-x-auto">
           <table class="w-full text-sm">
             <thead class="text-xs text-ink-500 border-b border-ink-100">
               <tr>
-                <th class="text-left py-2 font-medium">Foto</th>
-                <th class="text-left py-2 font-medium">Nama</th>
-                <th class="text-left py-2 font-medium">Kategori</th>
-                <th class="text-left py-2 font-medium">Harga</th>
-                <th class="text-left py-2 font-medium">Stok</th>
-                <th class="text-left py-2 font-medium">Terjual</th>
-                <th class="text-left py-2 font-medium">Status</th>
-                <th class="text-left py-2 font-medium">Aksi</th>
+                <th class="text-left py-2 font-medium">{$t('sp.photo')}</th>
+                <th class="text-left py-2 font-medium">{$t('pf.name')}</th>
+                <th class="text-left py-2 font-medium">{$t('nav.categories')}</th>
+                <th class="text-left py-2 font-medium">{$t('sp.price')}</th>
+                <th class="text-left py-2 font-medium">{$t('pd.stock')}</th>
+                <th class="text-left py-2 font-medium">{$t('sp.sold')}</th>
+                <th class="text-left py-2 font-medium">{$t('sel.status')}</th>
+                <th class="text-left py-2 font-medium">{$t('sp.action')}</th>
               </tr>
             </thead>
             <tbody>
@@ -63,7 +65,7 @@
                   <td class="py-2 font-semibold">{fmtRp(p.price)}</td>
                   <td class="py-2">{p.stock}</td>
                   <td class="py-2">{p.sold}</td>
-                  <td class="py-2"><span class="pill {p.is_active ? 'pill-green' : 'pill-ink'}">{p.is_active ? 'Aktif' : 'Non-aktif'}</span></td>
+                  <td class="py-2"><span class="pill {p.is_active ? 'pill-green' : 'pill-ink'}">{p.is_active ? $t('mk.active') : $t('mk.inactive')}</span></td>
                   <td class="py-2">
                     <div class="flex gap-1">
                       <a href={`/seller/products/${p.id}/edit`} class="btn-outline btn-sm"><Icon name="pencil" size={12} /></a>

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { t } from '$lib/i18n';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { auth, toast } from '$lib/stores.svelte';
@@ -74,13 +75,13 @@
           <Icon name="clock" size={28} class="text-amber-600" />
         </div>
         <h2 class="font-display text-xl font-bold tracking-tightest mb-2">Menunggu verifikasi admin</h2>
-        <p class="text-sm text-ink-500 mb-5">Toko Anda sedang diverifikasi oleh admin. Anda belum bisa mengakses Seller Center.</p>
+        <p class="text-sm text-ink-500 mb-5">{$t('slay.verifying')}</p>
       {:else}
         <div class="w-16 h-16 rounded-full bg-red-100 grid place-items-center mx-auto mb-4">
           <Icon name="x-circle" size={28} class="text-red-600" />
         </div>
         <h2 class="font-display text-xl font-bold tracking-tightest mb-2">Verifikasi ditolak</h2>
-        <p class="text-sm text-ink-500 mb-5">Pengajuan toko Anda ditolak. Buka detail untuk melihat alasan & perbarui profil.</p>
+        <p class="text-sm text-ink-500 mb-5">{$t('slay.rejected')}</p>
       {/if}
       <div class="flex gap-2 justify-center">
         <a href="/seller/pending" class="btn-primary btn-md">Lihat detail</a>

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { LogIn } from '@lucide/svelte';
+	import { t } from '$lib/i18n';
 	import { page } from '$app/state';
 	import BackButton from '$lib/components/ui/BackButton.svelte';
 	import PostDetailView from '$lib/components/post/PostDetailView.svelte';
@@ -38,7 +39,7 @@
 				<a class="cta" href={`/login?next=${encodeURIComponent(`/posts/${data.postId}`)}`}>
 					<LogIn size={18} /> Masuk untuk melihat
 				</a>
-				<a class="alt" href="/welcome">Belum punya akun? Daftar</a>
+				<a class="alt" href="/welcome">{$t('posts.signupPrompt')}</a>
 			</div>
 		</div>
 	</main>

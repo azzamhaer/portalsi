@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
+	import { get } from 'svelte/store';
+	import { t } from '$lib/i18n';
 	import { Check, X } from '@lucide/svelte';
 	import { clientRequest } from '$lib/api/client';
 	import Avatar from '$lib/components/ui/Avatar.svelte';
@@ -20,9 +22,9 @@
 				method: 'POST'
 			});
 			invites = invites.filter((i) => i.postId !== postId);
-			message = accept ? 'Kolaborasi diterima.' : 'Undangan ditolak.';
+			message = accept ? get(t)('notif.collabAccepted') : get(t)('notif.inviteRejected');
 		} catch {
-			message = 'Gagal memproses. Coba lagi.';
+			message = get(t)('col.failed');
 		} finally {
 			busy = null;
 		}
@@ -39,13 +41,13 @@
 		{#each invites as inv (inv.postId)}
 			<article>
 				<a class="thumb" href={`/posts/${inv.postId}`}>
-					<img src={inv.thumbnailUrl} alt={inv.caption || 'Postingan'} />
+					<img src={inv.thumbnailUrl} alt={inv.caption || get(t)('prof.posts')} />
 				</a>
 				<div class="info">
 					<div class="who">
 						<Avatar name={inv.inviter.fullName} src={inv.inviter.avatarUrl} size="sm" />
 						<span
-							><strong>@{inv.inviter.username}</strong> mengundang Anda berkolaborasi</span
+							><strong>@{inv.inviter.username}</strong>{$t('col.invitedYou')}</span
 						>
 					</div>
 					{#if inv.caption}<p class="cap">{inv.caption}</p>{/if}
@@ -60,7 +62,7 @@
 				</div>
 			</article>
 		{/each}
-		{#if invites.length === 0}<p class="empty">Tidak ada undangan kolaborasi.</p>{/if}
+		{#if invites.length === 0}<p class="empty">{$t('col.empty')}</p>{/if}
 		{#if message}<p class="msg" aria-live="polite">{message}</p>{/if}
 	</section>
 </SectionPage>

@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { t } from '$lib/i18n';
+  import { get } from 'svelte/store';
   import { apiEndpoints } from '$lib/api';
   import { toast, confirmDialog } from '$lib/stores.svelte';
   import Icon from '$lib/components/Icon.svelte';
@@ -47,7 +49,7 @@
     if (!ok) return;
     try {
       await apiEndpoints.adminVerifyVendor(v.id, st, note ?? '');
-      toast.success('Status diperbarui');
+      toast.success(get(t)('adm.statusUpdated'));
       active = null;
       window.dispatchEvent(new CustomEvent('admin:pending-vendors-changed'));
       load();
@@ -55,9 +57,9 @@
     catch (e: any) { toast.error(e.message); }
   }
   async function del(v: any) {
-    const ok = await confirmDialog.ask({ title: 'Hapus toko?', message: `Toko "${v.name}" akan dihapus.`, confirmText: 'Hapus', tone: 'danger' });
+    const ok = await confirmDialog.ask({ title: get(t)('avn.delTitle'), message: `Toko "${v.name}" akan dihapus.`, confirmText: get(t)('avn.del'), tone: 'danger' });
     if (!ok) return;
-    try { await apiEndpoints.adminDeleteVendor(v.id); toast.success('Dihapus'); load(); }
+    try { await apiEndpoints.adminDeleteVendor(v.id); toast.success(get(t)('au.deleted')); load(); }
     catch (e: any) { toast.error(e.message); }
   }
   async function setBadge(v: any, badge: string | null) {
@@ -79,7 +81,7 @@
   async function saveModeration() {
     try {
       await apiEndpoints.adminSetVendorModeration(modVendor.id, modMode, modWarning.trim() || undefined);
-      toast.success('Moderasi diperbarui');
+      toast.success(get(t)('avn.modUpdated'));
       modVendor = null;
       load();
     } catch (e: any) { toast.error(e.message); }
@@ -87,23 +89,23 @@
 </script>
 
 <div class="card flex items-center gap-3 mb-4 flex-wrap">
-  <h3 class="font-semibold shrink-0">Vendor, Verifikasi & Badge</h3>
+  <h3 class="font-semibold shrink-0">{$t('avn.title')}</h3>
   <div class="flex items-center gap-2 flex-1 min-w-[200px] bg-ink-50 rounded-full px-3">
     <Icon name="search" size={14} class="text-ink-400" />
-    <input bind:value={search} on:input={onSearchInput} class="flex-1 bg-transparent text-sm py-2 outline-none" placeholder="Cari nama toko, username, kota, email/HP pemilik" />
+    <input bind:value={search} on:input={onSearchInput} class="flex-1 bg-transparent text-sm py-2 outline-none" placeholder={$t('avn.search')} />
     {#if search}
       <button on:click={() => { search = ''; page = 1; load(); }} class="text-ink-400 hover:text-ink-700"><Icon name="x" size={14} /></button>
     {/if}
   </div>
   <select bind:value={status} on:change={() => { page = 1; load(); }} class="input-sm input w-40">
-    <option value="">Semua status</option>
-    <option value="PENDING">Pending</option>
-    <option value="APPROVED">Approved</option>
-    <option value="REJECTED">Rejected</option>
+    <option value="">{$t('adm.allStatus')}</option>
+    <option value="PENDING">{$t('avn.pending')}</option>
+    <option value="APPROVED">{$t('avn.approved')}</option>
+    <option value="REJECTED">{$t('avn.rejected')}</option>
   </select>
 </div>
 
-{#if loading}<div class="card text-center text-ink-500 py-10">Memuat…</div>
+{#if loading}<div class="card text-center text-ink-500 py-10">{$t('wl.loading')}</div>
 {:else}
   <p class="text-xs text-ink-500 mb-3">{meta.total} vendor · halaman {meta.current_page} dari {meta.last_page}</p>
   <div class="grid sm:grid-cols-2 gap-4">
@@ -123,7 +125,7 @@
         <div class="text-xs text-ink-500 mb-2 flex items-center gap-1 flex-wrap">
           <Icon name="map-pin" size={11} /> {v.city}
           <span class="mx-1">·</span>
-          {#if v.rating > 0}<Icon name="star" size={11} class="text-amber-400" fill="currentColor" /> {v.rating}{:else}<span class="text-ink-400">No rating</span>{/if}
+          {#if v.rating > 0}<Icon name="star" size={11} class="text-amber-400" fill="currentColor" /> {v.rating}{:else}<span class="text-ink-400">{$t('avn.noRating')}</span>{/if}
           <span class="mx-1">·</span>
           {v.total_sold} terjual
           <span class="mx-1">·</span>
@@ -132,18 +134,18 @@
 
         {#if v.verification_status === 'APPROVED'}
           <div class="mt-2 mb-2 flex items-center gap-1.5 flex-wrap text-xs">
-            <span class="text-ink-500">Badge:</span>
-            <button on:click={() => setBadge(v, null)}      class="px-2 py-0.5 rounded-full border {!v.badge ? 'bg-app-primary text-app-pfg' : 'bg-ink-50 border-ink-200'}">Tidak ada</button>
-            <button on:click={() => setBadge(v, 'VERIFIED')} class="px-2 py-0.5 rounded-full border {v.badge==='VERIFIED' ? 'bg-sky-500 text-white border-sky-500' : 'bg-sky-50 text-sky-700 border-sky-200'}">Verified</button>
-            <button on:click={() => setBadge(v, 'MALL')}     class="px-2 py-0.5 rounded-full border {v.badge==='MALL' ? 'bg-purple-600 text-white border-purple-600' : 'bg-purple-50 text-purple-700 border-purple-200'}">Mall</button>
-            <button on:click={() => setBadge(v, 'STAR')}     class="px-2 py-0.5 rounded-full border {v.badge==='STAR' ? 'bg-amber-500 text-white border-amber-500' : 'bg-amber-50 text-amber-700 border-amber-200'}">Star</button>
+            <span class="text-ink-500">{$t('avn.badge')}</span>
+            <button on:click={() => setBadge(v, null)}      class="px-2 py-0.5 rounded-full border {!v.badge ? 'bg-app-primary text-app-pfg' : 'bg-ink-50 border-ink-200'}">{$t('avn.none')}</button>
+            <button on:click={() => setBadge(v, 'VERIFIED')} class="px-2 py-0.5 rounded-full border {v.badge==='VERIFIED' ? 'bg-sky-500 text-white border-sky-500' : 'bg-sky-50 text-sky-700 border-sky-200'}">{$t('avn.verified')}</button>
+            <button on:click={() => setBadge(v, 'MALL')}     class="px-2 py-0.5 rounded-full border {v.badge==='MALL' ? 'bg-purple-600 text-white border-purple-600' : 'bg-purple-50 text-purple-700 border-purple-200'}">{$t('avn.mall')}</button>
+            <button on:click={() => setBadge(v, 'STAR')}     class="px-2 py-0.5 rounded-full border {v.badge==='STAR' ? 'bg-amber-500 text-white border-amber-500' : 'bg-amber-50 text-amber-700 border-amber-200'}">{$t('avn.star')}</button>
           </div>
         {/if}
 
         {#if v.moderation_mode && v.moderation_mode !== 'NONE'}
           <div class="mt-2 text-xs flex items-center gap-1.5 flex-wrap">
             <span class="pill-{v.moderation_mode === 'DISABLED' ? 'red' : 'amber'}">
-              <Icon name="shield-alert" size={10} /> {v.moderation_mode === 'DISABLED' ? 'Tersembunyi total' : 'Toko dibatasi'}
+              <Icon name="shield-alert" size={10} /> {v.moderation_mode === 'DISABLED' ? $t('lf.vHiddenShort') : $t('lf.vRestrictedShort')}
             </span>
           </div>
         {/if}
@@ -179,13 +181,13 @@
       {#if active.ktp_image}
         <img src={active.ktp_image} alt="KTP" class="w-full rounded-xl border border-ink-200 max-h-96 object-contain bg-ink-50" />
       {:else}
-        <div class="card text-center py-10 text-ink-500">KTP belum diupload.</div>
+        <div class="card text-center py-10 text-ink-500">{$t('avn.ktpNone')}</div>
       {/if}
       <div class="mt-4 text-sm space-y-1">
-        <div><b>Nama Toko:</b> {active.name}</div>
-        <div><b>Pemilik:</b> {active.user?.name} ({active.user?.email})</div>
-        <div><b>Bank:</b> {active.bank_name} — {active.bank_account} ({active.bank_holder})</div>
-        <div><b>Deskripsi:</b> {active.description}</div>
+        <div><b>{$t('avn.storeName')}</b> {active.name}</div>
+        <div><b>{$t('avn.owner')}</b> {active.user?.name} ({active.user?.email})</div>
+        <div><b>{$t('avn.bank')}</b> {active.bank_name} — {active.bank_account} ({active.bank_holder})</div>
+        <div><b>{$t('avn.desc')}</b> {active.description}</div>
       </div>
       <div class="flex gap-2 mt-5">
         <button on:click={() => verify(active, 'APPROVED')} class="btn-primary btn-md flex-1"><Icon name="check" size={14} /> Approve</button>
@@ -204,39 +206,39 @@
       </div>
       <div class="space-y-3">
         <div>
-          <label class="label">Mode Moderasi</label>
+          <label class="label">{$t('avn.modMode')}</label>
           <div class="grid gap-2">
             <label class="flex items-start gap-2 p-3 rounded-xl border border-ink-200 cursor-pointer" class:bg-ink-50={modMode === 'NONE'}>
               <input type="radio" bind:group={modMode} value="NONE" class="mt-1" />
               <div>
-                <div class="font-semibold text-sm">Normal</div>
-                <div class="text-xs text-ink-500">Toko aktif tanpa pembatasan.</div>
+                <div class="font-semibold text-sm">{$t('avn.normal')}</div>
+                <div class="text-xs text-ink-500">{$t('avn.normalDesc')}</div>
               </div>
             </label>
             <label class="flex items-start gap-2 p-3 rounded-xl border border-amber-200 cursor-pointer" class:bg-amber-50={modMode === 'LIMITED'}>
               <input type="radio" bind:group={modMode} value="LIMITED" class="mt-1" />
               <div>
-                <div class="font-semibold text-sm text-amber-700">Dibatasi (penalti ringan)</div>
-                <div class="text-xs text-ink-500">Toko & produk masih bisa dilihat, tapi tidak bisa dipesan & chat ditolak. Penjelasan pelanggaran tampil sebagai badge.</div>
+                <div class="font-semibold text-sm text-amber-700">{$t('avn.restricted')}</div>
+                <div class="text-xs text-ink-500">{$t('avn.restrictedDesc')}</div>
               </div>
             </label>
             <label class="flex items-start gap-2 p-3 rounded-xl border border-red-200 cursor-pointer" class:bg-red-50={modMode === 'DISABLED'}>
               <input type="radio" bind:group={modMode} value="DISABLED" class="mt-1" />
               <div>
-                <div class="font-semibold text-sm text-red-700">Tersembunyi total (penalti berat)</div>
-                <div class="text-xs text-ink-500">Toko & produk tidak tampil di listing, search, atau detail page. Vendor tetap bisa login & lihat dashboardnya.</div>
+                <div class="font-semibold text-sm text-red-700">{$t('avn.hidden')}</div>
+                <div class="text-xs text-ink-500">{$t('avn.hiddenDesc')}</div>
               </div>
             </label>
           </div>
         </div>
         <div>
-          <label class="label">Pesan peringatan untuk vendor</label>
-          <textarea bind:value={modWarning} class="input" rows={4} placeholder="Contoh: Toko Anda terdeteksi menjual produk yang melanggar kebijakan kategori X. Mohon segera periksa dan revisi listing Anda dalam 3×24 jam..."></textarea>
-          <p class="helper">Pesan ini akan tampil sebagai popup di dashboard vendor saat login. Kosongkan untuk hapus peringatan.</p>
+          <label class="label">{$t('avn.warnMsg')}</label>
+          <textarea bind:value={modWarning} class="input" rows={4} placeholder={$t('avn.warnPh')}></textarea>
+          <p class="helper">{$t('avn.warnHint')}</p>
         </div>
         <div class="flex gap-2 pt-2">
-          <button on:click={() => modVendor = null} class="btn-outline btn-md flex-1">Batal</button>
-          <button on:click={saveModeration} class="btn-primary btn-md flex-1">Simpan</button>
+          <button on:click={() => modVendor = null} class="btn-outline btn-md flex-1">{$t('od.cancel')}</button>
+          <button on:click={saveModeration} class="btn-primary btn-md flex-1">{$t('pf.save')}</button>
         </div>
       </div>
     </div>

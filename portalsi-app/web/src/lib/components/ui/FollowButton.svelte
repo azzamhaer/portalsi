@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { Clock, UserCheck, UserPlus } from '@lucide/svelte';
+	import { get } from 'svelte/store';
+	import { t } from '$lib/i18n';
 	import { clientRequest } from '$lib/api/client';
 	import type { PortalUser } from '$lib/types/domain';
 
@@ -60,7 +62,7 @@
 	>
 		{#if following}<UserCheck size={15} /> Diikuti
 		{:else if requested}<Clock size={15} /> Diminta
-		{:else}<UserPlus size={15} /> {showFollowBack ? 'Ikuti balik' : 'Ikuti'}{/if}
+		{:else}<UserPlus size={15} /> {showFollowBack ? get(t)('rail.followBack') : 'Ikuti'}{/if}
 	</button>
 {/if}
 

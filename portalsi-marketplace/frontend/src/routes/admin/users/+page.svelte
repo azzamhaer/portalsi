@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { t } from '$lib/i18n';
+  import { get } from 'svelte/store';
   import { apiEndpoints } from '$lib/api';
   import { toast } from '$lib/stores.svelte';
   import Icon from '$lib/components/Icon.svelte';
@@ -35,42 +37,42 @@
 
   async function del(u: any) {
     if (!confirm(`Hapus user "${u.name}"?`)) return;
-    try { await apiEndpoints.adminDeleteUser(u.id); toast.success('Dihapus'); load(); }
+    try { await apiEndpoints.adminDeleteUser(u.id); toast.success(get(t)('au.deleted')); load(); }
     catch (e: any) { toast.error(e.message); }
   }
 </script>
 
 <div class="card flex items-center gap-3 mb-4 flex-wrap">
-  <h3 class="font-semibold shrink-0">Users</h3>
+  <h3 class="font-semibold shrink-0">{$t('au.users')}</h3>
   <div class="flex items-center gap-2 flex-1 min-w-[200px] bg-ink-50 rounded-full px-3">
     <Icon name="search" size={14} class="text-ink-400" />
-    <input bind:value={search} on:input={onSearchInput} class="flex-1 bg-transparent text-sm py-2 outline-none" placeholder="Cari nama, email, no HP, atau username" />
+    <input bind:value={search} on:input={onSearchInput} class="flex-1 bg-transparent text-sm py-2 outline-none" placeholder={$t('au.searchUsers')} />
     {#if search}
       <button on:click={() => { search = ''; page = 1; load(); }} class="text-ink-400 hover:text-ink-700"><Icon name="x" size={14} /></button>
     {/if}
   </div>
   <select bind:value={role} on:change={() => { page = 1; load(); }} class="input-sm input w-36">
-    <option value="">Semua role</option>
-    <option value="BUYER">Buyer</option>
-    <option value="SELLER">Seller</option>
-    <option value="ADMIN">Admin</option>
+    <option value="">{$t('au.allRoles')}</option>
+    <option value="BUYER">{$t('au.buyer')}</option>
+    <option value="SELLER">{$t('au.seller')}</option>
+    <option value="ADMIN">{$t('au.admin')}</option>
   </select>
 </div>
 
 <div class="card mb-4 bg-amber-50 text-amber-800 text-xs p-3 rounded-xl flex items-start gap-2">
   <Icon name="info" size={14} class="mt-0.5 shrink-0" />
   <div>
-    Role pengguna ditentukan dari permintaan mereka — <b>SELLER</b> diberikan otomatis setelah Anda meng-approve pengajuan toko di tab <a href="/admin/vendors" class="underline font-semibold">Vendor & KTP</a>. Untuk membuat user lain menjadi <b>ADMIN</b>, ubah langsung di database (phpMyAdmin) demi keamanan.
+    {$t('lf.userRolePre')} <b>SELLER</b>{$t('lf.userSellerHint')}<a href="/admin/vendors" class="underline font-semibold">{$t('au.vendorKtp')}</a>{$t('lf.userAdminHint')}<b>ADMIN</b>{$t('lf.userAdminTail')}
   </div>
 </div>
 
-{#if loading}<div class="card text-center text-ink-500 py-10">Memuat…</div>
+{#if loading}<div class="card text-center text-ink-500 py-10">{$t('wl.loading')}</div>
 {:else}
   <div class="card overflow-x-auto">
     <p class="text-xs text-ink-500 mb-3">{meta.total} user · halaman {meta.current_page} dari {meta.last_page}</p>
     <table class="w-full text-sm min-w-[600px]">
       <thead class="text-xs text-ink-500 border-b border-ink-100">
-        <tr><th class="text-left py-2">User</th><th class="text-left py-2">Role</th><th class="text-left py-2">Toko</th><th class="text-left py-2">Daftar</th><th class="text-right py-2">Aksi</th></tr>
+        <tr><th class="text-left py-2">{$t('au.user')}</th><th class="text-left py-2">{$t('au.role')}</th><th class="text-left py-2">{$t('au.store')}</th><th class="text-left py-2">Daftar</th><th class="text-right py-2">Aksi</th></tr>
       </thead>
       <tbody>
         {#each users as u (u.id)}

@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { LoaderCircle, Search, X } from '@lucide/svelte';
+	import { get } from 'svelte/store';
+	import { t } from '$lib/i18n';
 	import { z } from 'zod';
 	import { portal } from '$lib/actions/portal';
 
@@ -44,7 +46,7 @@
 				const payload = gifSchema.safeParse(await response.json());
 				if (controller.signal.aborted) return;
 				results = payload.success ? payload.data.results : [];
-				if (results.length === 0) message = 'Tidak ada hasil. Coba kata kunci lain.';
+				if (results.length === 0) message = get(t)('gif.noResultsTry');
 			} catch (error) {
 				if (!(error instanceof DOMException && error.name === 'AbortError')) {
 					results = [];
@@ -63,13 +65,13 @@
 
 <div use:portal>
 <div class="gif-overlay" role="presentation" onclick={onClose}></div>
-<section class="gif-picker" aria-label="Pilih GIF">
+<section class="gif-picker" aria-label={$t('gif.ariaPick')}>
 	<header>
 		<div class="tabs">
 			<button class:active={type === 'gif'} onclick={() => (type = 'gif')}>GIF</button>
-			<button class:active={type === 'sticker'} onclick={() => (type = 'sticker')}>Stiker</button>
+			<button class:active={type === 'sticker'} onclick={() => (type = 'sticker')}>{$t('gif.stickers')}</button>
 		</div>
-		<button class="close" onclick={onClose} aria-label="Tutup"><X size={18} /></button>
+		<button class="close" onclick={onClose} aria-label={$t('common.close')}><X size={18} /></button>
 	</header>
 	<div class="search">
 		<Search size={16} />
@@ -87,7 +89,7 @@
 			</button>
 		{/each}
 	</div>
-	{#if !loading && results.length === 0}<p class="msg">{message || 'Tidak ada hasil.'}</p>{/if}
+	{#if !loading && results.length === 0}<p class="msg">{message || get(t)('gif.noResults')}</p>{/if}
 	<p class="attribution">Powered by GIPHY</p>
 </section>
 </div>

@@ -90,7 +90,7 @@
             <div class="section-eyebrow mb-2">{$t('home.officialEyebrow')}</div>
             <h2 class="section-title">{$t('home.officialTitle')}</h2>
           </div>
-          <a href="/vendors?f=official" class="hidden sm:flex items-center gap-1 text-sm text-ink-700 hover:text-ink-950">Lihat semua <Icon name="arrow-right" size={14} /></a>
+          <a href="/vendors?f=official" class="hidden sm:flex items-center gap-1 text-sm text-ink-700 hover:text-ink-950">{$t('lf.seeAll')} <Icon name="arrow-right" size={14} /></a>
         </div>
         <div class="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
           {#each home.official as v (v.id)}

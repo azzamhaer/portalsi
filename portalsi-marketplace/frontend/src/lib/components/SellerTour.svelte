@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
+  import { get } from 'svelte/store';
+  import { t } from '$lib/i18n';
   import Icon from './Icon.svelte';
   import { apiEndpoints } from '$lib/api';
   import { auth, toast } from '$lib/stores.svelte';
@@ -17,49 +19,49 @@
     {
       target: 'a[href="/seller/dashboard"]',
       title: '👋 Selamat datang di Seller Center!',
-      body: 'Toko Anda sudah disetujui. Ini panduan singkat untuk semua fitur yang tersedia.',
+      body: get(t)('tour.intro'),
       placement: 'right'
     },
     {
       target: 'a[href="/seller/dashboard"]',
-      title: 'Dashboard',
-      body: 'Pusat informasi: pesanan masuk, pendapatan, dan produk aktif. Cek di sini setiap pagi.',
+      title: get(t)('tour.dashboard'),
+      body: get(t)('tour.dashboardDesc'),
       placement: 'right'
     },
     {
       target: 'a[href="/seller/products"]',
-      title: 'Produk Saya',
-      body: 'Kelola semua produk Anda — edit, nonaktifkan, atau hapus. Awasi stok yang menipis di sini.',
+      title: get(t)('tour.myProducts'),
+      body: get(t)('tour.myProductsDesc'),
       placement: 'right'
     },
     {
       target: 'a[href="/seller/products/new"]',
-      title: 'Tambah Produk',
-      body: 'Klik untuk membuat listing baru. Lengkapi dengan minimal 1 foto, tag, dan harga.',
+      title: get(t)('tour.addProduct'),
+      body: get(t)('tour.addProductDesc'),
       placement: 'right'
     },
     {
       target: 'a[href="/seller/orders"]',
-      title: 'Pesanan Masuk',
-      body: 'Lihat semua pesanan dari pembeli, ubah status, dan input nomor resi setelah dikirim.',
+      title: get(t)('tour.incomingOrders'),
+      body: get(t)('tour.incomingOrdersDesc'),
       placement: 'right'
     },
     {
       target: 'a[href="/seller/withdraw"]',
-      title: 'Penarikan',
-      body: 'Tarik saldo pendapatan ke rekening Anda. Komisi platform sudah otomatis dipotong.',
+      title: get(t)('tour.withdrawals'),
+      body: get(t)('tour.withdrawalsDesc'),
       placement: 'right'
     },
     {
       target: 'a[href="/seller/profile"]',
-      title: 'Profil Toko',
-      body: 'Upload foto profil & banner toko, ubah username, alamat, dan data bank. Lengkapi sebelum mulai jualan!',
+      title: get(t)('tour.storeProfile'),
+      body: get(t)('tour.storeProfileDesc'),
       placement: 'right'
     },
     {
       target: 'a[href="/chats"]',
-      title: 'Chat Pembeli',
-      body: 'Balas pertanyaan pembeli secepat mungkin untuk meningkatkan trust & rating toko.',
+      title: get(t)('tour.buyerChat'),
+      body: get(t)('tour.buyerChatDesc'),
       placement: 'right'
     },
   ];
@@ -174,10 +176,10 @@
       </button>
       <div class="flex gap-2">
         {#if current > 0}
-          <button on:click={prev} class="btn-outline btn-sm"><Icon name="chevron-left" size={12} /> Kembali</button>
+          <button on:click={prev} class="btn-outline btn-sm"><Icon name="chevron-left" size={12} /> {$t('mk.back')}</button>
         {/if}
         <button on:click={next} disabled={finishing} class="btn-primary btn-sm">
-          {current === steps.length - 1 ? 'Selesai' : 'Lanjut'}
+          {current === steps.length - 1 ? $t('tour.finish') : $t('tour.next')}
           {#if current < steps.length - 1}<Icon name="chevron-right" size={12} />{/if}
         </button>
       </div>

@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { get } from 'svelte/store';
+	import { t } from '$lib/i18n';
 	import { untrack } from 'svelte';
 	import { Lock, Globe, Check } from '@lucide/svelte';
 	import type { PageProps } from './$types';
@@ -15,8 +17,8 @@
 <svelte:head><title>Privasi akun — Portal SI</title></svelte:head>
 <main class="settings-form surface">
 	<a class="back" href="/settings">← Pengaturan</a>
-	<h1>Privasi akun</h1>
-	<p class="lede">Akun privat memerlukan persetujuan Anda sebelum orang lain dapat melihat postingan.</p>
+	<h1>{$t('set.privacy')}</h1>
+	<p class="lede">{$t('priv.desc')}</p>
 
 	<form
 		method="POST"
@@ -43,8 +45,8 @@
 				{#if isPrivate}<Lock size={20} />{:else}<Globe size={20} />{/if}
 			</span>
 			<span class="toggle-text">
-				<strong>{isPrivate ? 'Akun privat' : 'Akun publik'}</strong>
-				<small>{isPrivate ? 'Pengikut baru harus Anda setujui.' : 'Siapa pun dapat melihat postingan Anda.'}</small>
+				<strong>{isPrivate ? get(t)('priv.private') : get(t)('priv.public')}</strong>
+				<small>{isPrivate ? get(t)('priv.privateSub') : get(t)('priv.publicSub')}</small>
 			</span>
 			<span class="switch" aria-hidden="true"><span class="knob"></span></span>
 		</button>
@@ -56,7 +58,7 @@
 			{#if submitting}<span class="spinner" aria-hidden="true"></span> Menyimpan…{:else}Simpan privasi{/if}
 		</button>
 		{#if !dirty && !submitting}
-			<small class="save-hint">Belum ada perubahan untuk disimpan.</small>
+			<small class="save-hint">{$t('pe.noChanges')}</small>
 		{/if}
 	</form>
 </main>
@@ -65,14 +67,14 @@
 	<div class="modal-scrim" role="presentation" onclick={() => (modal = null)}>
 		<div class="modal" role="dialog" aria-modal="true" onclick={(e) => e.stopPropagation()}>
 			<span class="modal-ico"><Check size={26} /></span>
-			<strong>Privasi diperbarui</strong>
+			<strong>{$t('priv.updated')}</strong>
 			<p>
 				Akun Anda sekarang <b>{modal.private ? 'privat' : 'publik'}</b>.
 				{modal.private
-					? 'Permintaan mengikuti akan menunggu persetujuan Anda.'
-					: 'Postingan Anda dapat dilihat semua orang.'}
+					? get(t)('priv.privateNote')
+					: get(t)('priv.publicNote')}
 			</p>
-			<button type="button" onclick={() => (modal = null)}>Selesai</button>
+			<button type="button" onclick={() => (modal = null)}>{$t('comp.done')}</button>
 		</div>
 	</div>
 {/if}

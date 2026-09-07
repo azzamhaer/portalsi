@@ -36,6 +36,7 @@
 
 <script lang="ts">
 	import {
+	import { t } from '$lib/i18n';
 		Check,
 		Expand,
 		LoaderCircle,
@@ -669,7 +670,7 @@
 					loading = true;
 					video.load();
 					failed = false;
-				}}>Coba lagi</button
+				}}>{$t('common.retry')}</button
 			>
 		</div>{/if}
 	{#if !playing && !loading && !failed}<button

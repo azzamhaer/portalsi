@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { env } from '$env/dynamic/public';
+	import { get } from 'svelte/store';
+	import { t } from '$lib/i18n';
 	import { untrack } from 'svelte';
 	import {
 		Copy,
@@ -172,11 +174,11 @@
 					signal: controller.signal
 				});
 				livePeople = response.users.map((user) => mapCompactUser(user, mediaBaseUrl));
-				searchMessage = livePeople.length ? '' : 'Tidak ada akun yang cocok.';
+				searchMessage = livePeople.length ? '' : get(t)('exp.noAccounts');
 			} catch (error) {
 				if (!(error instanceof DOMException && error.name === 'AbortError')) {
 					livePeople = [];
-					searchMessage = 'Tidak ada akun yang cocok.';
+					searchMessage = get(t)('exp.noAccounts');
 				}
 			} finally {
 				if (!controller.signal.aborted) searching = false;
@@ -210,7 +212,7 @@
 			nextPage = response.current_page + 1;
 			hasMore = response.current_page < response.last_page;
 		} catch {
-			loadError = 'Konten berikutnya belum dapat dimuat.';
+			loadError = get(t)('exp.loadMoreFailed');
 		} finally {
 			loadingMore = false;
 		}
@@ -230,15 +232,15 @@
 		}}
 	>
 		<label
-			><Search size={19} /><span class="sr-only">Cari</span><input
+			><Search size={19} /><span class="sr-only">{$t('nav.search')}</span><input
 				bind:value={searchQuery}
-				placeholder="Cari"
+				placeholder={$t('nav.search')}
 				onfocus={() => (searchFocused = true)}
 			/>{#if searching}<LoaderCircle class="spin" size={17} />{:else if searchQuery || searchFocused}<button
 					type="button"
 					class="clear"
 					onclick={closeSearchPanel}
-					aria-label="Tutup pencarian"><X size={16} /></button
+					aria-label={$t('home.closeSearch')}><X size={16} /></button
 				>{/if}</label
 		>
 		<button
@@ -250,7 +252,7 @@
 		>
 	</form>
 	{#if searchFocused && searchQuery.trim().length < 2 && searchHistory.length}<section class="search-history surface">
-			<header><span>Riwayat pencarian</span><button onclick={() => void clearSearchHistory()}>Hapus semua</button></header>
+			<header><span>{$t('home.searchHistory')}</span><button onclick={() => void clearSearchHistory()}>{$t('home.clearAll')}</button></header>
 			{#each searchHistory as item (item.id)}
 				<div>
 					{#if item.user}
@@ -287,7 +289,7 @@
 			{/each}
 		</section>{/if}
 	{#if searchQuery.trim().length >= 2}<section class="live-results surface" aria-live="polite">
-			<h2>Akun</h2>
+			<h2>{$t('srch.accounts')}</h2>
 			{#each visiblePeople as user (user.id)}<div>
 					<StoryAvatarLink
 						userId={user.id}
@@ -309,15 +311,15 @@
 				onclick={() => void rememberSearch(searchQuery)}
 			>
 				<Search size={16} /> Cari “{searchQuery.trim()}” lebih lanjut
-				<span>akun · caption · hashtag</span>
+				<span>{$t('exp.searchScope')}</span>
 			</a>
 		</section>{/if}
 	</div>
-	{#if showFilters}<nav class="filters surface" id="filters" aria-label="Filter jelajah">
+	{#if showFilters}<nav class="filters surface" id="filters" aria-label={$t('exp.filterAria')}>
 			<span class="filters-label"><SlidersHorizontal size={14} /> Urutkan</span>
-			<a class:active={data.sort === 'random'} href={filterHref('random')}>Untuk Anda</a>
-			<a class:active={data.sort === 'newest'} href={filterHref('newest')}>Terbaru</a>
-			<a class:active={data.sort === 'popular'} href={filterHref('popular')}>Populer</a>
+			<a class:active={data.sort === 'random'} href={filterHref('random')}>{$t('home.forYou')}</a>
+			<a class:active={data.sort === 'newest'} href={filterHref('newest')}>{$t('exp.latest')}</a>
+			<a class:active={data.sort === 'popular'} href={filterHref('popular')}>{$t('exp.popular')}</a>
 			<button
 				type="button"
 				class="people-toggle"
@@ -327,7 +329,7 @@
 			>
 		</nav>{/if}
 	{#if showPeople || data.query}<section class="people surface" id="people">
-		<h2><Users size={16} /> {data.query ? `Hasil pengguna untuk “${data.query}”` : 'Orang yang mungkin Anda kenal'}</h2>
+		<h2><Users size={16} /> {data.query ? `Hasil pengguna untuk “${data.query}”` : get(t)('sug.mayKnow')}</h2>
 		{#if data.peopleUnavailable}<p class="people-error">
 				Sebagian hasil pengguna belum dapat dimuat.
 			</p>{/if}
@@ -348,9 +350,9 @@
 					>
 				</article>{/each}
 		</div>
-		{#if data.people.length === 0}<p class="empty">Tidak ada pengguna yang cocok.</p>{/if}
+		{#if data.people.length === 0}<p class="empty">{$t('exp.noUsers')}</p>{/if}
 	</section>{/if}
-	<section class="explore-grid" aria-label="Konten jelajah">
+	<section class="explore-grid" aria-label={$t('exp.contentAria')}>
 		{#each posts as post, index (post.id)}
 			<a
 				href={`/posts/${post.id}`}
@@ -394,8 +396,8 @@
 							else if (!img.src.endsWith('/assets/logo.png')) img.src = '/assets/logo.png';
 						}}
 					/>{/if}
-				{#if post.isVideo}<span aria-label="Video"><Play size={16} fill="currentColor" /></span
-					>{:else if post.media && post.media.length > 1}<span aria-label="Beberapa foto"
+				{#if post.isVideo}<span aria-label={$t('media.video')}><Play size={16} fill="currentColor" /></span
+					>{:else if post.media && post.media.length > 1}<span aria-label={$t('media.photos')}
 						><Copy size={16} /></span
 					>{/if}
 				<div>
@@ -412,7 +414,7 @@
 	{#if data.exploreUnavailable}<p class="service-note">
 			Konten jelajah sedang diperbarui. Pencarian pengguna tetap dapat digunakan.
 		</p>{/if}
-	{#if posts.length === 0}<p class="empty">Belum ada postingan untuk filter ini.</p>{/if}
+	{#if posts.length === 0}<p class="empty">{$t('exp.emptyFilter')}</p>{/if}
 	<InfiniteScrollTrigger
 		{hasMore}
 		loading={loadingMore}

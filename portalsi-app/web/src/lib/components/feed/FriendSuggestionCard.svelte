@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Users } from '@lucide/svelte';
+	import { t } from '$lib/i18n';
 	import StoryAvatarLink from '$lib/components/story/StoryAvatarLink.svelte';
 	import UserBadges from '$lib/components/ui/UserBadges.svelte';
 	import { clientRequest } from '$lib/api/client';
@@ -31,14 +32,14 @@
 	}
 </script>
 
-{#if users.length}<section class="friend-card" aria-label="Temukan teman">
+{#if users.length}<section class="friend-card" aria-label={$t('rail.findFriends')}>
 		<header>
 			<span><Users size={17} /></span>
 			<div>
-				<h2>Temukan teman</h2>
-				<small>Orang yang mungkin Anda kenal</small>
+				<h2>{$t('rail.findFriends')}</h2>
+				<small>{$t('sug.mayKnow')}</small>
 			</div>
-			<a href="/explore">Lihat semua</a>
+			<a href="/explore">{$t('common.seeAll')}</a>
 		</header>
 		<div class="friend-strip">
 			{#each users as user (user.id)}<article>
@@ -62,10 +63,10 @@
 						onclick={() => toggleFollow(user.id)}
 						disabled={busy.has(user.id)}
 						>{followed.has(user.id)
-							? 'Mengikuti'
+							? $t('common.following')
 							: user.followsYou
-								? 'Ikuti balik'
-								: 'Ikuti'}</button
+								? $t('rail.followBack')
+								: $t('common.follow')}</button
 					>
 				</article>{/each}
 		</div>

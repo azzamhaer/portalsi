@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { t } from '$lib/i18n';
 	import { ArrowLeft, Check, Save } from '@lucide/svelte';
 	import { untrack } from 'svelte';
 	import ImageCropper from '$lib/components/media/ImageCropper.svelte';
@@ -56,10 +57,10 @@
 >
 <main class="form-page surface">
 	<header>
-		<a href="/profile" aria-label="Kembali"><ArrowLeft size={19} /></a>
+		<a href="/profile" aria-label={$t('common.back')}><ArrowLeft size={19} /></a>
 		<div>
-			<p class="eyebrow">Profil Anda</p>
-			<h1>Edit profil</h1>
+			<p class="eyebrow">{$t('pe.yourProfile')}</p>
+			<h1>{$t('prof.editProfile')}</h1>
 		</div>
 	</header>
 	<form
@@ -98,7 +99,7 @@
 			<p><strong>{fullName}</strong><small>@{username}</small></p>
 		</div>
 		<label
-			><span>Username</span><input
+			><span>{$t('auth.username')}</span><input
 				name="username"
 				required
 				minlength="3"
@@ -114,7 +115,7 @@
 				onregion={(region) => (profileRegion = region)}
 			/>{/if}
 		<label
-			><span>Nama lengkap</span><input
+			><span>{$t('auth.fullName')}</span><input
 				name="full_name"
 				required
 				maxlength="255"
@@ -128,16 +129,16 @@
 				onregion={(region) => (bannerRegion = region)}
 			/>{/if}
 		<label
-			><span>Bio</span><MentionTextarea
+			><span>{$t('pe.bio')}</span><MentionTextarea
 				bind:value={bio}
 				name="bio"
 				maxlength={1000}
 				rows={5}
-				placeholder="Ceritakan tentang diri Anda…"
+				placeholder={$t('pe.bioPh')}
 			/></label
 		>
 		<label
-			><span>Foto profil <small>maks. 10 MB</small></span><input
+			><span>{$t('pe.avatar')} <small>maks. 10 MB</small></span><input
 				name="profile_picture"
 				type="file"
 				accept="image/*"
@@ -145,7 +146,7 @@
 			/></label
 		>
 		<label
-			><span>Banner <small>maks. 20 MB</small></span><input
+			><span>{$t('pe.banner')} <small>maks. 20 MB</small></span><input
 				name="banner"
 				type="file"
 				accept="image/jpeg,image/png,image/webp,image/gif"
@@ -159,7 +160,7 @@
 				/> Simpan perubahan{/if}
 		</button>
 		{#if !dirty && !submitting}
-			<small class="save-hint">Belum ada perubahan untuk disimpan.</small>
+			<small class="save-hint">{$t('pe.noChanges')}</small>
 		{/if}
 	</form>
 </main>
@@ -169,9 +170,9 @@
 		<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
 		<div class="modal" role="dialog" aria-modal="true" onclick={(e) => e.stopPropagation()}>
 			<span class="modal-ico"><Check size={26} /></span>
-			<strong>Profil diperbarui</strong>
-			<p>Perubahan Anda sudah tersimpan dan langsung terlihat di profil.</p>
-			<button type="button" onclick={() => (savedModal = false)}>Selesai</button>
+			<strong>{$t('pe.updated')}</strong>
+			<p>{$t('pe.updatedSub')}</p>
+			<button type="button" onclick={() => (savedModal = false)}>{$t('comp.done')}</button>
 		</div>
 	</div>
 {/if}

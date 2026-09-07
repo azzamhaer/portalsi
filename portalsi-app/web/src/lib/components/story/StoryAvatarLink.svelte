@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto, preloadData } from '$app/navigation';
+	import { t } from '$lib/i18n';
 	import { Expand, LoaderCircle, X } from '@lucide/svelte';
 	import Avatar from '$lib/components/ui/Avatar.svelte';
 	import { markStoryUserRead, readStoryUsers } from '$lib/story/read-state';
@@ -111,7 +112,7 @@
 		class="photo-backdrop"
 		role="button"
 		tabindex="0"
-		aria-label="Tutup foto profil"
+		aria-label={$t('sal.closeAvatar')}
 		onclick={closePhoto}
 		onkeydown={(event) => (event.key === 'Enter' || event.key === ' ') && closePhoto()}
 	>
@@ -124,7 +125,7 @@
 			onclick={(event) => event.stopPropagation()}
 			onkeydown={(event) => event.stopPropagation()}
 		>
-			<button type="button" class="photo-close" onclick={closePhoto} aria-label="Tutup foto profil"
+			<button type="button" class="photo-close" onclick={closePhoto} aria-label={$t('sal.closeAvatar')}
 				><X size={20} /></button
 			>
 			<img src={previewUrl} alt={`Foto profil ${name}`} />

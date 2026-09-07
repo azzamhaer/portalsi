@@ -1,5 +1,6 @@
 <script lang="ts">
   import Icon from './Icon.svelte';
+  import { t } from '$lib/i18n';
 
   let { categories = [] } = $props<{ categories: any[] }>();
 
@@ -36,7 +37,7 @@
     <div class="mb-4 flex items-end justify-between gap-3">
       <div>
         <div class="section-eyebrow mb-2">Kategori</div>
-        <h2 class="section-title">Pilih kebutuhan Anda</h2>
+        <h2 class="section-title">{$t('home.chooseNeed')}</h2>
       </div>
       <a href="/products" class="hidden items-center gap-1 text-sm text-ink-700 hover:text-ink-950 sm:flex">
         Semua produk <Icon name="arrow-right" size={14} />

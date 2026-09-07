@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { goto, onNavigate, preloadData } from '$app/navigation';
+	import { get } from 'svelte/store';
+	import { t } from '$lib/i18n';
 	import {
 		ChevronLeft,
 		ChevronRight,
@@ -278,7 +280,7 @@
 				avatarUrl: viewer.profile_picture_thumb_url ?? viewer.profile_picture_url ?? null
 			}));
 		} catch {
-			viewerStatus = 'Daftar penonton belum dapat dimuat.';
+			viewerStatus = get(t)('sty.viewersFailed');
 		}
 	}
 
@@ -286,9 +288,9 @@
 		const wasPaused = paused;
 		paused = true;
 		const confirmed = await confirmAction({
-			title: 'Hapus cerita ini?',
-			description: 'Cerita akan langsung dihapus dan tidak dapat dipulihkan dari arsip.',
-			confirmLabel: 'Hapus cerita',
+			title: get(t)('arch.delTitle'),
+			description: get(t)('sty.delMsg'),
+			confirmLabel: get(t)('arch.delConfirm'),
 			tone: 'danger'
 		});
 		if (!confirmed) {
@@ -301,7 +303,7 @@
 			if (stories.length === 0) await goto('/home');
 			else if (index >= stories.length) index = stories.length - 1;
 		} catch {
-			viewerStatus = 'Cerita belum dapat dihapus.';
+			viewerStatus = get(t)('arch.delFailed');
 		}
 	}
 
@@ -397,7 +399,7 @@
 		<button
 			class="story-nav outside-prev"
 			onclick={previous}
-			aria-label="Cerita sebelumnya"><ChevronLeft size={28} /></button
+			aria-label={$t('arch.prev')}><ChevronLeft size={28} /></button
 		>
 	{:else}
 		<span class="story-nav-spacer"></span>
@@ -415,9 +417,9 @@
 	>
 		<!-- Zona ketuk tepi: navigasi terintegrasi di dalam media (kiri = mundur, kanan =
 		     maju). Di bawah header/footer/caption supaya tombol di sana tetap bisa ditekan. -->
-		<button class="tap-zone tap-prev" onclick={() => edgeTap('prev')} aria-label="Cerita sebelumnya"
+		<button class="tap-zone tap-prev" onclick={() => edgeTap('prev')} aria-label={$t('arch.prev')}
 		></button>
-		<button class="tap-zone tap-next" onclick={() => edgeTap('next')} aria-label="Cerita berikutnya"
+		<button class="tap-zone tap-next" onclick={() => edgeTap('next')} aria-label={$t('arch.next')}
 		></button>
 		<div class="progress">
 			{#each stories as item, itemIndex (item.id)}<span class:complete={itemIndex < index}
@@ -453,11 +455,11 @@
 						class="mute-toggle"
 						type="button"
 						onclick={toggleStoryMute}
-						aria-label={muted ? 'Nyalakan suara' : 'Bisukan'}
+						aria-label={muted ? get(t)('sty.unmute') : get(t)('sty.mute')}
 						>{#if muted}<VolumeX size={18} />{:else}<Volume2 size={18} />{/if}</button
 					>
 				{/if}
-				<button class="close" type="button" onclick={closeStory} aria-label="Tutup cerita"
+				<button class="close" type="button" onclick={closeStory} aria-label={$t('arch.ariaClose')}
 					><X size={19} /></button
 				>
 			</div>
@@ -508,7 +510,7 @@
 					? `linear-gradient(rgb(0 0 0 / 48%), rgb(0 0 0 / 70%)), url('${story.albumArtUrl}')`
 					: undefined}
 			>
-				<Music2 size={44} /><strong>{story.musicTitle || 'Cerita musik'}</strong><span
+				<Music2 size={44} /><strong>{story.musicTitle || get(t)('arch.musicStory')}</strong><span
 					>{story.musicArtist || 'Portal SI'}</span
 				>
 				{#if story.musicPreviewUrl}<audio
@@ -534,9 +536,9 @@
 				ontimeupdate={loopStoryMusic}
 			></audio>{/if}
 		{#if mediaLoading}<div class="media-loading">
-				<LoaderCircle size={28} /><span>Menyiapkan cerita…</span>
+				<LoaderCircle size={28} /><span>{$t('arch.preparing')}</span>
 			</div>{:else if mediaError}<div class="media-loading error">
-				<span>Media cerita belum dapat dimuat.</span>
+				<span>{$t('arch.mediaFailed')}</span>
 			</div>{/if}
 		{#if story?.caption}<div class="story-caption">
 				<p><MentionText text={story.caption} /></p>
@@ -552,7 +554,7 @@
 					onclick={(event) => {
 						event.stopPropagation();
 						void deleteStory();
-					}}><Trash2 size={18} /> Hapus</button
+					}}><Trash2 size={18} /> {$t('common.delete')}</button
 				>{:else}<a
 						href={`/messages/direct/${data.user.id}?reply_story=${story?.id ?? ''}&story_media=${encodeURIComponent(story?.mediaUrl ?? '')}`}
 						><MessageCircle size={19} /> Balas cerita</a
@@ -562,14 +564,14 @@
 				<header>
 					<strong>Penonton ({viewers.length})</strong><button
 						onclick={() => (viewersOpen = false)}
-						aria-label="Tutup daftar penonton"><X size={16} /></button
+						aria-label={$t('sty.ariaCloseViewers')}><X size={16} /></button
 					>
 				</header>
 				{#if viewerStatus}<p>{viewerStatus}</p>{/if}
 				<div>
 					{#each viewers as viewer (viewer.id)}<a href={`/u/${viewer.username}`}
 							><Avatar name={viewer.username} src={viewer.avatarUrl ?? undefined} size="sm" /> @{viewer.username}</a
-						>{/each}{#if !viewerStatus && viewers.length === 0}<p>Belum ada penonton.</p>{/if}
+						>{/each}{#if !viewerStatus && viewers.length === 0}<p>{$t('sty.noViewers')}</p>{/if}
 				</div>
 			</aside>{/if}
 	</article>
@@ -577,7 +579,7 @@
 		<button
 			class="story-nav outside-next"
 			onclick={next}
-			aria-label="Cerita berikutnya"><ChevronRight size={28} /></button
+			aria-label={$t('arch.next')}><ChevronRight size={28} /></button
 		>
 	{:else}
 		<span class="story-nav-spacer"></span>

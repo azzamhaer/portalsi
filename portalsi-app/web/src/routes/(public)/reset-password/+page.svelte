@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { Eye, LoaderCircle, LockKeyhole, Mail, ShieldCheck, TriangleAlert } from '@lucide/svelte';
+	import { get } from 'svelte/store';
+	import { t } from '$lib/i18n';
 	import AuthShell from '$lib/components/auth/AuthShell.svelte';
 	import type { PageProps } from './$types';
 
@@ -18,39 +20,39 @@
 	{#if f?.success}
 		<div class="result">
 			<div class="badge ok"><ShieldCheck size={26} /></div>
-			<h1>Kata sandi diperbarui</h1>
-			<p>Kata sandi kamu berhasil diubah. Silakan masuk dengan kata sandi baru.</p>
-			<a class="cta" href="/login">Masuk sekarang</a>
+			<h1>{$t('auth.pwUpdated')}</h1>
+			<p>{$t('auth.pwUpdatedMsg')}</p>
+			<a class="cta" href="/login">{$t('auth.signInNow')}</a>
 		</div>
 	{:else if invalidLink || f?.tokenError}
 		<div class="result">
 			<div class="badge warn"><TriangleAlert size={26} /></div>
-			<h1>Tautan tidak berlaku</h1>
+			<h1>{$t('auth.linkInvalid')}</h1>
 			<p>
 				{f?.message ||
-					'Tautan reset ini tidak valid atau sudah kedaluwarsa. Minta tautan baru untuk melanjutkan.'}
+					get(t)('auth.resetInvalidMsg')}
 			</p>
-			<a class="cta" href="/forgot-password">Minta tautan baru</a>
-			<a class="ghost" href="/login">Kembali ke masuk</a>
+			<a class="cta" href="/forgot-password">{$t('auth.requestNewLink')}</a>
+			<a class="ghost" href="/login">{$t('auth.backToSignIn')}</a>
 		</div>
 	{:else}
 		<div class="heading">
-			<p class="eyebrow">Pemulihan akun</p>
-			<h1>Buat kata sandi baru</h1>
-			<p>Masukkan kata sandi baru untuk akun kamu.</p>
+			<p class="eyebrow">{$t('auth.accountRecovery')}</p>
+			<h1>{$t('auth.newPwTitle')}</h1>
+			<p>{$t('auth.newPwSub')}</p>
 		</div>
 		{#if f?.message}<div class="form-alert" role="alert">{f.message}</div>{/if}
 		<form method="POST" class="reset" onsubmit={() => (submitting = true)}>
 			<input type="hidden" name="token" value={data.token} />
 			<label>
-				<span>Email</span>
+				<span>{$t('auth.email')}</span>
 				<div class="input-icon">
 					<Mail size={18} />
 					<input type="email" name="email" required value={data.email} autocomplete="email" />
 				</div>
 			</label>
 			<label>
-				<span>Kata sandi baru</span>
+				<span>{$t('auth.newPassword')}</span>
 				<div class="input-icon">
 					<LockKeyhole size={18} />
 					<input
@@ -59,17 +61,17 @@
 						required
 						minlength="6"
 						autocomplete="new-password"
-						placeholder="Minimal 6 karakter"
+						placeholder={$t('auth.min6')}
 					/>
 					<button
 						type="button"
 						onclick={() => (revealPassword = !revealPassword)}
-						aria-label={revealPassword ? 'Sembunyikan' : 'Tampilkan'}><Eye size={18} /></button
+						aria-label={revealPassword ? get(t)('auth.hide') : get(t)('auth.show')}><Eye size={18} /></button
 					>
 				</div>
 			</label>
 			<label>
-				<span>Ulangi kata sandi</span>
+				<span>{$t('auth.repeatPw')}</span>
 				<div class="input-icon">
 					<LockKeyhole size={18} />
 					<input
@@ -78,7 +80,7 @@
 						required
 						minlength="6"
 						autocomplete="new-password"
-						placeholder="Ketik ulang kata sandi"
+						placeholder={$t('auth.repeatPwPh')}
 					/>
 				</div>
 			</label>
@@ -86,7 +88,7 @@
 				{#if submitting}<LoaderCircle size={17} class="button-spin" /> Memproses…{:else}Reset kata sandi{/if}
 			</button>
 		</form>
-		<p class="switch"><a href="/login">Kembali ke masuk</a></p>
+		<p class="switch"><a href="/login">{$t('auth.backToSignIn')}</a></p>
 	{/if}
 </AuthShell>
 

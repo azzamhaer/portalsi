@@ -5,8 +5,10 @@
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
 	import GlobalProgress from '$lib/components/ui/GlobalProgress.svelte';
 	import { resetProgress, startProgress } from '$lib/ui/progress';
+	import { initLang } from '$lib/i18n';
 
-	let { children }: { children: Snippet } = $props();
+	let { children, data }: { children: Snippet; data: { lang?: 'id' | 'en' } } = $props();
+	initLang(data?.lang);
 	beforeNavigate(({ from, to }) => {
 		if (from?.url.href !== to?.url.href) {
 			startProgress();

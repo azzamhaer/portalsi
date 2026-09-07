@@ -1,5 +1,7 @@
 <script lang="ts">
 	import {
+	import { get } from 'svelte/store';
+	import { t } from '$lib/i18n';
 		Archive,
 		AtSign,
 		Bell,
@@ -16,46 +18,46 @@
 	import { confirmAction } from '$lib/ui/confirm';
 	const sections = [
 		{
-			title: 'Akun Anda',
+			title: get(t)('set.yourAccount'),
 			items: [
 				{
-					label: 'Edit profil',
-					desc: 'Nama, bio, foto dan banner',
+					label: get(t)('prof.editProfile'),
+					desc: get(t)('set.editProfileSub'),
 					href: '/profile/edit',
 					icon: UserRound
 				},
 				{
-					label: 'Privasi akun',
-					desc: 'Atur siapa yang dapat mengikuti Anda',
+					label: get(t)('set.privacy'),
+					desc: get(t)('set.privacySub'),
 					href: '/settings/privacy',
 					icon: ShieldCheck
 				},
 				{
-					label: 'Ubah email',
-					desc: 'Ganti alamat email dan konfirmasi',
+					label: get(t)('set.changeEmail'),
+					desc: get(t)('set.changeEmailSub'),
 					href: '/settings/email',
 					icon: AtSign
 				},
 				{
-					label: 'Ubah kata sandi',
-					desc: 'Perbarui sandi Anda',
+					label: get(t)('set.changePw'),
+					desc: get(t)('set.changePwSub'),
 					href: '/settings/password',
 					icon: KeyRound
 				},
 				{
-					label: 'Riwayat login',
-					desc: 'Lihat perangkat dan sesi',
+					label: get(t)('set.loginHistory'),
+					desc: get(t)('set.loginHistorySub'),
 					href: '/settings/sessions',
 					icon: Smartphone
 				}
 			]
 		},
 		{
-			title: 'Aktivitas',
+			title: get(t)('set.activity'),
 			items: [
 				{
-					label: 'Postingan tersimpan',
-					desc: 'Konten yang ingin dilihat lagi',
+					label: get(t)('set.saved'),
+					desc: get(t)('set.savedSub'),
 					href: '/settings/saved',
 					icon: Bookmark
 				},
@@ -67,12 +69,12 @@
 				},
 				{
 					label: 'Arsip cerita',
-					desc: 'Cerita Anda yang telah berakhir',
+					desc: get(t)('set.storyArchiveSub'),
 					href: '/settings/story-archive',
 					icon: Archive
 				},
 				{
-					label: 'Preferensi notifikasi',
+					label: get(t)('pref.title'),
 					desc: 'Pilih kabar yang ingin diterima',
 					href: '/settings/preferences',
 					icon: Bell
@@ -112,18 +114,18 @@
 						>{/each}
 				</section>{/each}
 			<section class="surface danger-zone">
-				<h2>Login dan akun</h2>
+				<h2>{$t('set.loginAccount')}</h2>
 				<a href="/settings/delete-account"
 					><span><Trash2 size={19} /></span>
 					<p>
-						<strong>Hapus akun</strong><small>Tindakan permanen dan tidak dapat dibatalkan</small>
+						<strong>{$t('set.deleteAccount')}</strong><small>{$t('set.deleteAccountSub')}</small>
 					</p>
 					<ChevronRight size={18} /></a
 				>
 				<form method="POST" action="/logout" onsubmit={confirmLogout}>
 					<button class="danger" type="submit"
 						><span><LogOut size={19} /></span>
-						<p><strong>Keluar</strong><small>Akhiri sesi di perangkat ini</small></p>
+						<p><strong>{$t('nav.logout')}</strong><small>{$t('set.endSession')}</small></p>
 						<ChevronRight size={18} /></button
 					>
 				</form>
@@ -132,8 +134,8 @@
 		<aside class="surface">
 			<img src="/assets/logo-mark.png" alt="" />
 			<h2>Portal SI Web</h2>
-			<p>Terkoneksi dengan iman, menginspirasi dalam kebaikan.</p>
-			<small>Versi 2.5.5 · Stabil</small>
+			<p>{$t('set.tagline')}</p>
+			<small>{$t('set.version')}</small>
 		</aside>
 	</div>
 </SectionPage>

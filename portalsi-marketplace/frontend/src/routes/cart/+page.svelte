@@ -18,7 +18,7 @@
   const total = $derived(cart.subtotal + (cart.subtotal > 0 ? ship : 0));
 
   function checkout() {
-    if (!cart.items.some(i => i.checked)) { toast.warn('Pilih minimal 1 produk'); return; }
+    if (!cart.items.some(i => i.checked)) { toast.warn(get(t)('lf.selectMin1')); return; }
     if (hasSelectedOutOfStock) { toast.warn(get(t)('cart.outOfStockWarn')); return; }
     if (!auth.user) { goto('/login?next=/checkout'); return; }
     goto('/checkout');
@@ -83,7 +83,7 @@
                   <a href={`/product/${it.product_slug || it.product_id}`} class="font-medium line-clamp-2 hover:text-ink-950 text-sm">{it.name}</a>
                   {#if it.variant_selection}<div class="text-[10px] text-ink-500 mt-0.5">{it.variant_selection}</div>{/if}
                   {#if it.stock <= 0}
-                    <div class="mt-1 text-xs font-medium text-red-600">Stok habis. Masukkan ke wishlist untuk notifikasi restock.</div>
+                    <div class="mt-1 text-xs font-medium text-red-600">{$t('lf.outOfStockWishlist')}</div>
                   {/if}
                   <div class="text-sm font-semibold text-ink-950 mt-1">{fmtRp(it.price)}</div>
                   <div class="flex items-center gap-2 mt-2 sm:hidden">

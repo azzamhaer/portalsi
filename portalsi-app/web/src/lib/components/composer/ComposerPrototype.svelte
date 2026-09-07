@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { t } from '$lib/i18n';
+	import { get } from 'svelte/store';
 	import {
 		ImagePlus,
 		LoaderCircle,
@@ -38,7 +40,7 @@
 	const copy = $derived(
 		{
 			post: {
-				eyebrow: 'Bagikan momen',
+				eyebrow: get(t)('comp.shareMoment'),
 				title: 'Buat postingan',
 				description: 'Satu video, atau hingga 15 foto dalam satu galeri, dengan caption dan lokasi.'
 			},
@@ -150,11 +152,11 @@
 	let musicAudio = $state<HTMLAudioElement>();
 	const musicDurationSeconds = $derived(Math.max(0, musicEndSeconds - musicStartSeconds));
 	const filterOptions = [
-		{ id: 'normal' as const, label: 'Normal', css: 'none' },
+		{ id: 'normal' as const, label: get(t)('comp.filterNormal'), css: 'none' },
 		{ id: 'bright' as const, label: 'Cerah', css: 'brightness(1.12) saturate(1.08)' },
-		{ id: 'warm' as const, label: 'Hangat', css: 'sepia(.18) saturate(1.18) hue-rotate(-8deg)' },
+		{ id: 'warm' as const, label: get(t)('comp.filterWarm'), css: 'sepia(.18) saturate(1.18) hue-rotate(-8deg)' },
 		{ id: 'mono' as const, label: 'Mono', css: 'grayscale(1) contrast(1.08)' },
-		{ id: 'contrast' as const, label: 'Kontras', css: 'contrast(1.18) saturate(1.12)' }
+		{ id: 'contrast' as const, label: get(t)('comp.filterContrast'), css: 'contrast(1.18) saturate(1.12)' }
 	];
 	const activeFilter = $derived(filterOptions.find((item) => item.id === filter)?.css ?? 'none');
 	const cropAspect = $derived(
@@ -395,11 +397,11 @@
 			.then(async (draft) => {
 				if (!draft) return;
 				const restore = await confirmAction({
-					title: 'Lanjutkan draft terakhir?',
+					title: get(t)('comp.resumeTitle'),
 					description:
-						'Kami menemukan konten yang belum sempat Anda bagikan. Foto atau video beserta detailnya masih tersimpan di perangkat ini.',
-					confirmLabel: 'Lanjutkan mengedit',
-					cancelLabel: 'Mulai dari awal'
+						get(t)('comp.resumeMsg'),
+					confirmLabel: get(t)('comp.resumeContinue'),
+					cancelLabel: get(t)('comp.resumeFresh')
 				});
 				if (!restore) {
 					await deleteDraft();
@@ -518,7 +520,7 @@
 					? detectedKind !== 'unknown'
 					: detectedKind === 'image' || detectedKind === 'video';
 		if (!allowed) {
-			warning = 'Jenis file tidak didukung untuk konten ini.';
+			warning = get(t)('comp.fileUnsupported');
 			return;
 		}
 		if (candidate.size > 500 * 1024 * 1024) {
@@ -562,7 +564,7 @@
 			return;
 		}
 		if (!allImages) {
-			warning = 'Jenis file tidak didukung untuk konten ini.';
+			warning = get(t)('comp.fileUnsupported');
 			return;
 		}
 
@@ -771,7 +773,7 @@
 			? await confirmAction({
 					title: 'Simpan sebagai draft?',
 					description:
-						'Draft hanya bisa dilihat oleh Anda sendiri. Bisa diedit dan diterbitkan kapan saja dari tab Draft di profil.',
+						get(t)('comp.draftHint'),
 					confirmLabel: 'Simpan draft'
 				})
 			: await confirmAction({
@@ -782,7 +784,7 @@
 								? 'Bagikan clips sekarang?'
 								: 'Bagikan postingan sekarang?',
 					description:
-						'Periksa kembali media, caption, dan musik. Konten akan langsung terlihat oleh audiens Anda.',
+						get(t)('comp.reviewHint'),
 					confirmLabel: 'Ya, bagikan'
 				});
 		if (!confirmed) return;
@@ -911,7 +913,7 @@
 				}
 				if (xhr.status < 200 || xhr.status >= 300) {
 					const detail = payload as { message?: string };
-					reject(new Error(detail.message || 'Unggahan ditolak server.'));
+					reject(new Error(detail.message || get(t)('comp.uploadRejected')));
 					return;
 				}
 				try {
@@ -1244,7 +1246,7 @@
 			};
 			request.onsuccess = () => resolve(request.result);
 			request.onerror = () => reject(request.error);
-			request.onblocked = () => reject(new Error('Penyimpanan draft sedang dipakai tab lain.'));
+			request.onblocked = () => reject(new Error(get(t)('comp.draftBusy')));
 		});
 	}
 	async function writeDraft(draft: Draft) {
@@ -1265,7 +1267,7 @@
 			tx.objectStore('drafts').put(stored, kind);
 			tx.oncomplete = () => resolve();
 			tx.onerror = () => reject(tx.error);
-			tx.onabort = () => reject(tx.error ?? new Error('Transaksi draft dibatalkan.'));
+			tx.onabort = () => reject(tx.error ?? new Error(get(t)('comp.draftCancelled')));
 		});
 		db.close();
 	}
@@ -1295,7 +1297,7 @@
 			tx.objectStore('drafts').delete(kind);
 			tx.oncomplete = () => resolve();
 			tx.onerror = () => reject(tx.error);
-			tx.onabort = () => reject(tx.error ?? new Error('Transaksi draft dibatalkan.'));
+			tx.onabort = () => reject(tx.error ?? new Error(get(t)('comp.draftCancelled')));
 		});
 		db.close();
 	}
@@ -1307,7 +1309,7 @@
 
 <div class="composer-page">
 	<header>
-		<a href="/home" aria-label="Tutup composer"><X size={21} /></a>
+		<a href="/home" aria-label={$t('comp.ariaClose')}><X size={21} /></a>
 		<div>
 			<p class="eyebrow">{copy.eyebrow}</p>
 			<h1>{copy.title}</h1>
@@ -1317,7 +1319,7 @@
 				class="save-draft"
 				onclick={() => publish(true)}
 				disabled={(!file && galleryItems.length === 0) || submitting || videoNotReady}
-				>Simpan draft</button
+				>{$t('comp.saveDraft')}</button
 			>
 		{/if}
 		<button
@@ -1329,16 +1331,16 @@
 				? uploadFileTotal > 1
 					? `Mengunggah ${uploadFileIndex}/${uploadFileTotal} · ${uploadProgress}%`
 					: uploadProgress >= 100
-						? 'Memproses di server…'
+						? get(t)('comp.processingServer')
 						: `Mengunggah ${uploadProgress}%`
 				: videoNotReady
-					? 'Menyiapkan video…'
-					: 'Bagikan'}</button
+					? get(t)('comp.preparingVideo')
+					: get(t)('common.share')}</button
 		>
 	</header>
 	<div class="composer-grid">
 		<section
-			aria-label="Unggah media"
+			aria-label={$t('comp.ariaUpload')}
 			class:dragging
 			class="upload surface"
 			ondragover={(event) => {
@@ -1388,7 +1390,7 @@
 						{/each}
 						{#if galleryItems.length < MAX_IMAGES}
 							<label class="g-add">
-								<ImagePlus size={22} /><span>Tambah</span>
+								<ImagePlus size={22} /><span>{$t('comp.add')}</span>
 								<input
 									type="file"
 									accept="image/*"
@@ -1420,7 +1422,7 @@
 								onregion={(region) => (cropRegion = region)}
 							/>
 						{/key}
-						<button class="crop-remove" onclick={() => (file = null)} aria-label="Hapus media"
+						<button class="crop-remove" onclick={() => (file = null)} aria-label={$t('comp.ariaRemoveMedia')}
 							><X size={18} /></button
 						>
 					</div>
@@ -1443,14 +1445,14 @@
 								disabled={Boolean(selectedMusic)}
 								onclick={() => (videoMuted = !videoMuted)}
 								aria-pressed={videoWillMute}
-								aria-label={videoWillMute ? 'Bunyikan video' : 'Bisukan video'}
+								aria-label={videoWillMute ? get(t)('comp.unmuteVideo') : get(t)('comp.muteVideo')}
 								>{#if videoWillMute}<VolumeX size={16} />{:else}<Volume2 size={16} />{/if}
-								{videoWillMute ? 'Video dibisukan' : 'Suara video aktif'}</button
+								{videoWillMute ? get(t)('comp.videoMuted') : get(t)('comp.videoSoundOn')}</button
 							>
 							{#if kind !== 'story'}<div class="thumbnail-picker">
 								<div>
-									<strong>Thumbnail video</strong>
-									<small>Default detik pertama. Geser untuk memilih frame lain.</small>
+									<strong>{$t('comp.videoThumb')}</strong>
+									<small>{$t('comp.thumbHint')}</small>
 								</div>
 								<label
 									><span>{formatMusicTime(thumbnailSecond)}</span><input
@@ -1468,29 +1470,29 @@
 								>
 								<div class="thumbnail-preview">
 									{#if thumbnailPreviewUrl}<img src={thumbnailPreviewUrl} alt="Preview thumbnail video" />
-									{:else}<span>{thumbnailGenerating ? 'Membuat preview…' : 'Preview thumbnail belum tersedia'}</span>{/if}
-									<small>{thumbnailGenerating ? 'Mengambil frame…' : 'Frame ini otomatis menjadi thumbnail.'}</small>
+									{:else}<span>{thumbnailGenerating ? get(t)('comp.makingPreview') : get(t)('comp.thumbUnavailable')}</span>{/if}
+									<small>{thumbnailGenerating ? get(t)('comp.grabbingFrame') : get(t)('comp.frameThumb')}</small>
 								</div>
 							</div>
 						{/if}{:else}<audio src={previewUrl} controls></audio>{/if}
-						<button onclick={() => (file = null)} aria-label="Hapus media"><X size={18} /></button>
+						<button onclick={() => (file = null)} aria-label={$t('comp.ariaRemoveMedia')}><X size={18} /></button>
 					</div>{/if}
-				{#if selectedFileKind === 'image'}<div class="crop-controls" aria-label="Framing gambar">
-						<span>Framing</span><button
+				{#if selectedFileKind === 'image'}<div class="crop-controls" aria-label={$t('comp.ariaFraming')}>
+						<span>{$t('comp.framing')}</span><button
 							class:active={cropMode === 'square'}
-							onclick={() => setCropMode('square')}>Kotak</button
+							onclick={() => setCropMode('square')}>{$t('comp.square')}</button
 						><button class:active={cropMode === 'portrait'} onclick={() => setCropMode('portrait')}
-							>Potret</button
+							>{$t('comp.portrait')}</button
 						><button
 							class:active={cropMode === 'landscape'}
-							onclick={() => setCropMode('landscape')}>Lanskap</button
+							onclick={() => setCropMode('landscape')}>{$t('comp.landscape')}</button
 						>
 						{#if kind === 'story'}<button
 								class:active={cropMode === 'story'}
-								onclick={() => setCropMode('story')}>Story</button
+								onclick={() => setCropMode('story')}>{$t('comp.story')}</button
 							>{/if}
 					</div>
-					<div class="filter-controls" aria-label="Filter gambar">
+					<div class="filter-controls" aria-label={$t('comp.ariaFilter')}>
 						{#each filterOptions as item (item.id)}<button
 								class:active={filter === item.id}
 								onclick={() => (filter = item.id)}
@@ -1504,12 +1506,12 @@
 						><Sparkles size={14} /></span
 					>
 				</div>
-				<h2>{kind === 'clips' ? 'Pilih video vertikal' : 'Tarik media ke sini'}</h2>
+				<h2>{kind === 'clips' ? get(t)('comp.pickVertical') : get(t)('comp.dragHere')}</h2>
 				<p>{copy.description}</p>
 			{/if}
 			<label
 				><Upload size={17} />
-				{galleryMode ? 'Tambah foto' : file ? 'Ganti media' : 'Pilih dari perangkat'}<input
+				{galleryMode ? get(t)('comp.addPhoto') : file ? get(t)('comp.changeMedia') : get(t)('comp.pickFromDevice')}<input
 					type="file"
 					accept={acceptedTypes}
 					multiple={kind === 'post'}
@@ -1519,25 +1521,25 @@
 			<small
 				>{file
 					? `${file.name} · ${(file.size / 1024 / 1024).toFixed(1)} MB`
-					: 'Batas unggahan 500 MB'}</small
+					: get(t)('comp.uploadLimit')}</small
 			>
 		</section>
 		<aside class="details surface">
 			<h2>Detail {kind === 'story' ? 'cerita' : 'konten'}</h2>
 			<label
-				><span>Caption</span><MentionTextarea
+				><span>{$t('comp.caption')}</span><MentionTextarea
 					bind:value={caption}
 					name="caption"
 					maxlength={2200}
 					rows={5}
-					placeholder="Tulis sesuatu yang bermakna…"
+					placeholder={$t('comp.captionPh')}
 				/><small>{caption.length.toLocaleString('id-ID')} karakter</small></label
 			>
 			{#if kind !== 'story'}<label class="field"
 					><span><MapPin size={17} /> Lokasi</span><input
 						bind:value={location}
 						maxlength="255"
-						placeholder="Contoh: Bogor"
+						placeholder={$t('comp.locationPh')}
 						oninput={() => (locationChosen = false)}
 						onkeydown={(event) => {
 							if (event.key === 'Enter') event.preventDefault();
@@ -1553,17 +1555,17 @@
 								locationChosen = false;
 								locationResults = [];
 							}}
-							aria-label="Hapus lokasi">×</button
+							aria-label={$t('comp.ariaRemoveLocation')}>×</button
 						>{/if}</label
 				><small class="attribution"
-					>Pencarian © <a
+					>{$t('comp.searchAttr')}<a
 						href="https://www.openstreetmap.org/copyright"
 						target="_blank"
 						rel="noreferrer">OpenStreetMap contributors</a
 					></small
 				>{#if locationResults.length && !locationChosen}<div
 						class="suggestions"
-						aria-label="Saran lokasi"
+						aria-label={$t('comp.ariaLocSuggest')}
 					>
 						{#each locationResults as place (place.id)}<button
 								onclick={() => {
@@ -1594,7 +1596,7 @@
 							<input
 								bind:value={collabQuery}
 								maxlength="40"
-								placeholder="Cari & undang co-author (mereka harus menyetujui)"
+								placeholder={$t('comp.collabPh')}
 								onkeydown={(event) => {
 									if (event.key === 'Enter') event.preventDefault();
 								}}
@@ -1602,7 +1604,7 @@
 						</div>
 					{/if}
 					{#if collabResults.length}
-						<div class="suggestions collab-suggestions" aria-label="Hasil kolaborator">
+						<div class="suggestions collab-suggestions" aria-label={$t('comp.ariaCollabResults')}>
 							{#each collabResults as u (u.id)}
 								<button type="button" onclick={() => addCollaborator(u)}>
 									<Avatar name={u.username} src={u.avatarUrl} size="sm" />
@@ -1617,16 +1619,16 @@
 				><span><Music2 size={17} /> Musik</span><input
 					bind:value={musicQuery}
 					maxlength="80"
-					placeholder="Cari judul lagu atau artis"
+					placeholder={$t('music.searchPh')}
 					onkeydown={(event) => {
 						if (event.key === 'Enter') event.preventDefault();
 					}}
 				/>{#if musicSearching}<LoaderCircle class="field-spinner" size={16} />{/if}</label
 			>
 			<small class="music-help"
-				>Cari lagu (dari Apple Music), lalu pilih bagian 30 detik yang ingin diputar.</small
+				>{$t('comp.musicHint')}</small
 			>
-			{#if musicResults.length}<div class="suggestions music" aria-label="Hasil musik">
+			{#if musicResults.length}<div class="suggestions music" aria-label={$t('music.ariaResults')}>
 					{#each musicResults as track (track.id)}<button
 							class:active={selectedMusic?.id === track.id}
 							onclick={() => selectMusic(track)}
@@ -1641,12 +1643,12 @@
 				</div>
 			{:else if musicQuery.trim().length < 2 && (musicRecommended.length || musicRecoLoading)}
 				<div class="reco-head">
-					<span>Rekomendasi</span>{#if musicRecoLoading}<LoaderCircle
+					<span>{$t('story.recommendations')}</span>{#if musicRecoLoading}<LoaderCircle
 							class="field-spinner"
 							size={14}
 						/>{/if}
 				</div>
-				{#if musicRecommended.length}<div class="suggestions music" aria-label="Rekomendasi musik">
+				{#if musicRecommended.length}<div class="suggestions music" aria-label={$t('music.ariaRecs')}>
 						{#each musicRecommended as track (track.id)}<button
 								class:active={selectedMusic?.id === track.id}
 								onclick={() => selectMusic(track)}
@@ -1686,7 +1688,7 @@
 						></audio><button
 							class="music-play"
 							onclick={toggleMusicPreview}
-							aria-label={musicPreviewPlaying ? 'Jeda pratinjau' : 'Putar pratinjau'}
+							aria-label={musicPreviewPlaying ? get(t)('comp.pausePreview') : get(t)('comp.playPreview')}
 							>{#if musicPreviewPlaying}<Pause size={16} fill="currentColor" />{:else}<Play
 									size={16}
 									fill="currentColor"
@@ -1698,7 +1700,7 @@
 							selectedMusic = null;
 							// Pertahankan kolom pencarian & hasil agar user bisa langsung pilih lagu lain.
 						}}
-						aria-label="Hapus musik"><X size={14} /></button
+						aria-label={$t('music.remove')}><X size={14} /></button
 					>
 				</div>
 				<div class="music-trim">
@@ -1718,7 +1720,7 @@
 					>
 						<div></div>
 						<input
-							aria-label="Awal potongan musik"
+							aria-label={$t('comp.ariaClipStart')}
 							type="range"
 							min="0"
 							max={musicTotalSeconds}
@@ -1727,7 +1729,7 @@
 							oninput={updateMusicStart}
 						/>
 						<input
-							aria-label="Akhir potongan musik"
+							aria-label={$t('comp.ariaClipEnd')}
 							type="range"
 							min="0"
 							max={musicTotalSeconds}
@@ -1737,21 +1739,21 @@
 						/>
 					</div>
 					<small
-						>Menggeser batas langsung memutar dari awal pilihan dan mengulang di titik akhir.</small
+						>{$t('comp.clipHint')}</small
 					>
 				</div>{/if}
 			<button class="draft" onclick={saveDraft}
-				><Save size={18} /><span>Simpan draft<small>Teks, media, lokasi, dan musik</small></span
+				><Save size={18} /><span>{$t('comp.saveDraft')}<small>{$t('comp.draftContents')}</small></span
 				></button
 			>
 			{#if submitting}<div class="upload-progress">
 					<div><span style:width={`${uploadProgress}%`}></span></div>
 					<small
 						>{uploadProgress >= 100
-							? 'Berkas selesai dikirim, server sedang menyimpan media.'
+							? get(t)('comp.fileSentSaving')
 							: `${uploadProgress}% terkirim ke server`}</small
 					>
-					<button onclick={cancelUpload}>Batalkan unggahan</button>
+					<button onclick={cancelUpload}>{$t('comp.cancelUpload')}</button>
 				</div>{/if}
 			{#if message}<p class="message" aria-live="polite">{message}</p>{/if}
 		</aside>
@@ -1760,10 +1762,10 @@
 
 {#if editingItem}
 	<div class="editor-overlay" role="presentation" onclick={() => (editingId = null)}></div>
-	<div class="editor-modal" role="dialog" aria-modal="true" aria-label="Edit foto">
+	<div class="editor-modal" role="dialog" aria-modal="true" aria-label={$t('comp.editPhoto')}>
 		<header>
-			<strong>Edit foto</strong>
-			<button onclick={() => (editingId = null)} aria-label="Selesai"><X size={18} /></button>
+			<strong>{$t('comp.editPhoto')}</strong>
+			<button onclick={() => (editingId = null)} aria-label={$t('comp.done')}><X size={18} /></button>
 		</header>
 		<div class="editor-crop">
 			{#key `${editingItem.id}:${editingItem.crop}`}
@@ -1781,16 +1783,16 @@
 				/>
 			{/key}
 		</div>
-		<div class="crop-controls" aria-label="Rasio gambar">
-			<span>Rasio</span><button
+		<div class="crop-controls" aria-label={$t('comp.ariaRatio')}>
+			<span>{$t('comp.ratio')}</span><button
 				class:active={editingItem.crop === 'square'}
-				onclick={() => setEditCrop('square')}>Kotak</button
+				onclick={() => setEditCrop('square')}>{$t('comp.square')}</button
 			><button
 				class:active={editingItem.crop === 'portrait'}
-				onclick={() => setEditCrop('portrait')}>Potret</button
+				onclick={() => setEditCrop('portrait')}>{$t('comp.portrait')}</button
 			><button
 				class:active={editingItem.crop === 'landscape'}
-				onclick={() => setEditCrop('landscape')}>Lanskap</button
+				onclick={() => setEditCrop('landscape')}>{$t('comp.landscape')}</button
 			>
 		</div>
 		{#if galleryItems.length > 1}
@@ -1802,7 +1804,7 @@
 				diatur sendiri.
 			</small>
 		{/if}
-		<div class="filter-controls" aria-label="Filter gambar">
+		<div class="filter-controls" aria-label={$t('comp.ariaFilter')}>
 			{#each filterOptions as option (option.id)}<button
 					class:active={editingItem.filter === option.id}
 					onclick={() => setEditFilter(option.id)}
@@ -1810,17 +1812,17 @@
 					>{option.label}</button
 				>{/each}
 		</div>
-		<button class="editor-done" onclick={() => (editingId = null)}>Selesai</button>
+		<button class="editor-done" onclick={() => (editingId = null)}>{$t('comp.done')}</button>
 	</div>
 {/if}
 
 {#if warning}
 	<div class="warn-overlay" role="presentation" onclick={() => (warning = null)}></div>
-	<div class="warn-modal" role="alertdialog" aria-modal="true" aria-label="Peringatan">
+	<div class="warn-modal" role="alertdialog" aria-modal="true" aria-label={$t('comp.ariaWarning')}>
 		<div class="warn-icon"><TriangleAlert size={26} /></div>
-		<h3>Media tidak bisa ditambahkan</h3>
+		<h3>{$t('comp.mediaCantAdd')}</h3>
 		<p>{warning}</p>
-		<button onclick={() => (warning = null)}>Mengerti</button>
+		<button onclick={() => (warning = null)}>{$t('comp.gotIt')}</button>
 	</div>
 {/if}
 

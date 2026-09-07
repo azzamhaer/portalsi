@@ -1,23 +1,24 @@
 <script lang="ts">
   import Icon from '$lib/components/Icon.svelte';
   import { fmtRp, statusPill, ORDER_STATUS_LABEL } from '$lib/utils';
+  import { t } from '$lib/i18n';
   let { data } = $props();
-  const tabs = [
-    { v:'',                  l:'Semua' },
-    { v:'PENDING_PAYMENT',   l:'Belum Bayar' },
-    { v:'PROCESSING',        l:'Diproses' },
-    { v:'IN_TRANSIT',        l:'Dalam Perjalanan' },
-    { v:'ARRIVED',           l:'Telah Sampai' },
-    { v:'DONE',              l:'Selesai' },
-    { v:'RETURN_REQUESTED',  l:'Pengembalian' },
-    { v:'CANCELLED',         l:'Dibatalkan' }
-  ];
+  const tabs = $derived([
+    { v:'',                  l:$t('ord.all') },
+    { v:'PENDING_PAYMENT',   l:$t('ord.unpaid') },
+    { v:'PROCESSING',        l:$t('ord.processing') },
+    { v:'IN_TRANSIT',        l:$t('ord.inTransit') },
+    { v:'ARRIVED',           l:$t('ord.arrived') },
+    { v:'DONE',              l:$t('ord.done') },
+    { v:'RETURN_REQUESTED',  l:$t('ord.returns') },
+    { v:'CANCELLED',         l:$t('ord.cancelled') }
+  ]);
 </script>
 
 <svelte:head><title>Pesanan Saya — MPSI</title></svelte:head>
 
 <div class="container-x py-8">
-  <h1 class="section-title mb-8">Pesanan Saya</h1>
+  <h1 class="section-title mb-8">{$t('ord.myOrders')}</h1>
 
   <div class="flex gap-1 overflow-x-auto no-scrollbar border-b border-ink-100 mb-6">
     {#each tabs as t}
@@ -31,9 +32,9 @@
   {#if data.orders.length === 0}
     <div class="text-center py-20">
       <Icon name="package" size={56} class="mx-auto text-ink-300 mb-4" />
-      <h3 class="text-lg font-semibold mb-1">Belum ada pesanan</h3>
-      <p class="text-sm text-ink-500 mb-5">Yuk mulai belanja sekarang.</p>
-      <a href="/products" class="btn-primary btn-md">Mulai Belanja</a>
+      <h3 class="text-lg font-semibold mb-1">{$t('ord.noOrders')}</h3>
+      <p class="text-sm text-ink-500 mb-5">{$t('ord.startNowDesc')}</p>
+      <a href="/products" class="btn-primary btn-md">{$t('cart.startShopping')}</a>
     </div>
   {:else}
     <div class="space-y-4">

@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
+	import { get } from 'svelte/store';
+	import { t } from '$lib/i18n';
 	import { z } from 'zod';
 	import { ChevronLeft, ChevronRight, LoaderCircle, ShieldCheck } from '@lucide/svelte';
 	import { clientRequest } from '$lib/api/client';
@@ -131,10 +133,10 @@
 				{#if !isLastSlide}
 					<div class="pg-nav">
 						<button class="pg-ghost" onclick={prev} disabled={slide === 0}
-							><ChevronLeft size={18} /> Kembali</button
+							><ChevronLeft size={18} /> {$t('common.back')}</button
 						>
 						<button class="pg-primary" onclick={next}
-							>Lanjut <ChevronRight size={18} /></button
+							>{$t('pol.continue')} <ChevronRight size={18} /></button
 						>
 					</div>
 				{:else}
@@ -143,13 +145,13 @@
 							<input type="checkbox" bind:checked={agreed} />
 							<span
 								>{current.agreement_text ||
-									'Saya telah membaca dan memahami kebijakan platform, serta siap menerima konsekuensi berupa moderasi konten maupun pembatasan/pemblokiran akun apabila melanggar syarat dan ketentuan yang berlaku.'}</span
+									get(t)('pol.consent')}</span
 							>
 						</label>
 					{/if}
 					<div class="pg-nav">
 						{#if slides.length > 1}
-							<button class="pg-ghost" onclick={prev}><ChevronLeft size={18} /> Kembali</button>
+							<button class="pg-ghost" onclick={prev}><ChevronLeft size={18} /> {$t('common.back')}</button>
 						{/if}
 						<button class="pg-primary pg-accept" onclick={acceptCurrent} disabled={!canContinue}>
 							{#if submitting}<LoaderCircle size={17} class="pg-spin" /> Menyimpan…{:else if secondsLeft > 0}Baca dulu ({secondsLeft}s){:else}Setuju & lanjutkan{/if}

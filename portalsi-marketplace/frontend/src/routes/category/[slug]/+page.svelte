@@ -1,5 +1,6 @@
 <script lang="ts">
   import Icon from '$lib/components/Icon.svelte';
+  import { t } from '$lib/i18n';
   import ProductGrid from '$lib/components/ProductGrid.svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
@@ -16,13 +17,13 @@
 
 <div class="container-x py-8">
   <nav class="flex items-center gap-1 text-xs text-ink-500 mb-5">
-    <a href="/" class="hover:text-ink-900">Beranda</a><Icon name="chevron-right" size={12} />
+    <a href="/" class="hover:text-ink-900">{$t('nav.home')}</a><Icon name="chevron-right" size={12} />
     <span>{data.category?.name}</span>
   </nav>
 
   <div class="grid lg:grid-cols-[260px_1fr] gap-10">
     <aside>
-      <h3 class="text-xs font-semibold uppercase tracking-widest text-ink-500 mb-3">Kategori</h3>
+      <h3 class="text-xs font-semibold uppercase tracking-widest text-ink-500 mb-3">{$t('cat.eyebrow')}</h3>
       <ul class="space-y-1 text-sm">
         {#each data.allCats as c (c.id)}
           <li>
@@ -40,23 +41,23 @@
             {/if}
           </li>
         {/each}
-        <li><a href="/products" class="block px-3 py-2 rounded-lg hover:bg-ink-50">Semua produk</a></li>
+        <li><a href="/products" class="block px-3 py-2 rounded-lg hover:bg-ink-50">{$t('home.allProducts')}</a></li>
       </ul>
     </aside>
 
     <div>
       <div class="flex items-end justify-between mb-8 gap-4 flex-wrap">
         <div>
-          <div class="section-eyebrow mb-2">Kategori</div>
+          <div class="section-eyebrow mb-2">{$t('cat.eyebrow')}</div>
           <h1 class="section-title">{data.category?.name}</h1>
           <p class="text-sm text-ink-500 mt-1">{data.products.length} produk</p>
         </div>
         <select on:change={(e: any) => setSort(e.target.value)} value={data.sort} class="input-sm input w-full sm:w-56">
-          <option value="popular">Terpopuler</option>
-          <option value="newest">Terbaru</option>
-          <option value="cheap">Termurah</option>
-          <option value="exp">Termahal</option>
-          <option value="rating">Rating Tertinggi</option>
+          <option value="popular">{$t('prod.sortPopular')}</option>
+          <option value="newest">{$t('prod.sortNewest')}</option>
+          <option value="cheap">{$t('prod.sortCheapest')}</option>
+          <option value="exp">{$t('prod.sortExpensive')}</option>
+          <option value="rating">{$t('store.ratingHigh')}</option>
         </select>
       </div>
       <ProductGrid products={data.products} />

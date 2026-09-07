@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { RotateCcw, X, ZoomIn, ZoomOut } from '@lucide/svelte';
+	import { t } from '$lib/i18n';
 	import { portal } from '$lib/actions/portal';
 
 	let {
@@ -55,18 +56,18 @@
 		role="presentation"
 		onclick={(event) => event.currentTarget === event.target && onClose()}
 	>
-		<div class="toolbar" aria-label="Kontrol pratinjau media">
-			<button onclick={() => changeZoom(zoom - 0.25)} disabled={zoom <= 1} aria-label="Perkecil"
+		<div class="toolbar" aria-label={$t('ml.ariaControls')}>
+			<button onclick={() => changeZoom(zoom - 0.25)} disabled={zoom <= 1} aria-label={$t('ml.zoomOut')}
 				><ZoomOut size={19} /></button
 			>
 			<span>{Math.round(zoom * 100)}%</span>
-			<button onclick={() => changeZoom(zoom + 0.25)} disabled={zoom >= 4} aria-label="Perbesar"
+			<button onclick={() => changeZoom(zoom + 0.25)} disabled={zoom >= 4} aria-label={$t('ml.zoomIn')}
 				><ZoomIn size={19} /></button
 			>
-			<button onclick={() => (zoom = 1)} disabled={zoom === 1} aria-label="Atur ulang zoom"
+			<button onclick={() => (zoom = 1)} disabled={zoom === 1} aria-label={$t('ml.resetZoom')}
 				><RotateCcw size={18} /></button
 			>
-			<button class="close" onclick={onClose} aria-label="Tutup pratinjau"><X size={22} /></button>
+			<button class="close" onclick={onClose} aria-label={$t('ml.ariaClose')}><X size={22} /></button>
 		</div>
 		<div class="stage" onwheel={wheel}>
 			{#if isVideo}
@@ -84,7 +85,7 @@
 				<img {src} {alt} style:transform={`scale(${zoom})`} />
 			{/if}
 		</div>
-		<p class="hint">Scroll atau gunakan tombol untuk memperbesar · Esc untuk menutup</p>
+		<p class="hint">{$t('ml.hint')}</p>
 	</div>
 {/if}
 

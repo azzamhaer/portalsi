@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { Eye, EyeOff, LoaderCircle } from '@lucide/svelte';
+	import { get } from 'svelte/store';
+	import { t } from '$lib/i18n';
 	import AuthFields from '$lib/components/auth/AuthFields.svelte';
 	import AuthShell from '$lib/components/auth/AuthShell.svelte';
 	import type { PageProps } from './$types';
@@ -23,36 +25,36 @@
 
 <AuthShell mode="register">
 	<div class="heading">
-		<p class="eyebrow">Mulai perjalanan Anda</p>
+		<p class="eyebrow">{$t('auth.startJourney')}</p>
 		<h1>Buat akun Portal SI</h1>
-		<p>Karena seribu langkah dimulai dari satu langkah.</p>
+		<p>{$t('auth.startJourneySub')}</p>
 	</div>
 	{#if form?.message}<div class="form-alert" role="alert">{form.message}</div>{/if}
 	<form method="POST" onsubmit={() => (submitting = true)}>
 		<AuthFields>
 			<div class="two-fields">
 				<label
-					><span>Nama lengkap</span><input
+					><span>{$t('auth.fullName')}</span><input
 						name="full_name"
 						autocomplete="name"
-						placeholder="Fulan Abdullah"
+						placeholder={$t('auth.fullNamePh')}
 						value={form?.values?.full_name ?? ''}
 					/>{#if form?.errors?.full_name}<small class="field-error"
 							>{form.errors.full_name[0]}</small
 						>{/if}</label
 				>
 				<label
-					><span>Username</span><input
+					><span>{$t('auth.username')}</span><input
 						name="username"
 						autocomplete="username"
-						placeholder="fulan123"
+						placeholder={$t('auth.usernamePh')}
 						value={form?.values?.username ?? ''}
 					/>{#if form?.errors?.username}<small class="field-error">{form.errors.username[0]}</small
 						>{/if}</label
 				>
 			</div>
 			<label
-				><span>Email</span><input
+				><span>{$t('auth.email')}</span><input
 					name="email"
 					type="email"
 					autocomplete="email"
@@ -62,18 +64,18 @@
 					>{/if}</label
 			>
 			<label
-				><span>Kata sandi</span>
+				><span>{$t('auth.password')}</span>
 				<div class="pw-field">
 					<input
 						name="password"
 						type={showPassword ? 'text' : 'password'}
 						autocomplete="new-password"
-						placeholder="Minimal 6 karakter"
+						placeholder={$t('auth.min6')}
 						bind:value={password}
 					/><button
 						type="button"
 						onclick={() => (showPassword = !showPassword)}
-						aria-label={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
+						aria-label={showPassword ? get(t)('auth.hidePw') : get(t)('auth.showPw')}
 						aria-pressed={showPassword}
 						>{#if showPassword}<EyeOff size={18} />{:else}<Eye size={18} />{/if}</button
 					>
@@ -82,24 +84,24 @@
 					>{/if}</label
 			>
 			<label
-				><span>Ulangi kata sandi</span>
+				><span>{$t('auth.repeatPw')}</span>
 				<div class="pw-field">
 					<input
 						name="password_confirmation"
 						type={showConfirm ? 'text' : 'password'}
 						autocomplete="new-password"
-						placeholder="Ketik ulang kata sandi"
+						placeholder={$t('auth.repeatPwPh')}
 						bind:value={confirm}
 						aria-invalid={mismatch ? 'true' : undefined}
 					/><button
 						type="button"
 						onclick={() => (showConfirm = !showConfirm)}
-						aria-label={showConfirm ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
+						aria-label={showConfirm ? get(t)('auth.hidePw') : get(t)('auth.showPw')}
 						aria-pressed={showConfirm}
 						>{#if showConfirm}<EyeOff size={18} />{:else}<Eye size={18} />{/if}</button
 					>
 				</div>
-				{#if mismatch}<small class="field-error">Kata sandi belum sama.</small>
+				{#if mismatch}<small class="field-error">{$t('auth.pwMismatch')}</small>
 				{:else if form?.errors?.password_confirmation}<small class="field-error"
 						>{form.errors.password_confirmation[0]}</small
 					>{/if}</label
@@ -107,7 +109,7 @@
 			<div class="terms">
 				<input type="checkbox" name="terms" id="terms" />
 				<label for="terms"
-					>Saya menyetujui <a href="/legal/kebijakan" target="_blank" rel="noopener"
+					>{$t('auth.iAgree')}<a href="/legal/kebijakan" target="_blank" rel="noopener"
 						>aturan komunitas</a
 					>
 					dan
@@ -120,7 +122,7 @@
 			</button>
 		</AuthFields>
 	</form>
-	<p class="switch">Sudah punya akun? <a href="/login">Masuk</a></p>
+	<p class="switch">{$t('auth.haveAccount')}<a href="/login">{$t('auth.signIn')}</a></p>
 </AuthShell>
 
 <style>

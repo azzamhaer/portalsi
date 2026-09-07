@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { confirmFormSubmit } from '$lib/ui/confirm';
+	import { get } from 'svelte/store';
+	import { t } from '$lib/i18n';
 	import type { PageProps } from './$types';
 	let { form }: PageProps = $props();
 </script>
@@ -7,7 +9,7 @@
 <svelte:head><title>Hapus akun — Portal SI</title></svelte:head>
 <main class="delete surface">
 	<a href="/settings">← Pengaturan</a>
-	<h1>Hapus akun secara permanen</h1>
+	<h1>{$t('del.title')}</h1>
 	<p>
 		Semua profil, konten, relasi, dan media Anda akan dihapus oleh sistem. Tindakan ini tidak dapat
 		dibatalkan.
@@ -16,22 +18,22 @@
 		method="POST"
 		onsubmit={(event) =>
 			confirmFormSubmit(event, {
-				title: 'Hapus akun secara permanen?',
+				title: get(t)('del.confirmTitle'),
 				description:
-					'Semua profil, postingan, pesan, dan relasi akun akan dihapus dan tidak dapat dipulihkan.',
-				confirmLabel: 'Ya, hapus akun',
+					get(t)('del.confirmMsg'),
+				confirmLabel: get(t)('del.yes'),
 				tone: 'danger'
 			})}
 	>
 		<label
-			><span>Masukkan password untuk mengonfirmasi</span><input
+			><span>{$t('del.enterPw')}</span><input
 				name="password"
 				type="password"
 				required
 				autocomplete="current-password"
-				placeholder="Password akun Anda"
+				placeholder={$t('del.pwPh')}
 			/></label
-		>{#if form?.message}<p role="alert">{form.message}</p>{/if}<button>Hapus akun saya</button>
+		>{#if form?.message}<p role="alert">{form.message}</p>{/if}<button>{$t('del.button')}</button>
 	</form>
 </main>
 

@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { MonitorSmartphone, Trash2 } from '@lucide/svelte';
+	import { get } from 'svelte/store';
+	import { t } from '$lib/i18n';
 	import { untrack } from 'svelte';
 	import { clientRequest } from '$lib/api/client';
 	import { confirmAction } from '$lib/ui/confirm';
@@ -12,9 +14,9 @@
 	async function remove(id: number) {
 		if (
 			!(await confirmAction({
-				title: 'Cabut sesi ini?',
-				description: 'Perangkat tersebut akan langsung keluar dari Portal SI.',
-				confirmLabel: 'Cabut sesi',
+				title: get(t)('ses.revokeTitle'),
+				description: get(t)('ses.revokeMsg'),
+				confirmLabel: get(t)('ses.revoke'),
 				tone: 'danger'
 			}))
 		)
@@ -26,15 +28,15 @@
 			sessions = sessions.filter((item) => item.id !== id);
 			if (wasCurrent) window.location.assign('/logout');
 		} catch (error) {
-			message = error instanceof Error ? error.message : 'Riwayat belum dapat dihapus.';
+			message = error instanceof Error ? error.message : get(t)('ses.clearFailed');
 		}
 	}
 	async function removeAll() {
 		if (
 			!(await confirmAction({
-				title: 'Keluar dari semua perangkat?',
-				description: 'Semua sesi, termasuk perangkat ini, akan dicabut sekarang.',
-				confirmLabel: 'Logout semua',
+				title: get(t)('ses.logoutAllTitle'),
+				description: get(t)('ses.logoutAllMsg'),
+				confirmLabel: get(t)('ses.logoutAll'),
 				tone: 'danger'
 			}))
 		)
@@ -43,7 +45,7 @@
 			await clientRequest('login-histories', { method: 'DELETE' });
 			window.location.assign('/logout');
 		} catch (error) {
-			message = error instanceof Error ? error.message : 'Semua sesi belum dapat dicabut.';
+			message = error instanceof Error ? error.message : get(t)('ses.logoutAllFailed');
 		}
 	}
 </script>
@@ -55,24 +57,24 @@
 	description="Periksa perangkat yang masuk dan cabut sesi kapan saja."
 	><div class="sessions surface">
 		<div class="session-actions">
-			<button onclick={removeAll} disabled={sessions.length === 0}>Logout semua perangkat</button>
+			<button onclick={removeAll} disabled={sessions.length === 0}>{$t('ses.logoutAllDevices')}</button>
 		</div>
 		{#each sessions as item (item.id)}<article class:current={item.is_current}>
 				<span><MonitorSmartphone size={20} /></span>
 				<div>
 					<strong
-						>{item.device || 'Perangkat tidak dikenal'} · {item.browser ||
-							'Browser'}{#if item.is_current}<em class="badge">Sesi ini</em>{:else if item.is_active}<em
-								class="badge active"><span class="dot"></span>Sedang aktif</em
+						>{item.device || get(t)('ses.unknownDevice')} · {item.browser ||
+							'Browser'}{#if item.is_current}<em class="badge">{$t('ses.thisSession')}</em>{:else if item.is_active}<em
+								class="badge active"><span class="dot"></span>{$t('rail.activeNow')}</em
 							>{/if}</strong
 					><small
-						>{item.platform || 'Platform tidak diketahui'}{#if item.location} · {item.location}{/if} ·
+						>{item.platform || get(t)('ses.unknownPlatform')}{#if item.location} · {item.location}{/if} ·
 						{item.ip_address || 'IP tidak tersedia'}</small
 					><time>{relativeTimeId(item.login_at)}</time>
 				</div>
 				<button
 					onclick={() => remove(item.id)}
-					aria-label={item.is_current ? 'Keluar sesi ini' : 'Hapus riwayat'}
+					aria-label={item.is_current ? get(t)('ses.endThis') : get(t)('ses.clearHistory')}
 					><Trash2 size={17} /></button
 				>
 			</article>{/each}{#if sessions.length === 0}<p>

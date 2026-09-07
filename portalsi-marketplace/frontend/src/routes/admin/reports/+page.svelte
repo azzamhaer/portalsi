@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { t } from '$lib/i18n';
   import { apiEndpoints } from '$lib/api';
   import { toast } from '$lib/stores.svelte';
   import Icon from '$lib/components/Icon.svelte';
@@ -82,24 +83,24 @@
 </script>
 
 <div class="card flex items-center gap-3 mb-4 flex-wrap">
-  <h3 class="font-semibold shrink-0">Laporan</h3>
-  <p class="text-xs text-ink-500 flex-1">Diurutkan berdasarkan jumlah laporan terbanyak.</p>
+  <h3 class="font-semibold shrink-0">{$t('ar.reports')}</h3>
+  <p class="text-xs text-ink-500 flex-1">{$t('ar.sortedByMost')}</p>
   <select bind:value={status} class="input-sm input w-40">
-    <option value="OPEN">Belum diproses</option>
-    <option value="REVIEWING">Sedang ditinjau</option>
-    <option value="RESOLVED">Selesai</option>
-    <option value="REJECTED">Ditolak</option>
-    <option value="ALL">Semua</option>
+    <option value="OPEN">{$t('ar.unprocessed')}</option>
+    <option value="REVIEWING">{$t('ar.reviewing')}</option>
+    <option value="RESOLVED">{$t('ar.resolved')}</option>
+    <option value="REJECTED">{$t('ar.rejected')}</option>
+    <option value="ALL">{$t('ord.all')}</option>
   </select>
 </div>
 
 {#if loading}
-  <div class="card text-center text-ink-500 py-10">Memuat…</div>
+  <div class="card text-center text-ink-500 py-10">{$t('wl.loading')}</div>
 {:else if groups.length === 0}
   <div class="card text-center py-16">
     <Icon name="flag" size={48} class="mx-auto text-ink-300 mb-3" />
-    <h3 class="font-semibold mb-1">Tidak ada laporan</h3>
-    <p class="text-sm text-ink-500">Belum ada laporan untuk filter ini.</p>
+    <h3 class="font-semibold mb-1">{$t('ar.noReports')}</h3>
+    <p class="text-sm text-ink-500">{$t('ar.noReportsFilter')}</p>
   </div>
 {:else}
   <div class="space-y-3">
@@ -139,7 +140,7 @@
         <button on:click={() => active = null} class="w-8 h-8 grid place-items-center rounded-full hover:bg-ink-100"><Icon name="x" size={16} /></button>
       </div>
 
-      <h4 class="font-semibold text-sm mb-2">Detail Pelapor</h4>
+      <h4 class="font-semibold text-sm mb-2">{$t('ar.reporterDetail')}</h4>
       <div class="border border-ink-100 rounded-xl divide-y divide-ink-100 mb-5 max-h-60 overflow-y-auto">
         {#each active.reports as r}
           <div class="p-3">
@@ -150,40 +151,40 @@
               </div>
               <span class="text-[10px] text-ink-400">{new Date(r.created_at).toLocaleString('id-ID', { dateStyle:'short', timeStyle:'short' })}</span>
             </div>
-            <div class="text-xs text-ink-700"><b>Kategori:</b> {cats[r.category] ?? r.category}</div>
+            <div class="text-xs text-ink-700"><b>{$t('ar.category')}</b> {cats[r.category] ?? r.category}</div>
             <div class="text-xs text-ink-600 mt-1 whitespace-pre-line">{r.description}</div>
           </div>
         {/each}
       </div>
 
       <div class="space-y-3 pt-3 border-t border-ink-100">
-        <h4 class="font-semibold text-sm">Tindakan</h4>
+        <h4 class="font-semibold text-sm">{$t('ar.action')}</h4>
         <div>
-          <label class="label">Tindakan</label>
+          <label class="label">{$t('ar.action')}</label>
           <select bind:value={actAction} class="input">
             {#each validActions as a}<option value={a}>{actionLabel[a]}</option>{/each}
           </select>
         </div>
         {#if actAction !== 'NONE'}
           <div>
-            <label class="label">Alasan tindakan (akan dilihat seller)</label>
-            <textarea bind:value={actReason} class="input" rows={2} placeholder="Contoh: Produk melanggar Pasal X UU Y…"></textarea>
+            <label class="label">{$t('lf.rpReason')}</label>
+            <textarea bind:value={actReason} class="input" rows={2} placeholder={$t('lf.rpReasonPh')}></textarea>
           </div>
         {/if}
         <div>
           <label class="label">Status laporan</label>
           <select bind:value={actStatus} class="input">
             <option value="RESOLVED">Selesai</option>
-            <option value="REJECTED">Ditolak (laporan tidak valid)</option>
+            <option value="REJECTED">{$t('lf.rpRejected')}</option>
             <option value="REVIEWING">Masih ditinjau</option>
           </select>
         </div>
         <div>
-          <label class="label">Respon untuk pelapor (opsional)</label>
+          <label class="label">{$t('lf.rpResponse')}</label>
           <textarea bind:value={actResponse} class="input" rows={2} placeholder="Terima kasih atas laporan Anda..."></textarea>
         </div>
         <div class="flex gap-2 pt-2">
-          <button on:click={() => active = null} class="btn-outline btn-md flex-1">Batal</button>
+          <button on:click={() => active = null} class="btn-outline btn-md flex-1">{$t('od.cancel')}</button>
           <button on:click={resolveAll} class="btn-primary btn-md flex-1">Proses {active.count} Laporan</button>
         </div>
       </div>

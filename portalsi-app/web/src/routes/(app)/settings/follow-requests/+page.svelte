@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { Check, X } from '@lucide/svelte';
+	import { get } from 'svelte/store';
+	import { t } from '$lib/i18n';
 	import { untrack } from 'svelte';
 	import { clientRequest } from '$lib/api/client';
 	import StoryAvatarLink from '$lib/components/story/StoryAvatarLink.svelte';
@@ -15,7 +17,7 @@
 			description: accept
 				? `${user.fullName} akan bisa melihat postingan dan cerita Anda.`
 				: `Permintaan ${user.fullName} akan dihapus. Mereka masih bisa meminta lagi nanti.`,
-			confirmLabel: accept ? 'Terima' : 'Tolak',
+			confirmLabel: accept ? get(t)('pd.accept') : 'Tolak',
 			tone: accept ? 'default' : 'danger'
 		});
 		if (!confirmed) return;
@@ -25,9 +27,9 @@
 				method: 'POST'
 			});
 			requests = requests.filter((item) => item.id !== user.id);
-			message = accept ? 'Permintaan diterima.' : 'Permintaan ditolak.';
+			message = accept ? get(t)('notif.followAccepted') : get(t)('notif.followRejected');
 		} catch (error) {
-			message = error instanceof Error ? error.message : 'Permintaan belum dapat diproses.';
+			message = error instanceof Error ? error.message : get(t)('notif.followFailed');
 		}
 	}
 </script>

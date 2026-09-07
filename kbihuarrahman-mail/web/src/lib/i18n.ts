@@ -1,0 +1,425 @@
+import { derived, writable } from 'svelte/store';
+
+export type Lang = 'id' | 'en';
+
+// Cookie BERSAMA lintas subdomain *.kbihuarrahman.com — ganti bahasa di app mana pun, semua ikut.
+export const LANG_COOKIE = 'kbihu_lang';
+const COOKIE_DOMAIN = '.kbihuarrahman.com';
+
+export const lang = writable<Lang>('id');
+
+function writeCookie(l: Lang) {
+	if (typeof document === 'undefined') return;
+	try {
+		localStorage.setItem(LANG_COOKIE, l);
+	} catch {
+		/* ignore */
+	}
+	try {
+		document.cookie = `${LANG_COOKIE}=${l};path=/;max-age=31536000;samesite=lax;domain=${COOKIE_DOMAIN}`;
+	} catch {
+		/* ignore */
+	}
+	try {
+		document.cookie = `${LANG_COOKIE}=${l};path=/;max-age=31536000;samesite=lax`;
+	} catch {
+		/* ignore */
+	}
+	document.documentElement.lang = l;
+}
+
+export function setLang(l: Lang) {
+	lang.set(l);
+	writeCookie(l);
+}
+
+/** Inisialisasi dari nilai server (cookie) + sinkron ke cookie klien. */
+export function initLang(initial?: Lang) {
+	let l: Lang = initial === 'en' || initial === 'id' ? initial : 'id';
+	if (typeof document !== 'undefined') {
+		const m = document.cookie.match(/(?:^|;\s*)kbihu_lang=(id|en)/);
+		if (m) l = m[1] as Lang;
+		else {
+			try {
+				const s = localStorage.getItem(LANG_COOKIE);
+				if (s === 'id' || s === 'en') l = s;
+			} catch {
+				/* ignore */
+			}
+		}
+		document.documentElement.lang = l;
+	}
+	lang.set(l);
+}
+
+const DICT: Record<Lang, Record<string, string>> = {
+	id: {
+		// ── layout / menu ──
+		'menu.aria': 'Menu aplikasi',
+		'menu.title': 'KBIHU Ar-Rahman',
+		'menu.app': 'App',
+		'menu.meet': 'Meet',
+		'menu.market': 'Market',
+		'menu.home': 'Beranda',
+		'menu.help': 'Bantuan',
+		'menu.logout': 'Keluar',
+		// ── umum ──
+		'common.processing': 'Memproses…',
+		'common.save': 'Simpan',
+		'common.cancel': 'Batal',
+		'common.close': 'Tutup',
+		// ── login ──
+		'login.eyebrow': 'SELAMAT DATANG KEMBALI',
+		'login.title': 'Masuk ke KBIHU Ar-Rahman Mail',
+		'login.sub': 'Buka email dan lanjutkan bisnismu.',
+		'field.loginId': 'Username atau email',
+		'field.password': 'Kata sandi',
+		'login.pwPlaceholder': 'Masukkan kata sandi',
+		'login.submit': 'Masuk',
+		'login.noAccount': 'Belum punya akun?',
+		'login.registerNow': 'Daftar sekarang',
+		'login.verifiedOk': 'Email berhasil diverifikasi. Silakan masuk.',
+		'login.verifiedBad': 'Tautan verifikasi tidak valid atau kedaluwarsa. Coba masuk lalu kirim ulang tautannya.',
+		'login.emailChangedOk': 'Email pemulihan berhasil diganti.',
+		'login.emailChangedBad': 'Tautan ganti email tidak valid atau kedaluwarsa.',
+		'login.resent': 'Tautan verifikasi baru telah dikirim. Cek email kamu.',
+		'login.resendTo': 'Kirim ulang tautan verifikasi ke',
+		'login.fill': 'Isi email/username dan password.',
+		// ── register ──
+		'reg.eyebrow': 'MULAI PERJALANAN ANDA',
+		'reg.title': 'Buat akun KBIHU Ar-Rahman',
+		'reg.sub': 'Karena jutaan langkah dimulai dari satu langkah.',
+		'field.fullName': 'Nama lengkap',
+		'field.username': 'Username',
+		'field.recoveryEmail': 'Email pemulihan',
+		'field.repeatPassword': 'Ulangi kata sandi',
+		'reg.pwPlaceholder': 'Minimal 6 karakter',
+		'reg.repeatPlaceholder': 'Ketik ulang',
+		'reg.mismatch': 'Kata sandi belum sama.',
+		'reg.submit': 'Buat akun',
+		'reg.haveAccount': 'Sudah punya akun?',
+		'reg.signin': 'Masuk',
+		// ── gate ──
+		'gate.title': 'Akses beta',
+		'gate.body': 'KBIHU Ar-Rahman Mail masih tahap beta. Masukkan master password dari admin untuk melanjutkan.',
+		'gate.placeholder': 'Master password',
+		'gate.submit': 'Buka akses',
+		// ── setup ──
+		'setup.title': 'Buat email kamu',
+		'setup.name': 'Nama email',
+		'setup.create': 'Buat email',
+		'setup.recheck': 'Periksa lagi',
+		'setup.confirmTitle': 'Konfirmasi alamat email',
+		'setup.sub': 'Pilih nama untuk alamat emailmu. Minimal 3 karakter, huruf kecil/angka, diawali huruf. Satu akun per pengguna dan <b>tidak bisa diganti</b> setelah dibuat.',
+		'setup.namePlaceholder': 'namamu',
+		'setup.yourAddress': 'Alamat kamu:',
+		'setup.confirmIntro': 'Kamu akan membuat:',
+		'setup.permanentWarn': 'Alamat ini <b>permanen</b> dan <b>tidak bisa diubah atau dihapus</b> setelahnya. Pastikan ejaannya benar.',
+		'setup.createPermanent': 'Ya, buat permanen',
+		// ── settings ──
+		'set.title': 'Pengaturan',
+		'set.tab.profile': 'Profil',
+		'set.tab.security': 'Keamanan',
+		'set.tab.display': 'Tampilan',
+		'set.displayMode': 'Mode tampilan',
+		'set.dark': 'Mode gelap',
+		'set.light': 'Mode terang',
+		'set.darkNote': 'Mode gelap berlaku di seluruh aplikasi Mail.',
+		'set.language': 'Bahasa',
+		'set.languageNote': 'Preferensi bahasa berlaku di seluruh layanan KBIHU Ar-Rahman.',
+		'set.saved': 'Pengaturan disimpan',
+		'set.changePw': 'Ganti kata sandi',
+		'set.pwInfo': 'Kata sandi ini dipakai untuk masuk ke akun KBIHU Ar-Rahman Mail kamu.',
+		'set.sendLink': 'Kirim tautan ke email',
+		'set.emailFixed': 'Alamat email tidak bisa diubah setelah dibuat.',
+		'set.photoAccount': 'Foto profil akun',
+		'set.changePhotoApp': 'Ubah foto di app.kbihuarrahman.com',
+		'set.displayName': 'Nama tampilan (di email keluar)',
+		'set.followAccountName': 'Ikuti nama akun',
+		'set.emailAddress': 'Alamat email',
+		'set.customName': 'Tuliskan nama pengirim kustom...',
+		'set.pwWarnAll': 'Kata sandi ini dipakai untuk <b>seluruh layanan KBIHU Ar-Rahman</b> (App, Meet, Marketplace, Mail). Menggantinya akan mengubah kata sandi di <b>semua</b> layanan tersebut.',
+		// ── folder ──
+		'folder.inbox': 'Kotak Masuk',
+		'folder.starred': 'Berbintang',
+		'folder.sent': 'Terkirim',
+		'folder.drafts': 'Draf',
+		'folder.archive': 'Arsip',
+		'folder.junk': 'Spam',
+		'folder.trash': 'Sampah',
+		// ── daftar / list ──
+		'list.compose': 'Tulis email',
+		'list.all': 'Semua',
+		'list.unread': 'Belum dibaca',
+		'list.refresh': 'Muat ulang',
+		'list.searchIn': 'Cari',
+		'list.noResults': 'Tidak ada hasil.',
+		'list.allRead': 'Semua telah terbaca.',
+		'list.empty': 'Tidak ada sesuatu disini.',
+		'list.selected': 'dipilih',
+		'list.selectAll': 'Pilih semua',
+		'list.unselectAll': 'Batalkan semua',
+		'list.newMail': 'Email baru masuk!',
+		'list.noRecipient': '(tanpa penerima)',
+		'trash.notice': 'Pesan di Sampah dihapus permanen setelah 30 hari.',
+		'trash.empty': 'Bersihkan sampah sekarang',
+		'trash.emptied': 'Sampah dikosongkan',
+		// ── reader ──
+		'read.reply': 'Balas',
+		'read.forward': 'Teruskan',
+		'read.markUnread': 'Tandai belum dibaca',
+		'read.markRead': 'Tandai sudah dibaca',
+		'read.archive': 'Arsipkan',
+		'read.unarchive': 'Pindahkan ke Kotak Masuk',
+		'read.trash': 'Pindahkan ke sampah',
+		'read.purge': 'Hapus permanen',
+		'read.star': 'Beri bintang',
+		'read.unstar': 'Hapus bintang',
+		'read.to': 'ke',
+		'read.thread': 'Percakapan ini',
+		'read.emptyBody': '(pesan kosong)',
+		'read.pickToRead': 'Pilih email untuk dibaca',
+		'read.pickHint': 'Klik salah satu pesan di daftar, atau tulis email baru.',
+		// ── compose ──
+		'cp.new': 'Pesan baru',
+		'cp.from': 'Dari',
+		'cp.to': 'Ke',
+		'cp.subject': 'Subjek',
+		'cp.subjectPlaceholder': 'Subjek',
+		'cp.toPlaceholder': 'penerima@contoh.com',
+		'cp.send': 'Kirim',
+		'cp.saveDraft': 'Simpan draf',
+		'cp.attach': 'Lampirkan',
+		'cp.insertImage': 'Sisipkan gambar',
+		'cp.discard': 'Buang',
+		'cp.sent': 'Email terkirim',
+		'cp.draftSaved': 'Draf disimpan',
+		'cp.needRecipient': 'Isi penerima (To) dulu.',
+		// pencarian
+		'search.searching': 'Mencari…',
+		'search.min': 'Ketik minimal 2 huruf…',
+		'search.noResultsFor': 'Tidak ada hasil untuk',
+		'search.seeAll': 'Lihat semua hasil →',
+		// aksi latar / toast
+		'bg.toInbox': 'Memindahkan ke Kotak Masuk',
+		'bg.toTrash': 'Memindahkan ke sampah',
+		'bg.archiving': 'Mengarsipkan',
+		'bg.purging': 'Menghapus permanen',
+		'bg.marking': 'Menandai dibaca',
+		'bg.done': 'selesai',
+		'bg.left': 'tersisa',
+		// konfirmasi
+		'confirm.emptyTrash': 'Kosongkan Sampah sekarang? Semua pesan akan dihapus permanen dan tak bisa dikembalikan.',
+		'confirm.purgeOne': 'Hapus permanen email ini? Tidak bisa dikembalikan.',
+		'confirm.purgeMany': 'Hapus permanen email? Tidak bisa dikembalikan.',
+		// reader (title/aria)
+		'read.print': 'Cetak',
+		'read.fullscreen': 'Layar penuh',
+		'read.more': 'Aksi lain',
+		'read.pin': 'Sematkan',
+		'read.back': 'Kembali',
+		'read.of': 'dari',
+		'read.prev': 'Sebelumnya',
+		'read.next': 'Berikutnya',
+		'read.delete': 'Hapus',
+		'read.unarchiveTitle': 'Batal arsip',
+		'att.download': 'Unduh',
+		// list (mode & grup)
+		'list.pickMode': 'Pilih email',
+		'list.pinned': 'Disematkan',
+		'grp.today': 'Hari ini',
+		'grp.yesterday': 'Kemarin',
+		'grp.week': '7 hari terakhir',
+		'grp.month': 'Bulan ini',
+		'grp.older': 'Lebih lama',
+		// misc
+		'msg.loadFail': 'Gagal memuat pesan.',
+		'draft.openFail': 'Gagal membuka draf.',
+		'pin.max': 'Maksimal 3 email disematkan.',
+		'attach.max': 'Total lampiran maksimal',
+		'pw.sentBox': 'Tautan konfirmasi telah dikirim ke email. Cek kotak masuk (dan folder spam) untuk melanjutkan.',
+		'pw.note1': 'Tautan konfirmasi dikirim ke email akunmu:',
+		'pw.note2': 'Klik tautan itu untuk menyetel kata sandi baru.',
+		'pw.max3': '(Maks 3 permintaan per hari.)'
+	},
+	en: {
+		'menu.aria': 'App menu',
+		'menu.title': 'KBIHU Ar-Rahman apps',
+		'menu.app': 'App',
+		'menu.meet': 'Meet',
+		'menu.market': 'Market',
+		'menu.home': 'Home',
+		'menu.help': 'Help',
+		'menu.logout': 'Sign out',
+		'common.processing': 'Processing…',
+		'common.save': 'Save',
+		'common.cancel': 'Cancel',
+		'common.close': 'Close',
+		'login.eyebrow': 'WELCOME BACK',
+		'login.title': 'Sign in to KBIHU Ar-Rahman Mail',
+		'login.sub': 'Open your inbox and get back to it.',
+		'field.loginId': 'Username or email',
+		'field.password': 'Password',
+		'login.pwPlaceholder': 'Enter your password',
+		'login.submit': 'Sign in',
+		'login.noAccount': "Don't have an account?",
+		'login.registerNow': 'Sign up',
+		'login.verifiedOk': 'Your email has been verified. Please sign in.',
+		'login.verifiedBad': 'The verification link is invalid or expired. Try signing in, then resend the link.',
+		'login.emailChangedOk': 'Your recovery email was changed successfully.',
+		'login.emailChangedBad': 'The email-change link is invalid or expired.',
+		'login.resent': 'A new verification link has been sent. Check your email.',
+		'login.resendTo': 'Resend verification link to',
+		'login.fill': 'Enter your email/username and password.',
+		'reg.eyebrow': 'START YOUR JOURNEY',
+		'reg.title': 'Create your KBIHU Ar-Rahman account',
+		'reg.sub': 'Because every great journey begins with a single step.',
+		'field.fullName': 'Full name',
+		'field.username': 'Username',
+		'field.recoveryEmail': 'Recovery email',
+		'field.repeatPassword': 'Repeat password',
+		'reg.pwPlaceholder': 'At least 6 characters',
+		'reg.repeatPlaceholder': 'Type it again',
+		'reg.mismatch': "Passwords don't match yet.",
+		'reg.submit': 'Create account',
+		'reg.haveAccount': 'Already have an account?',
+		'reg.signin': 'Sign in',
+		'gate.title': 'Beta access',
+		'gate.body': 'KBIHU Ar-Rahman Mail is still in beta. Enter the master password from your admin to continue.',
+		'gate.placeholder': 'Master password',
+		'gate.submit': 'Unlock access',
+		'setup.title': 'Create your email',
+		'setup.name': 'Email name',
+		'setup.create': 'Create email',
+		'setup.recheck': 'Check again',
+		'setup.confirmTitle': 'Confirm your email address',
+		'setup.sub': 'Choose a name for your email address. At least 3 characters, lowercase letters/numbers, starting with a letter. One account per user, and it <b>cannot be changed</b> once created.',
+		'setup.namePlaceholder': 'yourname',
+		'setup.yourAddress': 'Your address:',
+		'setup.confirmIntro': "You're about to create:",
+		'setup.permanentWarn': 'This address is <b>permanent</b> and <b>cannot be changed or deleted</b> afterwards. Make sure the spelling is correct.',
+		'setup.createPermanent': 'Yes, create permanently',
+		'set.title': 'Settings',
+		'set.tab.profile': 'Profile',
+		'set.tab.security': 'Security',
+		'set.tab.display': 'Appearance',
+		'set.displayMode': 'Display mode',
+		'set.dark': 'Dark mode',
+		'set.light': 'Light mode',
+		'set.darkNote': 'Dark mode applies across the whole Mail app.',
+		'set.language': 'Language',
+		'set.languageNote': 'Your language preference applies across all KBIHU Ar-Rahman services.',
+		'set.saved': 'Settings saved',
+		'set.changePw': 'Change password',
+		'set.pwInfo': 'This password is used to sign in to your KBIHU Ar-Rahman Mail account.',
+		'set.sendLink': 'Send link to email',
+		'set.emailFixed': 'Your email address cannot be changed once created.',
+		'set.photoAccount': 'Account profile photo',
+		'set.changePhotoApp': 'Change photo on app.kbihuarrahman.com',
+		'set.displayName': 'Display name (on outgoing email)',
+		'set.followAccountName': 'Follow account name',
+		'set.emailAddress': 'Email address',
+		'set.customName': 'Write a custom sender name...',
+		'set.pwWarnAll': 'This password is used across <b>all KBIHU Ar-Rahman services</b> (App, Meet, Marketplace, Mail). Changing it will change your password on <b>all</b> of them.',
+		'folder.inbox': 'Inbox',
+		'folder.starred': 'Starred',
+		'folder.sent': 'Sent',
+		'folder.drafts': 'Drafts',
+		'folder.archive': 'Archive',
+		'folder.junk': 'Spam',
+		'folder.trash': 'Trash',
+		'list.compose': 'Compose',
+		'list.all': 'All',
+		'list.unread': 'Unread',
+		'list.refresh': 'Refresh',
+		'list.searchIn': 'Search',
+		'list.noResults': 'No results.',
+		'list.allRead': 'All caught up.',
+		'list.empty': 'Nothing here yet.',
+		'list.selected': 'selected',
+		'list.selectAll': 'Select all',
+		'list.unselectAll': 'Clear selection',
+		'list.newMail': 'New email arrived!',
+		'list.noRecipient': '(no recipient)',
+		'trash.notice': 'Messages in Trash are permanently deleted after 30 days.',
+		'trash.empty': 'Empty trash now',
+		'trash.emptied': 'Trash emptied',
+		'read.reply': 'Reply',
+		'read.forward': 'Forward',
+		'read.markUnread': 'Mark as unread',
+		'read.markRead': 'Mark as read',
+		'read.archive': 'Archive',
+		'read.unarchive': 'Move to Inbox',
+		'read.trash': 'Move to trash',
+		'read.purge': 'Delete permanently',
+		'read.star': 'Add star',
+		'read.unstar': 'Remove star',
+		'read.to': 'to',
+		'read.thread': 'This conversation',
+		'read.emptyBody': '(empty message)',
+		'read.pickToRead': 'Pick an email to read',
+		'read.pickHint': 'Click a message in the list, or compose a new email.',
+		'cp.new': 'New message',
+		'cp.from': 'From',
+		'cp.to': 'To',
+		'cp.subject': 'Subject',
+		'cp.subjectPlaceholder': 'Subject',
+		'cp.toPlaceholder': 'recipient@example.com',
+		'cp.send': 'Send',
+		'cp.saveDraft': 'Save draft',
+		'cp.attach': 'Attach',
+		'cp.insertImage': 'Insert image',
+		'cp.discard': 'Discard',
+		'cp.sent': 'Email sent',
+		'cp.draftSaved': 'Draft saved',
+		'cp.needRecipient': 'Add a recipient (To) first.',
+		'search.searching': 'Searching…',
+		'search.min': 'Type at least 2 letters…',
+		'search.noResultsFor': 'No results for',
+		'search.seeAll': 'See all results →',
+		'bg.toInbox': 'Moving to Inbox',
+		'bg.toTrash': 'Moving to trash',
+		'bg.archiving': 'Archiving',
+		'bg.purging': 'Deleting permanently',
+		'bg.marking': 'Marking as read',
+		'bg.done': 'done',
+		'bg.left': 'left',
+		'confirm.emptyTrash': 'Empty Trash now? All messages will be permanently deleted and cannot be recovered.',
+		'confirm.purgeOne': 'Permanently delete this email? This cannot be undone.',
+		'confirm.purgeMany': 'Permanently delete emails? This cannot be undone.',
+		'read.print': 'Print',
+		'read.fullscreen': 'Fullscreen',
+		'read.more': 'More actions',
+		'read.pin': 'Pin',
+		'read.back': 'Back',
+		'read.of': 'of',
+		'read.prev': 'Previous',
+		'read.next': 'Next',
+		'read.delete': 'Delete',
+		'read.unarchiveTitle': 'Unarchive',
+		'att.download': 'Download',
+		'list.pickMode': 'Select emails',
+		'list.pinned': 'Pinned',
+		'grp.today': 'Today',
+		'grp.yesterday': 'Yesterday',
+		'grp.week': 'Last 7 days',
+		'grp.month': 'This month',
+		'grp.older': 'Older',
+		'msg.loadFail': 'Failed to load the message.',
+		'draft.openFail': 'Failed to open the draft.',
+		'pin.max': 'You can pin up to 3 emails.',
+		'attach.max': 'Total attachments limit is',
+		'pw.sentBox': 'A confirmation link has been sent to your email. Check your inbox (and spam folder) to continue.',
+		'pw.note1': 'A confirmation link is sent to your account email:',
+		'pw.note2': 'Click that link to set a new password.',
+		'pw.max3': '(Max 3 requests per day.)'
+	}
+};
+
+/** `$t('key')` → string terjemahan; fallback ke ID lalu ke key. */
+export const t = derived(
+	lang,
+	($l) =>
+		(key: string, fallback?: string): string =>
+			DICT[$l]?.[key] ?? DICT.id[key] ?? fallback ?? key
+);

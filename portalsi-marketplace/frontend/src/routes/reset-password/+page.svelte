@@ -1,5 +1,7 @@
 <script lang="ts">
   import { page } from '$app/stores';
+  import { t } from '$lib/i18n';
+  import { get } from 'svelte/store';
   import { apiEndpoints, setToken } from '$lib/api';
   import { auth, toast } from '$lib/stores.svelte';
   import { goto } from '$app/navigation';
@@ -16,11 +18,11 @@
 
   async function submit(e: Event) {
     e.preventDefault();
-    if (pwd !== confirm) { toast.error('Konfirmasi password tidak cocok'); return; }
+    if (pwd !== confirm) { toast.error(get(t)('rp.mismatch')); return; }
     saving = true;
     try {
       await apiEndpoints.resetPassword(email, token, pwd);
-      toast.success('Password berhasil direset, silakan masuk');
+      toast.success(get(t)('rp.success'));
       goto('/login');
     } catch (e: any) { toast.error(e.message); } finally { saving = false; }
   }
@@ -30,14 +32,14 @@
 
 <div class="container-x py-16 grid place-items-center min-h-[60vh]">
   <div class="w-full max-w-md card">
-    <h1 class="font-display text-2xl font-bold tracking-tightest text-center mb-6">Atur Password Baru</h1>
+    <h1 class="font-display text-2xl font-bold tracking-tightest text-center mb-6">{$t('rp.title')}</h1>
     {#if !token || !email}
-      <div class="bg-red-50 text-red-800 text-sm p-4 rounded-xl">Token tidak valid. Silakan minta link baru dari halaman <a href="/forgot-password" class="underline">Lupa Password</a>.</div>
+      <div class="bg-red-50 text-red-800 text-sm p-4 rounded-xl">{$t('rp.invalidToken')}<a href="/forgot-password" class="underline">{$t('rp.forgotLink')}</a>.</div>
     {:else}
       <form on:submit={submit} class="space-y-4">
-        <div><label class="label">Password baru</label><input type="password" required minlength="8" bind:value={pwd} class="input" /></div>
-        <div><label class="label">Konfirmasi password</label><input type="password" required minlength="8" bind:value={confirm} class="input" /></div>
-        <button disabled={saving} class="btn-primary btn-md w-full">{saving ? 'Menyimpan…' : 'Reset Password'}</button>
+        <div><label class="label">{$t('rp.newPassword')}</label><input type="password" required minlength="8" bind:value={pwd} class="input" /></div>
+        <div><label class="label">{$t('rp.confirmPassword')}</label><input type="password" required minlength="8" bind:value={confirm} class="input" /></div>
+        <button disabled={saving} class="btn-primary btn-md w-full">{saving ? $t('rp.saving') : $t('rp.reset')}</button>
       </form>
     {/if}
   </div>

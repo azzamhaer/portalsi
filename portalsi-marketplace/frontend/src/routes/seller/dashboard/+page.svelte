@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { t } from '$lib/i18n';
   import SellerSidebar from '$lib/components/SellerSidebar.svelte';
   import VendorBadge from '$lib/components/VendorBadge.svelte';
   import VendorWarningPopup from '$lib/components/VendorWarningPopup.svelte';
@@ -57,11 +58,11 @@
 <svelte:head><title>Seller Dashboard — MPSI</title></svelte:head>
 
 <div class="container-x py-8">
-  <h1 class="section-title mb-8">Seller Center</h1>
+  <h1 class="section-title mb-8">{$t('nav.sellerCenter')}</h1>
   <div class="grid lg:grid-cols-[230px_1fr] gap-6">
     <SellerSidebar />
     <div class="space-y-5">
-      {#if loading}<div class="card text-center text-ink-500 py-12">Memuat…</div>
+      {#if loading}<div class="card text-center text-ink-500 py-12">{$t('wl.loading')}</div>
       {:else if data}
         <div class="card flex items-center gap-4 flex-wrap">
           <img src={data.vendor.avatar} alt="" class="w-14 h-14 rounded-full object-cover" />
@@ -72,7 +73,7 @@
             </h2>
             <p class="text-sm text-ink-500">{data.vendor.city} · {(data.vendor.followers ?? 0).toLocaleString('id-ID')} pengikut</p>
           </div>
-          <a href={data.vendor.username ? `/${data.vendor.username}` : `/vendors/${data.vendor.id}`} class="btn-outline btn-md">Lihat Toko Publik</a>
+          <a href={data.vendor.username ? `/${data.vendor.username}` : `/vendors/${data.vendor.id}`} class="btn-outline btn-md">{$t('sd.viewPublicStore')}</a>
         </div>
 
         <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -90,13 +91,13 @@
         </div>
 
         <div class="card">
-          <h3 class="font-semibold mb-4">Pesanan Terbaru</h3>
+          <h3 class="font-semibold mb-4">{$t('sd.recentOrders')}</h3>
           {#if data.recent_orders.length === 0}
-            <p class="text-sm text-ink-500 text-center py-6">Belum ada pesanan masuk.</p>
+            <p class="text-sm text-ink-500 text-center py-6">{$t('sd.noIncomingOrders')}</p>
           {:else}
             <table class="w-full text-sm">
               <thead class="text-xs text-ink-500 border-b border-ink-100">
-                <tr><th class="text-left py-2 font-medium">Order</th><th class="text-left py-2 font-medium">Produk</th><th class="text-left py-2 font-medium">Qty</th><th class="text-left py-2 font-medium">Total</th><th class="text-left py-2 font-medium">Status</th></tr>
+                <tr><th class="text-left py-2 font-medium">{$t('sd.order')}</th><th class="text-left py-2 font-medium">{$t('nav.products')}</th><th class="text-left py-2 font-medium">Qty</th><th class="text-left py-2 font-medium">{$t('cart.total')}</th><th class="text-left py-2 font-medium">{$t('sel.status')}</th></tr>
               </thead>
               <tbody>
                 {#each data.recent_orders as it}

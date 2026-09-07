@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { MailCheck, RefreshCw } from '@lucide/svelte';
+	import { t } from '$lib/i18n';
 	import type { PageProps } from './$types';
 	let { data, form }: PageProps = $props();
 </script>
@@ -10,27 +11,27 @@
 	<a class="brand" href="/welcome"><img src="/assets/logo-mark.png" alt="" /><b>Portal SI</b></a>
 	<section class="surface">
 		<span class="icon"><MailCheck size={30} /></span>
-		<p class="eyebrow">Satu langkah lagi</p>
-		<h1>Verifikasi email Anda</h1>
+		<p class="eyebrow">{$t('auth.oneMoreStep')}</p>
+		<h1>{$t('auth.verifyEmail')}</h1>
 		{#if data.user.email}
 			<p>
 				Kami mengirim tautan verifikasi ke <strong>{data.user.email}</strong>. Buka tautan tersebut
 				sebelum membuat konten atau berinteraksi.
 			</p>
 			<form method="POST" action="?/resend">
-				<button><RefreshCw size={17} /> Kirim ulang email</button>
+				<button><RefreshCw size={17} /> {$t('auth.resendEmail')}</button>
 			</form>
 		{:else}
-			<p>Akun ini belum memiliki email. Tambahkan email yang dapat Anda akses untuk melanjutkan.</p>
+			<p>{$t('auth.noEmailYet')}</p>
 			<form class="bind" method="POST" action="?/bind">
 				<label
-					><span class="sr-only">Email</span><input
+					><span class="sr-only">{$t('auth.email')}</span><input
 						name="email"
 						type="email"
 						placeholder="nama@contoh.id"
 						required
 					/></label
-				><button>Tambahkan email</button>
+				><button>{$t('auth.addEmail')}</button>
 			</form>
 		{/if}
 		{#if form?.message}<div
@@ -40,9 +41,9 @@
 			>
 				{form.message}
 			</div>{/if}
-		<small>Sudah memverifikasi? <a href="/verify-email">Cek ulang status verifikasi</a></small>
+		<small>{$t('auth.alreadyVerified')}<a href="/verify-email">{$t('auth.recheckVerify')}</a></small>
 	</section>
-	<form method="POST" action="/logout"><button class="logout">Keluar dari akun</button></form>
+	<form method="POST" action="/logout"><button class="logout">{$t('auth.signOut')}</button></form>
 </main>
 
 <style>

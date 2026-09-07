@@ -1,5 +1,7 @@
 <script lang="ts">
 	import {
+	import { get } from 'svelte/store';
+	import { t } from '$lib/i18n';
 		BadgeCheck,
 		ExternalLink,
 		Heart,
@@ -17,23 +19,23 @@
 	const highlights = [
 		{
 			icon: BadgeCheck,
-			title: 'Penjualnya jelas orangnya',
-			body: 'Setiap toko wajib lolos verifikasi KTP sebelum boleh memajang produk. Tidak ada toko anonim.'
+			title: get(t)('mkt.f1title'),
+			body: get(t)('mkt.f1desc')
 		},
 		{
 			icon: MessageSquareText,
-			title: 'Tanya dulu, beli belakangan',
-			body: 'Ada tombol tanya di tiap halaman produk. Chatnya langsung nyambung ke pemilik toko, bukan bot.'
+			title: get(t)('mkt.f2title'),
+			body: get(t)('mkt.f2desc')
 		},
 		{
 			icon: Wallet,
-			title: 'Bayar sesuai kebiasaan Anda',
+			title: get(t)('mkt.f3title'),
 			body: 'QRIS, transfer virtual account, OVO, DANA, ShopeePay, sampai bayar tunai di Alfamart atau Indomaret.'
 		},
 		{
 			icon: RotateCcw,
-			title: 'Barang bermasalah? Ajukan retur',
-			body: 'Pengajuan pengembalian dibuka dari halaman pesanan dan ditinjau admin, jadi tidak perlu adu argumen sendiri.'
+			title: get(t)('mkt.f4title'),
+			body: get(t)('mkt.f4desc')
 		}
 	];
 </script>
@@ -45,20 +47,20 @@
 	<section class="mp-hero surface">
 		<div class="mp-copy">
 			<span class="mp-badge"><Store size={15} /> Toko milik warga Portal SI</span>
-			<h2>Belanja di tempat yang penjualnya Anda kenal</h2>
+			<h2>{$t('mkt.hero')}</h2>
 			<p>
 				Produk dari toko-toko yang dikelola sendiri oleh anggota komunitas. Harga langsung dari
 				pemiliknya, tanpa perantara, dan bisa ditanyakan dulu sebelum Anda memutuskan beli.
 			</p>
 			<div class="mp-cta">
 				<a class="primary" href={MARKETPLACE_URL} target="_blank" rel="noopener noreferrer"
-					>Mulai belanja <ExternalLink size={16} /></a
+					>{$t('mkt.startShopping')} <ExternalLink size={16} /></a
 				>
 				<a
 					class="ghost"
 					href={`${MARKETPLACE_URL}seller/register`}
 					target="_blank"
-					rel="noopener noreferrer">Buka toko sendiri</a
+					rel="noopener noreferrer">{$t('mkt.openStore')}</a
 				>
 			</div>
 			<small class="mp-note"
@@ -67,12 +69,12 @@
 			>
 		</div>
 
-		<div class="mp-preview" aria-label="Pratinjau tampilan Portal SI Marketplace">
+		<div class="mp-preview" aria-label={$t('mkt.ariaPreview')}>
 			<div class="mp-phone">
 				<div class="mp-status"><span>9:41</span><b>● ● ●</b></div>
-				<div class="mp-search"><Search size={13} /><span>Cari produk atau toko</span></div>
+				<div class="mp-search"><Search size={13} /><span>{$t('mkt.searchPh')}</span></div>
 				<div class="mp-tags">
-					<span class="on">Semua</span><span>elektronik</span><span>fashion</span><span>harian</span>
+					<span class="on">{$t('common.all')}</span><span>elektronik</span><span>fashion</span><span>harian</span>
 				</div>
 				<div class="mp-grid">
 					<article>
@@ -116,14 +118,14 @@
 
 	<section class="mp-seller surface">
 		<div>
-			<h3>Punya barang yang bisa dijual?</h3>
+			<h3>{$t('mkt.haveGoods')}</h3>
 			<p>
 				Daftar sebagai penjual, unggah KTP untuk verifikasi, lalu atur produk, ongkir, dan voucher
 				toko Anda sendiri. Pencairan saldo diajukan kapan pun dari dasbor penjual.
 			</p>
 		</div>
 		<a href={`${MARKETPLACE_URL}seller/register`} target="_blank" rel="noopener noreferrer"
-			>Daftar jadi penjual <ExternalLink size={15} /></a
+			>{$t('mkt.becomeSeller')} <ExternalLink size={15} /></a
 		>
 	</section>
 </SectionPage>

@@ -1,5 +1,6 @@
 <script lang="ts">
   import Icon from '$lib/components/Icon.svelte';
+  import { t } from '$lib/i18n';
   import { onMount } from 'svelte';
   import { apiEndpoints } from '$lib/api';
   import { fmtRp } from '$lib/utils';
@@ -23,9 +24,9 @@
   ] : []);
 </script>
 
-<svelte:head><title>Admin Dashboard</title></svelte:head>
+<svelte:head><title>{$t('adm.dashboard')}</title></svelte:head>
 
-{#if loading}<div class="card text-center text-ink-500 py-12">Memuat…</div>
+{#if loading}<div class="card text-center text-ink-500 py-12">{$t('wl.loading')}</div>
 {:else}
   <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
     {#each cards as c}
@@ -40,11 +41,11 @@
   </div>
 
   <div class="card mt-6">
-    <h3 class="font-semibold mb-2">Aksi Cepat</h3>
+    <h3 class="font-semibold mb-2">{$t('adm.quickActions')}</h3>
     <div class="grid sm:grid-cols-3 gap-3">
-      <a href="/admin/vendors?status=PENDING" class="btn-outline btn-md">Verifikasi vendor pending</a>
-      <a href="/admin/settings" class="btn-outline btn-md">Edit branding & Tripay</a>
-      <a href="/admin/returns" class="btn-outline btn-md">Tinjau permintaan return</a>
+      <a href="/admin/vendors?status=PENDING" class="btn-outline btn-md">{$t('adm.verifyVendors')}</a>
+      <a href="/admin/settings" class="btn-outline btn-md">{$t('adm.editBranding')}</a>
+      <a href="/admin/returns" class="btn-outline btn-md">{$t('adm.reviewReturns')}</a>
     </div>
   </div>
 {/if}

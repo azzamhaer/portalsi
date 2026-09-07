@@ -1,24 +1,25 @@
 <script lang="ts">
 	import { ArrowRight, ShieldCheck, Sparkles, Users } from '@lucide/svelte';
+	import { t } from '$lib/i18n';
 </script>
 
-<svelte:head><title>Portal SI — Tumbuh bersama</title></svelte:head>
+<svelte:head><title>{$t('welcome.title')}</title></svelte:head>
 <main class="welcome">
 	<header>
 		<a href="/welcome"><img src="/assets/logo-mark.png" alt="" /><strong>Portal SI</strong></a>
-		<nav><a href="/login">Masuk</a><a class="primary" href="/register">Buat akun</a></nav>
+		<nav><a href="/login">{$t('auth.signIn')}</a><a class="primary" href="/register">{$t('welcome.createAccount')}</a></nav>
 	</header>
 	<section class="hero">
 		<div>
 			<p class="eyebrow">Portal Sekolah Impian</p>
-			<h1>Satu langkah.<br /><em>Menjaga kedekatan.</em></h1>
+			<h1>{$t('welcome.tagline2')}<br /><em>{$t('welcome.tagline1')}</em></h1>
 			<p>
 				Setiap kabar membawa arti, dan setiap hubungan layak untuk tetap terjaga. Karena komunikasi
 				yang baik selalu melahirkan pembelajaran yang lebih terbaik.
 			</p>
 			<div class="hero-actions">
-				<a href="/register">Mulai sekarang <ArrowRight size={18} /></a><a href="/login"
-					>Saya sudah punya akun</a
+				<a href="/register">{$t('welcome.startNow')} <ArrowRight size={18} /></a><a href="/login"
+					>{$t('welcome.haveAccount')}</a
 				>
 			</div>
 			<div class="trust">
@@ -33,7 +34,7 @@
 			</div>
 			<div class="floating">
 				<Sparkles size={18} /><span
-					><strong>Ruang untuk karya</strong><small>Belajar dan berbagi bersama</small></span
+					><strong>{$t('welcome.spaceForWork')}</strong><small>{$t('welcome.learnShare')}</small></span
 				>
 			</div>
 		</div>

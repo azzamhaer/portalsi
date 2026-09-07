@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { t } from '$lib/i18n';
+  import { get } from 'svelte/store';
   import SellerSidebar from '$lib/components/SellerSidebar.svelte';
   import MapPicker from '$lib/components/MapPicker.svelte';
   import AddressFields from '$lib/components/AddressFields.svelte';
@@ -28,7 +30,7 @@
   async function saveUsername() {
     if (!newUsername.trim() || newUsername === v.username) return;
     if (!/^[a-z0-9][a-z0-9_-]*$/.test(newUsername)) {
-      toast.error('Hanya huruf kecil, angka, "-" dan "_". Harus mulai huruf/angka.');
+      toast.error(get(t)('sprof.usernameRule'));
       return;
     }
     savingUsername = true;
@@ -36,7 +38,7 @@
       const r: any = await apiEndpoints.sellerUpdateUsername(newUsername);
       v = { ...v, username: r.username, username_changed_at: new Date().toISOString() };
       newUsername = '';
-      toast.success('Username diperbarui');
+      toast.success(get(t)('sprof.usernameUpdated'));
     } catch (e: any) {
       toast.error(e.message);
     } finally { savingUsername = false; }
@@ -53,7 +55,7 @@
   async function save(e: Event) {
     e.preventDefault();
     if (v.latitude == null || v.longitude == null) {
-      toast.warn('Geser pin lokasi toko terlebih dahulu.');
+      toast.warn(get(t)('sprof.pinFirst'));
       return;
     }
     saving = true;
@@ -68,7 +70,7 @@
       };
       const r: any = await apiEndpoints.sellerUpdateProfile(payload);
       v = { ...v, ...r };
-      toast.success('Profil toko disimpan');
+      toast.success(get(t)('sprof.saved'));
     } catch (e: any) { toast.error(e.message); } finally { saving = false; }
   }
 
@@ -104,7 +106,7 @@
       v.avatar = dataUri;
       const r: any = await apiEndpoints.sellerUpdateProfile({ avatar: dataUri });
       v = { ...v, ...r };
-      toast.success('Foto profil diperbarui');
+      toast.success(get(t)('sprof.photoUpdated'));
     } catch (e: any) { toast.error(e.message); } finally { uploadingAvatar = false; input.value = ''; }
   }
 
@@ -120,7 +122,7 @@
       v.banner = dataUri;
       const r: any = await apiEndpoints.sellerUpdateProfile({ banner: dataUri });
       v = { ...v, ...r };
-      toast.success('Banner toko diperbarui');
+      toast.success(get(t)('sprof.bannerUpdated'));
     } catch (e: any) { toast.error(e.message); } finally { uploadingBanner = false; input.value = ''; }
   }
 
@@ -129,14 +131,14 @@
   }
 </script>
 
-<svelte:head><title>Profil Toko</title></svelte:head>
+<svelte:head><title>{$t('sw.storeProfile')}</title></svelte:head>
 
 <div class="container-x py-6 sm:py-8">
-  <h1 class="section-title mb-6 sm:mb-8">Seller Center</h1>
+  <h1 class="section-title mb-6 sm:mb-8">{$t('nav.sellerCenter')}</h1>
   <div class="grid lg:grid-cols-[230px_1fr] gap-6">
     <SellerSidebar />
     <div>
-      {#if !v}<div class="card text-center text-ink-500 py-10">Memuat…</div>
+      {#if !v}<div class="card text-center text-ink-500 py-10">{$t('wl.loading')}</div>
       {:else}
         <!-- Status banner -->
         <div class="card mb-5">
@@ -146,7 +148,7 @@
             </div>
           {:else if v.verification_status === 'REJECTED'}
             <div class="bg-red-50 text-red-800 text-sm p-3 rounded-xl">
-              <b>Verifikasi ditolak.</b> {v.verification_note}
+              <b>{$t('sprof.verifRejected')}</b> {v.verification_note}
             </div>
           {:else}
             <div class="bg-emerald-50 text-emerald-800 text-sm p-3 rounded-xl flex items-center gap-2 flex-wrap">
@@ -181,14 +183,14 @@
                 </div>
                 <div class="text-xs text-ink-500">{v.city} · {(v.followers ?? 0).toLocaleString('id-ID')} pengikut</div>
               </div>
-              <a href={v.username ? `/${v.username}` : `/vendors/${v.id}`} class="btn-outline btn-sm">Lihat Toko Publik</a>
+              <a href={v.username ? `/${v.username}` : `/vendors/${v.id}`} class="btn-outline btn-sm">{$t('sd.viewPublicStore')}</a>
             </div>
           </div>
 
         <!-- Username editor -->
         <div class="card mb-5">
-          <h3 class="font-semibold mb-1">Username Toko</h3>
-          <p class="text-xs text-ink-500 mb-4">URL toko Anda: <code class="bg-ink-50 px-1.5 py-0.5 rounded">/{v.username}</code></p>
+          <h3 class="font-semibold mb-1">{$t('sprof.storeUsername')}</h3>
+          <p class="text-xs text-ink-500 mb-4">{$t('sprof.yourUrl')}<code class="bg-ink-50 px-1.5 py-0.5 rounded">/{v.username}</code></p>
           <div class="flex gap-2 items-stretch">
             <div class="flex items-stretch flex-1 rounded-xl overflow-hidden border border-ink-200 focus-within:border-ink-950 transition">
               <span class="px-3 grid place-items-center bg-ink-50 text-ink-500 text-sm font-mono">/</span>
@@ -201,7 +203,7 @@
               />
             </div>
             <button type="button" on:click={saveUsername} disabled={savingUsername || !canChangeUsername || !newUsername.trim() || newUsername === v.username} class="btn-primary btn-md">
-              {savingUsername ? 'Menyimpan…' : 'Ubah'}
+              {savingUsername ? $t('mk.saving') : $t('mk.edit')}
             </button>
           </div>
           {#if !canChangeUsername && nextChangeAt}
@@ -209,25 +211,25 @@
               <Icon name="clock" size={12} /> Username dapat diubah lagi pada {nextChangeAt.toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}.
             </div>
           {:else}
-            <p class="text-xs text-ink-500 mt-2">Maksimal 1× ubah username per minggu. Min 3 huruf, hanya huruf kecil, angka, "-" dan "_".</p>
+            <p class="text-xs text-ink-500 mt-2">{$t('sprof.usernameNote')}</p>
           {/if}
         </div>
 
         <!-- Profile form -->
         <div class="card">
-          <h3 class="font-semibold mb-4">Profil Toko</h3>
+          <h3 class="font-semibold mb-4">{$t('sw.storeProfile')}</h3>
           <form on:submit={save} class="space-y-4 max-w-2xl">
             <div class="grid sm:grid-cols-2 gap-3">
-              <div><label class="label">Nama Toko</label><input bind:value={v.name} class="input" /></div>
+              <div><label class="label">{$t('sprof.storeName')}</label><input bind:value={v.name} class="input" /></div>
             </div>
-            <div><label class="label">Deskripsi</label><textarea bind:value={v.description} class="input" rows={3}></textarea></div>
+            <div><label class="label">{$t('sprof.desc')}</label><textarea bind:value={v.description} class="input" rows={3}></textarea></div>
             <AddressFields bind:value={v} contact={false} title="Alamat Toko" />
             <div>
-              <label class="label">Pin Lokasi Toko</label>
+              <label class="label">{$t('sprof.storePin')}</label>
               <MapPicker bind:lat={v.latitude} bind:lng={v.longitude} query={addressQuery(v)} />
             </div>
             <div class="grid sm:grid-cols-3 gap-3 pt-3 border-t border-ink-100">
-              <div><label class="label">Bank</label>
+              <div><label class="label">{$t('sr.bank')}</label>
                 <select bind:value={v.bank_name} class="input">
                   <option>BCA</option><option>BRI</option><option>Mandiri</option><option>BNI</option><option>BSI</option><option>CIMB Niaga</option><option>Permata</option>
                 </select>
@@ -235,7 +237,7 @@
               <div><label class="label">No. Rekening</label><input bind:value={v.bank_account} class="input" /></div>
               <div><label class="label">Atas Nama</label><input bind:value={v.bank_holder} class="input" /></div>
             </div>
-            <button disabled={saving} class="btn-primary btn-md">{saving ? 'Menyimpan…' : 'Simpan'}</button>
+            <button disabled={saving} class="btn-primary btn-md">{saving ? $t('mk.saving') : $t('pf.save')}</button>
           </form>
         </div>
       {/if}

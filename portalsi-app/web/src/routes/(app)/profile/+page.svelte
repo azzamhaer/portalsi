@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { env } from '$env/dynamic/public';
+	import { get } from 'svelte/store';
+	import { t } from '$lib/i18n';
 	import {
 		Bookmark,
 		Copy,
@@ -38,7 +40,7 @@
 			if (navigator.share) await navigator.share({ title: data.profile.fullName, url });
 			else await navigator.clipboard.writeText(url);
 		} catch {
-			loadError = 'Profil belum dapat dibagikan.';
+			loadError = get(t)('prof.shareFailed');
 		}
 	}
 
@@ -68,7 +70,7 @@
 			);
 			nextPage = (response.pagination?.current_page ?? nextPage) + 1;
 		} catch {
-			loadError = 'Postingan berikutnya belum dapat dimuat.';
+			loadError = get(t)('home.loadMoreFailed');
 		} finally {
 			loading = false;
 		}
@@ -98,13 +100,13 @@
 				{#if data.profile.avatarUrl}<button
 						class="expand-photo"
 						onclick={() => (photoOpen = true)}
-						aria-label="Perbesar foto profil"><Maximize2 size={13} /></button
+						aria-label={$t('prof.ariaZoomAvatar')}><Maximize2 size={13} /></button
 					>{/if}
 			</div>
 			<div class="profile-actions">
-				<a href="/profile/edit">Edit profil</a>
-				<a href="/settings" aria-label="Pengaturan"><Settings size={19} /></a>
-				<button onclick={shareProfile} aria-label="Bagikan profil"><Share2 size={19} /></button>
+				<a href="/profile/edit">{$t('prof.editProfile')}</a>
+				<a href="/settings" aria-label={$t('nav.settings')}><Settings size={19} /></a>
+				<button onclick={shareProfile} aria-label={$t('prof.ariaShare')}><Share2 size={19} /></button>
 			</div>
 			<div class="identity">
 				<h1>
@@ -119,27 +121,27 @@
 						><span class="private-tag"><Lock size={12} /> Private</span>{/if}
 				</p>
 			</div>
-			<p class="bio"><MentionText text={data.profile.bio || 'Belum ada bio.'} /></p>
+			<p class="bio"><MentionText text={data.profile.bio || get(t)('prof.noBio')} /></p>
 			<div class="stats">
 				<a href="/profile/followers">
-					<strong>{data.profile.followersCount.toLocaleString('id-ID')}</strong><span>Pengikut</span
+					<strong>{data.profile.followersCount.toLocaleString('id-ID')}</strong><span>{$t('prof.followers')}</span
 					>
 				</a>
 				<a href="/profile/following">
 					<strong>{data.profile.followingCount.toLocaleString('id-ID')}</strong><span
-						>Mengikuti</span
+						>{$t('common.following')}</span
 					>
 				</a>
 				<span>
-					<strong>{data.profile.postsCount.toLocaleString('id-ID')}</strong><span>Postingan</span>
+					<strong>{data.profile.postsCount.toLocaleString('id-ID')}</strong><span>{$t('prof.posts')}</span>
 				</span>
 			</div>
 		</div>
 	</section>
 
-	<nav class="profile-tabs" aria-label="Konten profil">
+	<nav class="profile-tabs" aria-label={$t('prof.contentAria')}>
 		<a class="active" href="/profile"><Grid3X3 size={17} /> Postingan</a>
-		<a href={`/portfolio?user_id=${data.profile.id}`}>Portfolio</a>
+		<a href={`/portfolio?user_id=${data.profile.id}`}>{$t('prof.portfolio')}</a>
 		<!-- Draft hanya ada di profil sendiri; halamannya pun menolak akses orang lain. -->
 		<a href="/profile/drafts"><FileEdit size={17} /> Draft</a>
 		<a href="/settings/saved"><Bookmark size={17} /> Tersimpan</a>
@@ -164,8 +166,8 @@
 								else if (!img.src.endsWith('/assets/logo.png')) img.src = '/assets/logo.png';
 							}}
 						/>{/if}
-					{#if post.isVideo}<span aria-label="Video"><Play size={14} fill="currentColor" /></span
-						>{:else if post.isMultiple}<span aria-label="Beberapa foto"><Copy size={14} /></span
+					{#if post.isVideo}<span aria-label={$t('media.video')}><Play size={14} fill="currentColor" /></span
+						>{:else if post.isMultiple}<span aria-label={$t('media.photos')}><Copy size={14} /></span
 						>{/if}
 					{#if post.isPinned}<span class="pin-badge"
 							><Pin size={12} fill="currentColor" /> Pinned</span
@@ -185,7 +187,7 @@
 		{#if loadError}<p class="load-error" aria-live="polite">{loadError}</p>{/if}
 	{:else}
 		<section class="empty-profile surface">
-			<strong>Belum ada postingan</strong><span>Karya yang Anda bagikan akan muncul di sini.</span>
+			<strong>{$t('prof.noPosts')}</strong><span>{$t('prof.noPostsSub')}</span>
 		</section>
 	{/if}
 </div>
@@ -201,7 +203,7 @@
 			alt={`Foto profil ${data.profile.fullName}`}
 			onclick={(event) => event.stopPropagation()}
 		/>
-		<button class="photo-close" onclick={() => (photoOpen = false)} aria-label="Tutup"
+		<button class="photo-close" onclick={() => (photoOpen = false)} aria-label={$t('common.close')}
 			><X size={20} /></button
 		>
 	</div>

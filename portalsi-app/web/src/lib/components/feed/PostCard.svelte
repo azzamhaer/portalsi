@@ -1,5 +1,7 @@
 <script lang="ts">
 	import {
+	import { get } from 'svelte/store';
+	import { t } from '$lib/i18n';
 		Bookmark,
 		ChevronLeft,
 		ChevronRight,
@@ -44,7 +46,7 @@
 	let openingPost = $state(false);
 
 	// Tombol follow di header: hanya muncul kalau BELUM mengikuti saat load.
-	// Setelah dipencet, berubah jadi "Mengikuti" (bisa di-unfollow di halaman itu).
+	// Setelah dipencet, berubah jadi {$t('common.following')} (bisa di-unfollow di halaman itu).
 	const canShowFollow = post.user.isFollowing !== true && post.user.id !== undefined;
 	let following = $state(false);
 	let followBusy = $state(false);
@@ -153,7 +155,7 @@
 		} catch {
 			interaction.liked = previousLiked;
 			interaction.likesCount = previousCount;
-			interactionError = 'Like belum tersimpan. Coba lagi.';
+			interactionError = get(t)('post.likeFailed');
 		} finally {
 			liking = false;
 		}
@@ -170,7 +172,7 @@
 			});
 		} catch {
 			interaction.bookmarked = !interaction.bookmarked;
-			interactionError = 'Perubahan simpan belum berhasil.';
+			interactionError = get(t)('post.saveFailed');
 		} finally {
 			bookmarking = false;
 		}
@@ -205,7 +207,7 @@
 </script>
 
 {#if moderatedHidden}
-	<article class="post-card moderated-note" aria-label="Postingan dimoderasi">
+	<article class="post-card moderated-note" aria-label={$t('post.ariaModerated')}>
 		<ShieldAlert size={16} /> Postingan telah dimoderasi & disembunyikan.
 	</article>
 {:else}
@@ -226,7 +228,7 @@
 					<button
 						class="coauthor-stack"
 						onclick={() => (collabPopupOpen = true)}
-						aria-label="Lihat kolaborator"
+						aria-label={$t('post.ariaViewCollab')}
 					>
 						{#each post.coAuthors.slice(0, 2) as ca (ca.id)}
 							<Avatar name={ca.username} src={ca.avatarUrl} size="sm" />
@@ -258,14 +260,14 @@
 					onclick={toggleFollow}
 					disabled={followBusy}
 					aria-pressed={following}
-					>{following ? 'Mengikuti' : post.user.followsYou ? 'Ikuti balik' : 'Ikuti'}</button
+					>{following ? $t('common.following') : post.user.followsYou ? $t('rail.followBack') : $t('common.follow')}</button
 				>
 			{/if}
 			{#if $isModerator}
 				<button
 					class="mod-btn"
 					onclick={() => (moderationOpen = true)}
-					aria-label="Moderasi postingan"><ShieldAlert size={17} /></button
+					aria-label={$t('post.ariaModerate')}><ShieldAlert size={17} /></button
 				>
 			{/if}
 		</div>
@@ -299,7 +301,7 @@
 			{#if zoomable}<button
 					class="expand-media"
 					onclick={() => openLightbox(0)}
-					aria-label="Perbesar video"><Maximize2 size={19} /></button
+					aria-label={$t('post.ariaExpandVideo')}><Maximize2 size={19} /></button
 				>{/if}
 			{#if openingPost}<span class="post-opening"><LoaderCircle size={28} /></span>{/if}
 		</div>{:else if isGallery}<div class="media gallery">
@@ -317,12 +319,12 @@
 			{#if slide > 0}<button
 					class="nav prev"
 					onclick={() => goSlide(slide - 1)}
-					aria-label="Foto sebelumnya"><ChevronLeft size={20} /></button
+					aria-label={$t('post.ariaPrevPhoto')}><ChevronLeft size={20} /></button
 				>{/if}
 			{#if slide < gallery.length - 1}<button
 					class="nav next"
 					onclick={() => goSlide(slide + 1)}
-					aria-label="Foto berikutnya"><ChevronRight size={20} /></button
+					aria-label={$t('post.ariaNextPhoto')}><ChevronRight size={20} /></button
 				>{/if}
 			<div class="dots">
 				{#each gallery as _, index (index)}<span class:on={index === slide}></span>{/each}
@@ -351,22 +353,22 @@
 				onclick={toggleLike}
 				disabled={liking}
 				aria-pressed={interaction.liked}
-				aria-label={interaction.liked ? 'Batal menyukai' : 'Sukai'}
+				aria-label={interaction.liked ? $t('post.unlike') : $t('post.like')}
 			>
 				{#if liking}<LoaderCircle size={21} class="action-spin" />{:else}<Heart
 						size={22}
 						fill={interaction.liked ? 'currentColor' : 'none'}
 					/>{/if}
 			</button>
-			<a href={`/posts/${post.id}#comments`} aria-label="Komentar"><MessageCircle size={22} /></a>
-			<button onclick={sharePost} aria-label="Bagikan"><Send size={21} /></button>
+			<a href={`/posts/${post.id}#comments`} aria-label={$t('post.ariaComment')}><MessageCircle size={22} /></a>
+			<button onclick={sharePost} aria-label={$t('common.share')}><Send size={21} /></button>
 		</div>
 		<button
 			class:active={interaction.bookmarked}
 			onclick={toggleBookmark}
 			disabled={bookmarking}
 			aria-pressed={interaction.bookmarked}
-			aria-label={interaction.bookmarked ? 'Hapus dari tersimpan' : 'Simpan'}
+			aria-label={interaction.bookmarked ? $t('post.unsave') : $t('common.save')}
 		>
 			{#if bookmarking}<LoaderCircle size={21} class="action-spin" />{:else}<Bookmark
 					size={22}
@@ -387,7 +389,7 @@
 			<a href={`/u/${post.user.username}`}>{post.user.username}</a>
 			<MentionText text={post.caption} />
 		</p>
-		<a class="comments" href={`/posts/${post.id}#comments`}>Lihat percakapan</a>
+		<a class="comments" href={`/posts/${post.id}#comments`}>{$t('post.viewThread')}</a>
 	</div>
 </article>
 {/if}
@@ -419,19 +421,19 @@
 			class="collab-modal"
 			role="dialog"
 			aria-modal="true"
-			aria-label="Kolaborator"
+			aria-label={$t('post.collaborator')}
 			onclick={(e) => e.stopPropagation()}
 		>
 			<header>
-				<strong>Kolaborasi</strong>
-				<button onclick={() => (collabPopupOpen = false)} aria-label="Tutup"><X size={19} /></button>
+				<strong>{$t('post.collab')}</strong>
+				<button onclick={() => (collabPopupOpen = false)} aria-label={$t('common.close')}><X size={19} /></button>
 			</header>
 			<ul>
 				<li>
 					<a href={`/u/${post.user.username}`}>
 						<Avatar name={post.user.fullName} src={post.user.avatarUrl} size="md" />
 						<span
-							><strong>@{post.user.username}</strong><small>Pembuat</small></span
+							><strong>@{post.user.username}</strong><small>{$t('post.creator')}</small></span
 						><UserBadges verified={post.user.badgeVerified} role={post.user.role} />
 					</a>
 				</li>
@@ -439,7 +441,7 @@
 					<li>
 						<a href={`/u/${ca.username}`}>
 							<Avatar name={ca.fullName} src={ca.avatarUrl} size="md" />
-							<span><strong>@{ca.username}</strong><small>Kolaborator</small></span>
+							<span><strong>@{ca.username}</strong><small>{$t('post.collaborator')}</small></span>
 							{#if ca.verified}<UserBadges verified={true} role="other" />{/if}
 						</a>
 					</li>

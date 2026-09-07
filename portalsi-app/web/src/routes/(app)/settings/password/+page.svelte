@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { CircleCheckBig, Eye, EyeOff, Home, ShieldCheck } from '@lucide/svelte';
+	import { get } from 'svelte/store';
+	import { t } from '$lib/i18n';
 	import type { PageProps } from './$types';
 	type PasswordForm = {
 		success?: boolean;
@@ -26,17 +28,17 @@
 	{#if form?.success}
 		<div class="result ok">
 			<div class="icon"><CircleCheckBig size={30} /></div>
-			<h1>Kata sandi diperbarui</h1>
+			<h1>{$t('auth.pwUpdated')}</h1>
 			<p>{form.message} Gunakan kata sandi baru Anda saat masuk berikutnya.</p>
 			<a class="home-btn" href="/home"><Home size={18} /> Kembali ke Portal SI</a>
 		</div>
 	{:else}
 		<a class="back" href="/settings">← Pengaturan</a>
 		<h1><ShieldCheck size={22} /> Ubah kata sandi</h1>
-		<p class="lead">Gunakan minimal 8 karakter dan berbeda dari kata sandi lama.</p>
+		<p class="lead">{$t('pw.hint')}</p>
 		<form method="POST">
 			<label
-				><span>Kata sandi saat ini</span>
+				><span>{$t('pw.current')}</span>
 				<div class="pw">
 					<input
 						type={showCurrent ? 'text' : 'password'}
@@ -46,7 +48,7 @@
 					/><button
 						type="button"
 						onclick={() => (showCurrent = !showCurrent)}
-						aria-label={showCurrent ? 'Sembunyikan' : 'Tampilkan'}
+						aria-label={showCurrent ? get(t)('auth.hide') : get(t)('auth.show')}
 						>{#if showCurrent}<EyeOff size={18} />{:else}<Eye size={18} />{/if}</button
 					>
 				</div>
@@ -54,7 +56,7 @@
 					>{/if}</label
 			>
 			<label
-				><span>Kata sandi baru</span>
+				><span>{$t('auth.newPassword')}</span>
 				<div class="pw">
 					<input
 						type={showNew ? 'text' : 'password'}
@@ -66,7 +68,7 @@
 					/><button
 						type="button"
 						onclick={() => (showNew = !showNew)}
-						aria-label={showNew ? 'Sembunyikan' : 'Tampilkan'}
+						aria-label={showNew ? get(t)('auth.hide') : get(t)('auth.show')}
 						>{#if showNew}<EyeOff size={18} />{:else}<Eye size={18} />{/if}</button
 					>
 				</div>
@@ -74,7 +76,7 @@
 					>{/if}</label
 			>
 			<label
-				><span>Ulangi kata sandi baru</span>
+				><span>{$t('pw.repeatNew')}</span>
 				<div class="pw">
 					<input
 						type={showConfirm ? 'text' : 'password'}
@@ -87,16 +89,16 @@
 					/><button
 						type="button"
 						onclick={() => (showConfirm = !showConfirm)}
-						aria-label={showConfirm ? 'Sembunyikan' : 'Tampilkan'}
+						aria-label={showConfirm ? get(t)('auth.hide') : get(t)('auth.show')}
 						>{#if showConfirm}<EyeOff size={18} />{:else}<Eye size={18} />{/if}</button
 					>
 				</div>
-				{#if mismatch}<small class="err">Kata sandi belum sama.</small>
+				{#if mismatch}<small class="err">{$t('auth.pwMismatch')}</small>
 				{:else if form?.errors?.confirmation}<small class="err">{form.errors.confirmation[0]}</small
 					>{/if}</label
 			>
 			{#if form?.message && !form?.success}<p class="alert">{form.message}</p>{/if}
-			<button class="submit" type="submit">Perbarui kata sandi</button>
+			<button class="submit" type="submit">{$t('pw.update')}</button>
 		</form>
 	{/if}
 </main>

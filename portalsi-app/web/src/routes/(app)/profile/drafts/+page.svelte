@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { ArrowLeft, Copy, FileEdit, Play } from '@lucide/svelte';
+	import { t } from '$lib/i18n';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -9,34 +10,34 @@
 
 <main class="drafts-page">
 	<header>
-		<a href="/profile" aria-label="Kembali ke profil"><ArrowLeft size={19} /></a>
+		<a href="/profile" aria-label={$t('drf.ariaBack')}><ArrowLeft size={19} /></a>
 		<div>
-			<h1>Draft</h1>
-			<p>Hanya Anda yang bisa melihat halaman ini.</p>
+			<h1>{$t('drf.draft')}</h1>
+			<p>{$t('drf.onlyYou')}</p>
 		</div>
 	</header>
 
 	{#if data.failed}
-		<p class="state" role="status">Draft belum dapat dimuat. Coba muat ulang halaman.</p>
+		<p class="state" role="status">{$t('drf.loadFailed')}</p>
 	{:else if data.drafts.length === 0}
 		<div class="state empty">
 			<span><FileEdit size={26} /></span>
-			<strong>Belum ada draft</strong>
+			<strong>{$t('drf.empty')}</strong>
 			<p>
-				Saat membuat postingan, pilih <b>Simpan draft</b> untuk menyimpannya di sini tanpa
+				Saat membuat postingan, pilih <b>{$t('comp.saveDraft')}</b> untuk menyimpannya di sini tanpa
 				menerbitkannya.
 			</p>
-			<a href="/create/post">Buat postingan</a>
+			<a href="/create/post">{$t('drf.createPost')}</a>
 		</div>
 	{:else}
-		<section class="draft-grid" aria-label="Daftar draft">
+		<section class="draft-grid" aria-label={$t('drf.ariaList')}>
 			{#each data.drafts as draft (draft.id)}
 				<!-- Draft dibuka di halaman detail post biasa: pemiliknya diizinkan melihat draft,
 			     dan di sana sudah ada modal edit (caption, lokasi, kolaborator) + tombol terbit. -->
 			<a href={`/posts/${draft.id}`} data-no-modal>
 					<img src={draft.thumbnailUrl ?? draft.mediaUrl} alt={draft.caption} loading="lazy" />
-					{#if draft.isVideo}<span aria-label="Video"><Play size={14} fill="currentColor" /></span
-						>{:else if draft.isMultiple}<span aria-label="Beberapa foto"><Copy size={14} /></span
+					{#if draft.isVideo}<span aria-label={$t('media.video')}><Play size={14} fill="currentColor" /></span
+						>{:else if draft.isMultiple}<span aria-label={$t('media.photos')}><Copy size={14} /></span
 						>{/if}
 				</a>
 			{/each}

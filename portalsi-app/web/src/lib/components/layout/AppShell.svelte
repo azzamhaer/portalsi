@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import { t } from '$lib/i18n';
 	import { page, navigating } from '$app/state';
 	import { goto, preloadData, pushState } from '$app/navigation';
 	import { onMount } from 'svelte';
@@ -97,24 +98,24 @@
 		};
 	});
 
-	const primary = [
-		{ href: '/home', label: 'Beranda', icon: Home },
-		{ href: '/reels', label: 'Reels', icon: Clapperboard },
-		{ href: '/explore', label: 'Jelajah', icon: Compass },
-		{ href: '/messages', label: 'Pesan', icon: MessageCircle },
-		{ href: '/notifications', label: 'Notifikasi', icon: Bell },
-		{ href: '/marketplace', label: 'Marketplace', icon: ShoppingBag },
-		{ href: '/profile', label: 'Profil', icon: UserRound }
-	];
+	const primary = $derived([
+		{ href: '/home', label: $t('nav.home'), icon: Home },
+		{ href: '/reels', label: $t('nav.reels'), icon: Clapperboard },
+		{ href: '/explore', label: $t('nav.explore'), icon: Compass },
+		{ href: '/messages', label: $t('nav.messages'), icon: MessageCircle },
+		{ href: '/notifications', label: $t('nav.notifications'), icon: Bell },
+		{ href: '/marketplace', label: $t('nav.marketplace'), icon: ShoppingBag },
+		{ href: '/profile', label: $t('nav.profile'), icon: UserRound }
+	]);
 
 	// Mobile: Marketplace dipindah ke header atas, digantikan Reels di bottombar.
-	const mobile = [
-		{ href: '/home', label: 'Beranda', icon: Home },
-		{ href: '/reels', label: 'Reels', icon: Clapperboard },
-		{ href: '/create/post', label: 'Buat', icon: Plus, create: true },
-		{ href: '/explore', label: 'Jelajah', icon: Compass },
-		{ href: '/profile', label: 'Profil', icon: UserRound }
-	];
+	const mobile = $derived([
+		{ href: '/home', label: $t('nav.home'), icon: Home },
+		{ href: '/reels', label: $t('nav.reels'), icon: Clapperboard },
+		{ href: '/create/post', label: $t('nav.create'), icon: Plus, create: true },
+		{ href: '/explore', label: $t('nav.explore'), icon: Compass },
+		{ href: '/profile', label: $t('nav.profile'), icon: UserRound }
+	]);
 
 	function active(href: string) {
 		return page.url.pathname === href || page.url.pathname.startsWith(`${href}/`);
@@ -188,8 +189,8 @@
 </script>
 
 <div class="app-shell" class:no-bottom-nav={hideBottomNav}>
-	<aside class="sidebar" aria-label="Navigasi utama">
-		<a class="brand" href="/home" aria-label="Portal SI — Beranda">
+	<aside class="sidebar" aria-label={$t('a11y.mainNav')}>
+		<a class="brand" href="/home" aria-label={$t('a11y.homeAria')}>
 			<img src="/assets/logo-mark.png" alt="" />
 			<span>Portal <b>SI</b></span>
 		</a>
@@ -217,7 +218,7 @@
 
 		<a class="create-button" href="/create/post">
 			<i><Plus size={20} strokeWidth={2.8} /></i>
-			<span><b>Buat</b><small>Bagikan karya baru</small></span>
+			<span><b>{$t('nav.create')}</b><small>{$t('create.shareNew')}</small></span>
 		</a>
 
 		<div class="side-spacer"></div>
@@ -235,8 +236,8 @@
 				><img src="/assets/logo-mark.png" alt="" /><b>Portal SI</b></a
 			>
 			<div>
-				<a href="/marketplace" aria-label="Marketplace"><ShoppingBag size={21} /></a>
-				<a href="/explore" aria-label="Cari"><Search size={21} /></a>
+				<a href="/marketplace" aria-label={$t('nav.marketplace')}><ShoppingBag size={21} /></a>
+				<a href="/explore" aria-label={$t('nav.search')}><Search size={21} /></a>
 				<a
 					href="/notifications"
 					class="mh-icon"
@@ -259,7 +260,7 @@
 		</header>
 	{/if}
 
-	{#if postOpening}<div class="post-loading-bar" role="progressbar" aria-label="Membuka postingan"></div>{/if}
+	{#if postOpening}<div class="post-loading-bar" role="progressbar" aria-label={$t('a11y.openingPost')}></div>{/if}
 
 	<!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events -->
 	<main class="app-main" id="main-content" onclick={handleContentClick}>
@@ -272,7 +273,7 @@
 	</main>
 
 	{#if !hideBottomNav}
-		<nav class="bottom-nav" aria-label="Navigasi utama seluler">
+		<nav class="bottom-nav" aria-label={$t('a11y.mainNavMobile')}>
 			{#each mobile as item (item.href)}
 				<a
 					href={item.href}

@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { env } from '$env/dynamic/public';
+	import { get } from 'svelte/store';
+	import { t } from '$lib/i18n';
 	import {
 		ArrowLeft,
 		CheckCheck,
@@ -187,7 +189,7 @@
 				await scrollToBottom();
 			}
 		} catch {
-			statusMessage = 'Pembaruan pesan tertunda; mencoba lagi otomatis.';
+			statusMessage = get(t)('chat.updatePending');
 		}
 	}
 
@@ -244,11 +246,11 @@
 	function chooseMedia(candidate?: File) {
 		if (!candidate) return;
 		if (candidate.size > 50 * 1024 * 1024) {
-			statusMessage = 'Lampiran maksimal 50 MB.';
+			statusMessage = get(t)('chat.attMax');
 			return;
 		}
 		if (!/^(image|video)\//.test(candidate.type) && candidate.type !== 'application/pdf') {
-			statusMessage = 'Lampiran harus berupa gambar, video, atau PDF.';
+			statusMessage = get(t)('chat.attType');
 			return;
 		}
 		media = candidate;
@@ -330,7 +332,7 @@
 			replyingTo = null;
 			await scrollToBottom();
 		} catch (error) {
-			statusMessage = error instanceof Error ? error.message : 'Pesan belum dapat dikirim.';
+			statusMessage = error instanceof Error ? error.message : get(t)('chat.sendFailed');
 		} finally {
 			sending = false;
 		}
@@ -339,9 +341,9 @@
 	async function deleteMessage(message: ChatMessage) {
 		if (
 			!(await confirmAction({
-				title: 'Hapus pesan ini?',
-				description: 'Pesan akan dihapus dari percakapan Anda.',
-				confirmLabel: 'Hapus pesan',
+				title: get(t)('chat.delTitle'),
+				description: get(t)('chat.delMsg'),
+				confirmLabel: get(t)('chat.delConfirm'),
 				tone: 'danger'
 			}))
 		)
@@ -353,7 +355,7 @@
 			);
 			messages = messages.filter((item) => item.id !== message.id);
 		} catch {
-			statusMessage = 'Pesan belum dapat dihapus.';
+			statusMessage = get(t)('chat.delFailed');
 		}
 	}
 
@@ -364,7 +366,7 @@
 			await clientRequest(`groups/${targetId}/messages/${message.id}/pin`, { method: 'POST' });
 		} catch {
 			message.isPinned = previous;
-			statusMessage = 'Pin pesan belum dapat diperbarui.';
+			statusMessage = get(t)('chat.pinFailed');
 		}
 	}
 </script>
@@ -375,7 +377,7 @@
 
 <div class="conversation-page surface">
 	<header>
-		<a href="/messages" aria-label="Kembali ke inbox"><ArrowLeft size={20} /></a>
+		<a href="/messages" aria-label={$t('chat.ariaBack')}><ArrowLeft size={20} /></a>
 		{#if mode === 'group'}
 			{#if !avatarUrl}<span class="group-avatar"><Users size={20} /></span
 				>{:else}<Avatar name={title} src={avatarUrl ?? undefined} size="md" />{/if}
@@ -383,7 +385,7 @@
 				<h1>{title}</h1>
 				<p class="members">{memberLine}</p>
 			</div>
-			<a class="info-link" href={`/groups/${targetId}/info`} aria-label="Info grup"
+			<a class="info-link" href={`/groups/${targetId}/info`} aria-label={$t('chat.ariaGroupInfo')}
 				><Info size={19} /></a
 			>
 		{:else}
@@ -400,11 +402,11 @@
 		{/if}
 	</header>
 	<div class="messages" bind:this={messagePane} aria-label={`Percakapan dengan ${title}`}>
-		<div class="date">Percakapan</div>
+		<div class="date">{$t('chat.conversation')}</div>
 		{#each messages as message (message.id)}
 			{@const sharedId = sharedPostId(message.text)}
 			{@const note = textWithoutSharedPost(message.text)}
-				{#if message.id === firstUnreadId}<div class="unread-divider"><span>Belum dibaca</span></div>{/if}
+				{#if message.id === firstUnreadId}<div class="unread-divider"><span>{$t('chat.unread')}</span></div>{/if}
 			{#if sharedId}
 				<article class:mine={message.mine} class="shared">
 					{#if !message.mine && mode === 'group'}<Avatar name={message.senderName} size="sm" />{/if}
@@ -424,7 +426,7 @@
 										><CornerDownRight size={12} /> Balas</button
 									>{/if}
 								{#if mode === 'group' && message.mine}<button onclick={() => showReadInfo(message.id)}><Info size={12} /> Dibaca</button>{/if}{#if message.mine}<button onclick={() => deleteMessage(message)}
-										><Trash2 size={12} /> Hapus</button
+										><Trash2 size={12} /> {$t('common.delete')}</button
 									>{/if}
 							</div>{/if}
 					</div>
@@ -452,7 +454,7 @@
 												playsinline
 												preload="metadata"
 											></video>{:else}<img src={message.storyMedia} alt="Cerita yang dibalas" />{/if}
-										<em>Membalas cerita</em>
+										<em>{$t('chat.replyingStory')}</em>
 									</a>
 								{:else if message.storyMedia}
 									<div class="srq-head">
@@ -462,7 +464,7 @@
 												playsinline
 												preload="metadata"
 											></video>{:else}<img src={message.storyMedia} alt="Cerita yang dibalas" />{/if}
-										<em>{message.storyExpired ? 'Cerita berakhir' : 'Membalas cerita'}</em>
+										<em>{message.storyExpired ? get(t)('chat.storyEnded') : get(t)('chat.replyingStory')}</em>
 									</div>
 								{/if}
 								{#if message.text}<p class="srq-text"><MentionText text={message.text} /></p>{/if}
@@ -480,7 +482,7 @@
 								preload="metadata"><track kind="captions" label="Takarir tidak tersedia" /></video
 							>
 						{:else}<a class="file" href={message.mediaUrl} target="_blank" rel="noreferrer"
-								><FileText size={18} /> Buka lampiran</a
+								><FileText size={18} /> {$t('chat.openAttachment')}</a
 							>{/if}
 					{/if}
 					<small
@@ -495,10 +497,10 @@
 								><CornerDownRight size={12} /> Balas</button
 							>{/if}
 						{#if mode === 'group' && canPin}<button onclick={() => togglePin(message)}
-								><Pin size={12} /> {message.isPinned ? 'Lepas pin' : 'Pin'}</button
+								><Pin size={12} /> {message.isPinned ? get(t)('chat.unpin') : 'Pin'}</button
 							>{/if}
 						{#if mode === 'group' && message.mine}<button onclick={() => showReadInfo(message.id)}><Info size={12} /> Dibaca</button>{/if}{#if message.mine}<button onclick={() => deleteMessage(message)}
-								><Trash2 size={12} /> Hapus</button
+								><Trash2 size={12} /> {$t('common.delete')}</button
 							>{/if}
 					</div>
 				</div>
@@ -512,11 +514,11 @@
 	{#if replyingTo}<div class="attachment replying">
 			<span>Membalas {replyingTo.name}</span><button
 				onclick={() => (replyingTo = null)}
-				aria-label="Batal membalas"><X size={15} /></button
+				aria-label={$t('chat.ariaCancelReply')}><X size={15} /></button
 			>
 		</div>{/if}
 	{#if media}<div class="attachment">
-			<span>{media.name}</span><button onclick={() => (media = null)} aria-label="Hapus lampiran"
+			<span>{media.name}</span><button onclick={() => (media = null)} aria-label={$t('chat.ariaRemoveAtt')}
 				><X size={15} /></button
 			>
 		</div>{/if}
@@ -527,13 +529,13 @@
 						playsinline
 						preload="metadata"
 					></video>{:else}<img src={activeStoryReply.media} alt="Cerita" />{/if}{/if}
-			<span>Membalas cerita</span><button
+			<span>{$t('chat.replyingStory')}</span><button
 				onclick={() => (activeStoryReply = null)}
-				aria-label="Batal balas cerita"><X size={15} /></button
+				aria-label={$t('chat.ariaCancelStoryReply')}><X size={15} /></button
 			>
 		</div>{/if}
 		<form class="composer" onsubmit={send} onkeydown={composerKeydown}>
-		<label class="media-button" aria-label="Pilih media"
+		<label class="media-button" aria-label={$t('chat.ariaPickMedia')}
 			><ImagePlus size={20} /><input
 				type="file"
 				accept="image/*,video/*,application/pdf"
@@ -541,18 +543,18 @@
 			/></label
 		>
 		<label
-			><span class="sr-only">Tulis pesan</span><MentionTextarea
+			><span class="sr-only">{$t('chat.writeMessage')}</span><MentionTextarea
 				bind:value={content}
 				name="content"
 				maxlength={5000}
 				rows={1}
-				placeholder="Tulis pesan…"
+				placeholder={$t('chat.phMessage')}
 			/></label
 		>
 		<button
 			type="submit"
 			class="send"
-			aria-label="Kirim pesan"
+			aria-label={$t('chat.ariaSend')}
 			disabled={(!content.trim() && !media) || sending}><Send size={19} /></button
 		>
 	</form>
@@ -562,15 +564,15 @@
 {#if readInfo}
 	<div use:portal>
 		<div class="ri-overlay" role="presentation" onclick={() => (readInfo = null)}></div>
-		<div class="ri-modal" role="dialog" aria-modal="true" aria-label="Dibaca oleh">
+		<div class="ri-modal" role="dialog" aria-modal="true" aria-label={$t('chat.readBy')}>
 			<header>
-				<strong>Dibaca oleh</strong>
-				<button onclick={() => (readInfo = null)} aria-label="Tutup"><X size={17} /></button>
+				<strong>{$t('chat.readBy')}</strong>
+				<button onclick={() => (readInfo = null)} aria-label={$t('common.close')}><X size={17} /></button>
 			</header>
 			{#if readInfo.loading}
-				<p class="ri-hint">Memuat…</p>
+				<p class="ri-hint">{$t('common.loading')}</p>
 			{:else if readInfo.readers.length === 0}
-				<p class="ri-hint">Belum ada yang membaca pesan ini.</p>
+				<p class="ri-hint">{$t('chat.noReaders')}</p>
 			{:else}
 				<ul>
 					{#each readInfo.readers as reader (reader.username)}

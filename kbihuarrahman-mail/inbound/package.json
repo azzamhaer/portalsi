@@ -1,0 +1,21 @@
+{
+  "name": "kbihu-mail-inbound",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev --test-scheduled"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250507.0",
+    "typescript": "^6.0.3",
+    "wrangler": "^4.0.0"
+  },
+  "dependencies": {
+    "postal-mime": "^2.4.3"
+  },
+  "overrides": {
+    "@cloudflare/workers-types": "^4.20250507.0"
+  }
+}

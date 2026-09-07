@@ -150,8 +150,8 @@
       <div class="ml-auto hidden md:block relative" bind:this={searchBoxRef}>
         <form on:submit={search} class="flex items-center gap-2 bg-ink-50 hover:bg-ink-100 transition-colors rounded-full pl-4 pr-1.5 py-1.5 w-72 lg:w-96">
           <Icon name="search" size={16} class="text-ink-400" />
-          <input bind:value={q} on:input={onQueryInput} on:focus={() => { if (q.trim()) suggestOpen = true; }} type="text" placeholder="Cari produk, brand, atau toko" class="flex-1 bg-transparent text-sm outline-none placeholder:text-ink-400" />
-          <button type="submit" class="text-xs bg-app-primary text-app-pfg px-3.5 py-1.5 rounded-full font-medium hover:bg-ink-800 transition-colors">Cari</button>
+          <input bind:value={q} on:input={onQueryInput} on:focus={() => { if (q.trim()) suggestOpen = true; }} type="text" placeholder={$t('header.searchPh')} class="flex-1 bg-transparent text-sm outline-none placeholder:text-ink-400" />
+          <button type="submit" class="text-xs bg-app-primary text-app-pfg px-3.5 py-1.5 rounded-full font-medium hover:bg-ink-800 transition-colors">{$t('header.search')}</button>
         </form>
         {#if suggestOpen && (suggestions.products.length || suggestions.vendors.length || suggestions.tags.length || suggestLoading || q.trim())}
           <div class="absolute left-0 right-0 top-full mt-1 bg-white rounded-2xl shadow-elevated border border-ink-100 p-2 animate-fadeIn z-50 max-h-[400px] overflow-y-auto">
@@ -165,7 +165,7 @@
                   </span>
                   <span class="min-w-0 flex-1">
                     <span class="block text-sm font-semibold">{$t('header.searchKeyword')} "{q.trim()}"</span>
-                    <span class="block text-xs text-ink-500">Lihat semua hasil yang cocok</span>
+                    <span class="block text-xs text-ink-500">{$t('header.seeAllResults')}</span>
                   </span>
                 </button>
               {/if}

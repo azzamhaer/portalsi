@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { t } from '$lib/i18n';
+  import { get } from 'svelte/store';
   import { apiEndpoints } from '$lib/api';
   import { auth, toast, confirmDialog } from '$lib/stores.svelte';
   import LoginRequired from '$lib/components/LoginRequired.svelte';
@@ -22,20 +24,20 @@
   onMount(() => { if (auth.user) load(); else loading = false; });
 
   async function markAll() {
-    const ok = await confirmDialog.ask({ title: 'Tandai semua dibaca?', message: 'Semua notifikasi yang belum dibaca akan ditandai sudah dibaca.' });
+    const ok = await confirmDialog.ask({ title: get(t)('nt.markAllQ'), message: get(t)('nt.markAllMsg') });
     if (!ok) return;
-    try { await apiEndpoints.notificationsReadAll(); toast.success('Semua ditandai sudah dibaca'); load(); }
+    try { await apiEndpoints.notificationsReadAll(); toast.success(get(t)('nt.allMarked')); load(); }
     catch (e: any) { toast.error(e.message); }
   }
   async function del(id: number) {
-    const ok = await confirmDialog.ask({ title: 'Hapus notifikasi?', message: 'Notifikasi ini akan dihapus dari daftar Anda.', confirmText: 'Hapus', tone: 'danger' });
+    const ok = await confirmDialog.ask({ title: get(t)('nt.deleteQ'), message: get(t)('nt.deleteMsg'), confirmText: get(t)('cart.remove'), tone: 'danger' });
     if (!ok) return;
     try { await apiEndpoints.notificationDelete(id); load(); }
     catch (e: any) { toast.error(e.message); }
   }
   async function pick(n: any) {
     if (!n.read_at) {
-      const ok = await confirmDialog.ask({ title: 'Buka notifikasi?', message: 'Notifikasi akan ditandai sudah dibaca lalu membuka detail.' });
+      const ok = await confirmDialog.ask({ title: get(t)('nt.openQ'), message: get(t)('nt.openMsg') });
       if (!ok) return;
     }
     try { await apiEndpoints.notificationMarkRead(n.id); } catch {}
@@ -53,7 +55,7 @@
   }
 </script>
 
-<svelte:head><title>Notifikasi</title></svelte:head>
+<svelte:head><title>{$t('nav.notifications')}</title></svelte:head>
 
 {#if !auth.user}
   <LoginRequired icon="bell" title="Login untuk melihat notifikasi" description="Semua aktivitas akun Anda muncul di sini setelah login." />
@@ -61,23 +63,23 @@
   <div class="container-x py-6 sm:py-8 max-w-3xl">
     <div class="flex items-center justify-between gap-3 flex-wrap mb-6">
       <div>
-        <h1 class="section-title">Notifikasi</h1>
-        <p class="text-sm text-ink-500 mt-1">Semua aktivitas akun Anda</p>
+        <h1 class="section-title">{$t('nav.notifications')}</h1>
+        <p class="text-sm text-ink-500 mt-1">{$t('nt.subtitle')}</p>
       </div>
       <div class="flex gap-2">
-        <button on:click={() => filter = 'all'} class="text-xs px-3 py-1.5 rounded-full {filter === 'all' ? 'bg-app-primary text-app-pfg' : 'bg-ink-100 hover:bg-ink-200'}">Semua</button>
-        <button on:click={() => filter = 'unread'} class="text-xs px-3 py-1.5 rounded-full {filter === 'unread' ? 'bg-app-primary text-app-pfg' : 'bg-ink-100 hover:bg-ink-200'}">Belum dibaca</button>
-        <button on:click={markAll} class="text-xs px-3 py-1.5 rounded-full bg-ink-100 hover:bg-ink-200">Tandai semua dibaca</button>
+        <button on:click={() => filter = 'all'} class="text-xs px-3 py-1.5 rounded-full {filter === 'all' ? 'bg-app-primary text-app-pfg' : 'bg-ink-100 hover:bg-ink-200'}">{$t('ord.all')}</button>
+        <button on:click={() => filter = 'unread'} class="text-xs px-3 py-1.5 rounded-full {filter === 'unread' ? 'bg-app-primary text-app-pfg' : 'bg-ink-100 hover:bg-ink-200'}">{$t('nt.unread')}</button>
+        <button on:click={markAll} class="text-xs px-3 py-1.5 rounded-full bg-ink-100 hover:bg-ink-200">{$t('nt.markAll')}</button>
       </div>
     </div>
 
     {#if loading}
-      <div class="card text-center py-10 text-ink-500">Memuat…</div>
+      <div class="card text-center py-10 text-ink-500">{$t('wl.loading')}</div>
     {:else if items.length === 0}
       <div class="card text-center py-16">
         <Icon name="bell-off" size={48} class="mx-auto text-ink-300 mb-3" />
-        <h3 class="font-semibold mb-1">Belum ada notifikasi</h3>
-        <p class="text-sm text-ink-500">Aktivitas akun Anda akan muncul di sini.</p>
+        <h3 class="font-semibold mb-1">{$t('nt.empty')}</h3>
+        <p class="text-sm text-ink-500">{$t('nt.emptyDesc')}</p>
       </div>
     {:else}
       <div class="space-y-2">
@@ -94,8 +96,8 @@
               <p class="text-sm text-ink-700 mt-1 whitespace-pre-line">{n.message}</p>
               <div class="flex items-center gap-3 mt-2">
                 <span class="text-xs text-ink-500">{new Date(n.created_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</span>
-                <button on:click={() => pick(n)} class="text-xs text-ink-950 hover:underline">Buka detail</button>
-                <button on:click={() => del(n.id)} class="text-xs text-red-600 hover:underline ml-auto">Hapus</button>
+                <button on:click={() => pick(n)} class="text-xs text-ink-950 hover:underline">{$t('nt.openDetail')}</button>
+                <button on:click={() => del(n.id)} class="text-xs text-red-600 hover:underline ml-auto">{$t('cart.remove')}</button>
               </div>
             </div>
           </div>

@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { Bookmark, Heart, MessageCircle, Music2, Send } from '@lucide/svelte';
+	import { get } from 'svelte/store';
+	import { t } from '$lib/i18n';
 	import { clientRequest } from '$lib/api/client';
 	import SmartVideo from '$lib/components/media/SmartVideo.svelte';
 	import StoryAvatarLink from '$lib/components/story/StoryAvatarLink.svelte';
@@ -20,7 +22,7 @@
 		} catch {
 			liked = previous;
 			likes += liked ? 1 : -1;
-			message = 'Like belum tersimpan.';
+			message = get(t)('clip.likeFailed');
 		}
 	}
 	async function bookmark() {
@@ -30,7 +32,7 @@
 			await clientRequest(`bookmarks/${data.clip.id}`, { method: bookmarked ? 'POST' : 'DELETE' });
 		} catch {
 			bookmarked = previous;
-			message = 'Simpan belum berhasil.';
+			message = get(t)('clip.saveFailed');
 		}
 	}
 	async function share() {
@@ -39,10 +41,10 @@
 			if (navigator.share) await navigator.share({ title: data.clip.mediaAlt, url });
 			else {
 				await navigator.clipboard.writeText(url);
-				message = 'Tautan disalin.';
+				message = get(t)('clip.linkCopied');
 			}
 		} catch {
-			message = 'Clips belum dapat dibagikan.';
+			message = get(t)('clip.shareFailed');
 		}
 	}
 </script>
@@ -71,7 +73,7 @@
 					verified={data.clip.user.badgeVerified}
 					role={data.clip.user.role}
 				/></strong
-			><a href={`/u/${data.clip.user.username}`}>Lihat profil</a>
+			><a href={`/u/${data.clip.user.username}`}>{$t('clip.viewProfile')}</a>
 		</header>
 		<div class="caption">
 			<p>{data.clip.caption}</p>
@@ -86,7 +88,7 @@
 				><Heart size={25} fill={liked ? 'currentColor' : 'none'} /><small>{likes}</small></button
 			><a href={`/posts/${data.clip.id}#comments`}
 				><MessageCircle size={25} /><small>{data.clip.commentsCount}</small></a
-			><button onclick={share}><Send size={24} /><small>Bagikan</small></button><button
+			><button onclick={share}><Send size={24} /><small>{$t('common.share')}</small></button><button
 				class:active={bookmarked}
 				onclick={bookmark}
 				><Bookmark size={24} fill={bookmarked ? 'currentColor' : 'none'} /></button

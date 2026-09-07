@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { t } from '$lib/i18n';
+  import { get } from 'svelte/store';
   import SellerSidebar from '$lib/components/SellerSidebar.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import { apiEndpoints } from '$lib/api';
@@ -160,11 +162,11 @@
   }
 
   async function remove(id: number) {
-    const ok = await confirmDialog.ask({ title: 'Hapus voucher?', message: 'Voucher ini tidak bisa dipakai lagi setelah dihapus.', confirmText: 'Hapus', tone: 'danger' });
+    const ok = await confirmDialog.ask({ title: get(t)('sv.deleteQ'), message: 'Voucher ini tidak bisa dipakai lagi setelah dihapus.', confirmText: get(t)('cart.remove'), tone: 'danger' });
     if (!ok) return;
     try {
       await apiEndpoints.sellerDeleteVoucher(id);
-      toast.success('Voucher dihapus');
+      toast.success(get(t)('sv.deleted'));
       await load();
     } catch (e: any) {
       toast.error(e.message || 'Voucher gagal dihapus');
@@ -175,42 +177,42 @@
 <svelte:head><title>Voucher Seller - MPSI Seller</title></svelte:head>
 
 <div class="container-x py-8">
-  <h1 class="section-title mb-8">Seller Center</h1>
+  <h1 class="section-title mb-8">{$t('nav.sellerCenter')}</h1>
   <div class="grid gap-6 lg:grid-cols-[230px_1fr]">
     <SellerSidebar />
 
     <div class="space-y-5">
       <div class="card flex flex-wrap items-center justify-between gap-4">
         <div>
-          <div class="section-eyebrow mb-1">Promo</div>
-          <h2 class="text-xl font-semibold">Voucher Toko</h2>
-          <p class="mt-1 text-sm text-ink-500">Kelola kode diskon untuk semua produk atau produk tertentu.</p>
+          <div class="section-eyebrow mb-1">{$t('sv.promo')}</div>
+          <h2 class="text-xl font-semibold">{$t('sv.storeVoucher')}</h2>
+          <p class="mt-1 text-sm text-ink-500">{$t('sv.subtitle')}</p>
         </div>
         <div class="grid grid-cols-3 gap-2 text-center text-xs">
           <div class="rounded-xl bg-ink-50 px-4 py-3">
             <div class="text-lg font-bold text-ink-950">{vouchers.length}</div>
-            <div class="text-ink-500">Voucher</div>
+            <div class="text-ink-500">{$t('sv.voucher')}</div>
           </div>
           <div class="rounded-xl bg-emerald-50 px-4 py-3">
             <div class="text-lg font-bold text-emerald-700">{activeCount}</div>
-            <div class="text-emerald-700">Aktif</div>
+            <div class="text-emerald-700">{$t('sv.active')}</div>
           </div>
           <div class="rounded-xl bg-blue-50 px-4 py-3">
             <div class="text-lg font-bold text-blue-700">{usedCount}</div>
-            <div class="text-blue-700">Dipakai</div>
+            <div class="text-blue-700">{$t('sv.used')}</div>
           </div>
         </div>
       </div>
 
       {#if loading}
-        <div class="card py-12 text-center text-ink-500">Memuat...</div>
+        <div class="card py-12 text-center text-ink-500">{$t('ch.loading')}</div>
       {:else}
         <div class="grid gap-5 xl:grid-cols-[380px_1fr]">
           <div class="card h-fit">
             <div class="mb-4 flex items-center justify-between gap-3">
               <h3 class="font-semibold">{editingId ? 'Edit Voucher' : 'Buat Voucher'}</h3>
               {#if editingId}
-                <button type="button" on:click={reset} class="btn-outline btn-sm">Batal</button>
+                <button type="button" on:click={reset} class="btn-outline btn-sm">{$t('od.cancel')}</button>
               {/if}
             </div>
 
@@ -220,17 +222,17 @@
 
             <div class="space-y-3">
               <div>
-                <label class="label">Kode</label>
+                <label class="label">{$t('sv.code')}</label>
                 <input bind:value={form.code} class="input uppercase" maxlength="30" placeholder="HEMAT10" />
-                <p class="helper mt-1">Spasi otomatis diganti menjadi strip saat disimpan.</p>
+                <p class="helper mt-1">{$t('sv.codeNote')}</p>
               </div>
 
               <div class="grid grid-cols-2 gap-2">
                 <div>
-                  <label class="label">Tipe</label>
+                  <label class="label">{$t('sv.type')}</label>
                   <select bind:value={form.type} class="input">
-                    <option value="FIXED">Potongan Rp</option>
-                    <option value="PERCENT">Persen</option>
+                    <option value="FIXED">{$t('sv.discountRp')}</option>
+                    <option value="PERCENT">{$t('sv.percent')}</option>
                   </select>
                 </div>
                 <div>
@@ -240,7 +242,7 @@
               </div>
 
               <div>
-                <label class="label">Minimum subtotal item</label>
+                <label class="label">{$t('sv.minSubtotal')}</label>
                 <input type="number" min="0" bind:value={form.min_subtotal} class="input" />
               </div>
 
@@ -268,15 +270,15 @@
 
               <label class="flex items-center gap-2 rounded-xl border border-ink-100 px-3 py-2 text-sm">
                 <input type="checkbox" bind:checked={form.is_active} />
-                <span>Voucher aktif dan bisa dipakai pembeli</span>
+                <span>{$t('lf.voucherActive')}</span>
               </label>
 
               <div>
                 <label class="label">Produk berlaku</label>
-                <p class="helper mb-2">Kosongkan pilihan untuk berlaku di semua produk toko.</p>
+                <p class="helper mb-2">{$t('lf.voucherAllProducts')}</p>
                 <div class="max-h-64 space-y-1 overflow-y-auto rounded-2xl border border-ink-100 p-2">
                   {#if products.length === 0}
-                    <div class="px-2 py-4 text-center text-sm text-ink-500">Belum ada produk toko.</div>
+                    <div class="px-2 py-4 text-center text-sm text-ink-500">{$t('sv.noStoreProducts')}</div>
                   {:else}
                     {#each products as p (p.id)}
                       <label class="flex cursor-pointer items-center gap-2 rounded-xl p-2 text-sm hover:bg-ink-50">
@@ -292,7 +294,7 @@
 
               <button type="button" on:click={save} disabled={saving} class="btn-primary btn-md w-full">
                 <Icon name="save" size={14} />
-                {saving ? 'Menyimpan...' : editingId ? 'Simpan Perubahan' : 'Tambah Voucher'}
+                {saving ? 'Menyimpan...' : editingId ? $t('mk.saveChanges') : $t('lf.addVoucher')}
               </button>
             </div>
           </div>
@@ -310,7 +312,7 @@
                     <div class="min-w-0 flex-1">
                       <div class="flex flex-wrap items-center gap-2">
                         <span class="rounded-xl bg-app-primary px-3 py-1.5 text-sm font-bold text-app-pfg">{v.code}</span>
-                        <span class={v.is_active ? 'pill-green' : 'pill-red'}>{v.is_active ? 'Aktif' : 'Nonaktif'}</span>
+                        <span class={v.is_active ? 'pill-green' : 'pill-red'}>{v.is_active ? $t('mk.active') : $t('mk.inactive')}</span>
                         <span class="rounded-full bg-ink-100 px-2 py-1 text-xs text-ink-600">{voucherLabel(v)}</span>
                       </div>
                       <div class="mt-2 text-sm text-ink-700">
@@ -327,7 +329,7 @@
                           {/each}
                           {#if v.products.length > 6}<span class="rounded-full bg-ink-100 px-2 py-1 text-[11px]">+{v.products.length - 6}</span>{/if}
                         {:else}
-                          <span class="rounded-full bg-ink-100 px-2 py-1 text-[11px]">Semua produk</span>
+                          <span class="rounded-full bg-ink-100 px-2 py-1 text-[11px]">{$t('sv.allProducts')}</span>
                         {/if}
                       </div>
                     </div>

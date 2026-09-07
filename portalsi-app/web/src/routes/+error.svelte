@@ -1,5 +1,7 @@
 <script lang="ts">
 	import {
+	import { get } from 'svelte/store';
+	import { t } from '$lib/i18n';
 		AlertTriangle,
 		Ban,
 		Clock,
@@ -28,7 +30,7 @@
 		},
 		401: {
 			title: 'Perlu masuk dulu',
-			hint: 'Sesi Anda berakhir atau belum masuk.',
+			hint: get(t)('err.sessionEnded'),
 			icon: LockKeyhole,
 			tone: 'warn'
 		},
@@ -57,7 +59,7 @@
 			tone: 'warn'
 		},
 		500: {
-			title: 'Terjadi kesalahan server',
+			title: get(t)('err.serverError'),
 			hint: 'Ada masalah di sisi kami. Tim akan menanganinya.',
 			icon: ServerCrash,
 			tone: 'danger'

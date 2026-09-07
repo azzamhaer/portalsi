@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
+  import { get } from 'svelte/store';
+  import { t } from '$lib/i18n';
   import Icon from './Icon.svelte';
 
   let {
@@ -26,7 +28,7 @@
       const s = document.createElement('script');
       s.src = src;
       s.onload = () => resolve();
-      s.onerror = () => reject(new Error('Gagal memuat map'));
+      s.onerror = () => reject(new Error(get(t)('mp.mapLoadFail')));
       document.head.appendChild(s);
     });
   }
@@ -68,7 +70,7 @@
     try {
       const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=id&q=${encodeURIComponent(q)}`;
       const res = await fetch(url, { headers: { Accept: 'application/json' } });
-      if (!res.ok) throw new Error('Geocode gagal');
+      if (!res.ok) throw new Error(get(t)('mp.geocodeFail'));
       const rows = await res.json();
       if (!rows?.[0]) return;
       const nextLat = Number(rows[0].lat);
@@ -77,27 +79,27 @@
       lng = nextLng;
       map?.setView([nextLat, nextLng], 16);
     } catch {
-      mapError = 'Lokasi belum bisa dicari otomatis. Geser peta ke titik yang sesuai.';
+      mapError = get(t)('mp.locManual');
     } finally {
       searching = false;
     }
   }
 
   function getCurrent() {
-    if (!navigator.geolocation) return alert('Geolocation tidak didukung browser');
+    if (!navigator.geolocation) return alert(get(t)('mp.noGeoloc'));
     navigator.geolocation.getCurrentPosition(
       (p) => {
         lat = Number(p.coords.latitude.toFixed(7));
         lng = Number(p.coords.longitude.toFixed(7));
         map?.setView([lat, lng], 17);
       },
-      (e) => alert('Gagal: ' + e.message)
+      (e) => alert(get(t)('mp.failPrefix') + e.message)
     );
   }
 
   onMount(() => {
     initMap().catch(() => {
-      mapError = 'Map gagal dimuat. Periksa koneksi internet lalu muat ulang halaman.';
+      mapError = get(t)('mp.mapFailReload');
     });
   });
 
@@ -157,16 +159,16 @@
       Geser peta — titik di tengah pin merah = koordinat alamat
     </div>
     {#if searching}
-      <div class="absolute right-2 top-2 rounded-full bg-white/95 px-2.5 py-1 text-[11px] text-ink-600 shadow-soft">Mencari lokasi...</div>
+      <div class="absolute right-2 top-2 rounded-full bg-white/95 px-2.5 py-1 text-[11px] text-ink-600 shadow-soft">{$t('mp.searching')}</div>
     {/if}
   </div>
   <div class="flex gap-2 flex-wrap items-center text-xs">
     <button type="button" on:click={getCurrent} class="btn-outline btn-sm"><Icon name="locate" size={12} /> Lokasi Saya</button>
     {#if query}
-      <button type="button" on:click={() => { lastQuery = ''; searchAddress(); }} class="btn-outline btn-sm"><Icon name="search" size={12} /> Cari dari alamat</button>
+      <button type="button" on:click={() => { lastQuery = ''; searchAddress(); }} class="btn-outline btn-sm"><Icon name="search" size={12} /> {$t('mp.searchFromAddr')}</button>
     {/if}
     {#if gmapsLink}
-      <a href={gmapsLink} target="_blank" rel="noreferrer" class="text-ink-700 hover:text-ink-950 link-quiet">Buka di Google Maps</a>
+      <a href={gmapsLink} target="_blank" rel="noreferrer" class="text-ink-700 hover:text-ink-950 link-quiet">{$t('mp.openGmaps')}</a>
       <span class="ml-auto text-ink-500 font-mono">{lat?.toFixed(6)}, {lng?.toFixed(6)}</span>
     {/if}
   </div>

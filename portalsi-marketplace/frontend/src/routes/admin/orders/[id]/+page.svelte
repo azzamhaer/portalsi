@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { t } from '$lib/i18n';
+  import { get } from 'svelte/store';
   import { apiEndpoints } from '$lib/api';
   import { toast, confirmDialog } from '$lib/stores.svelte';
   import { page } from '$app/stores';
@@ -22,12 +24,12 @@
   });
 
   async function save() {
-    const ok = await confirmDialog.ask({ title: 'Simpan perubahan order?', message: `Status akan diubah menjadi ${newStatus}.`, confirmText: 'Simpan' });
+    const ok = await confirmDialog.ask({ title: get(t)('aod.saveTitle'), message: `Status akan diubah menjadi ${newStatus}.`, confirmText: get(t)('pf.save') });
     if (!ok) return;
     saving = true;
     try {
       await apiEndpoints.adminUpdateOrder(order.id, { status: newStatus, tracking_no: trackingNo || null });
-      toast.success('Pesanan diperbarui');
+      toast.success(get(t)('aod.updated'));
       order.status = newStatus;
       order.tracking_no = trackingNo || null;
     } catch (e: any) { toast.error(e.message); } finally { saving = false; }
@@ -49,7 +51,7 @@
   <Icon name="arrow-left" size={14} /> Kembali ke daftar pesanan
 </a>
 
-{#if loading}<div class="card text-center text-ink-500 py-10">Memuat…</div>
+{#if loading}<div class="card text-center text-ink-500 py-10">{$t('wl.loading')}</div>
 {:else if order}
   <div class="grid lg:grid-cols-[1fr_320px] gap-5">
     <div class="space-y-5">
@@ -57,7 +59,7 @@
       <div class="card">
         <div class="flex items-start justify-between gap-3 flex-wrap mb-3">
           <div>
-            <div class="text-xs text-ink-500">Order</div>
+            <div class="text-xs text-ink-500">{$t('sd.order')}</div>
             <h2 class="font-display text-xl font-bold tracking-tightest font-mono">{order.order_number}</h2>
             <div class="text-xs text-ink-500 mt-1">Dibuat {new Date(order.created_at).toLocaleString('id-ID')}</div>
           </div>
@@ -72,7 +74,7 @@
         {/if}
         {#if order.notes}
           <div class="mt-3 bg-ink-50 p-3 rounded-xl text-sm">
-            <div class="text-xs text-ink-500 mb-1">Catatan pembeli:</div>
+            <div class="text-xs text-ink-500 mb-1">{$t('aod.buyerNote')}</div>
             {order.notes}
           </div>
         {/if}
@@ -83,11 +85,11 @@
         <h3 class="font-semibold mb-3 flex items-center gap-2"><Icon name="user" size={16} /> Pembeli</h3>
         <div class="grid sm:grid-cols-2 gap-3 text-sm">
           <div>
-            <div class="text-xs text-ink-500">Nama</div>
+            <div class="text-xs text-ink-500">{$t('aod.name')}</div>
             <a href={`/admin/users/${order.user?.id}`} class="font-medium hover:underline">{order.user?.name}</a>
           </div>
           <div>
-            <div class="text-xs text-ink-500">Email</div>
+            <div class="text-xs text-ink-500">{$t('aod.email')}</div>
             <div>{order.user?.email}</div>
           </div>
           {#if order.user?.phone}
@@ -99,14 +101,14 @@
         </div>
         {#if order.address}
           <div class="mt-3 pt-3 border-t border-ink-100">
-            <div class="text-xs text-ink-500 mb-1">Alamat Pengiriman</div>
+            <div class="text-xs text-ink-500 mb-1">{$t('aod.shipAddr')}</div>
             <div class="text-sm">
               <b>{order.address.recipient}</b> · {order.address.phone}<br />
               {order.address.full_address}, {order.address.city}
               {#if order.address.postal_code} {order.address.postal_code}{/if}
             </div>
             {#if order.address.latitude && order.address.longitude}
-              <a href={`https://www.google.com/maps?q=${order.address.latitude},${order.address.longitude}`} target="_blank" class="text-xs text-blue-600 hover:underline mt-1 inline-flex items-center gap-1">Buka di Maps <Icon name="external-link" size={10} /></a>
+              <a href={`https://www.google.com/maps?q=${order.address.latitude},${order.address.longitude}`} target="_blank" class="text-xs text-blue-600 hover:underline mt-1 inline-flex items-center gap-1">{$t('aod.openMaps')} <Icon name="external-link" size={10} /></a>
             {/if}
           </div>
         {/if}
@@ -125,7 +127,7 @@
                   <div class="text-xs text-ink-500">{items[0].vendor.user.name} · {items[0].vendor.user.email}</div>
                 {/if}
               </div>
-              {#if items[0].vendor?.id}<a href={`/admin/users/${items[0].vendor.user_id}`} class="text-xs px-2.5 py-1 rounded-full bg-ink-100 hover:bg-ink-200">Detail seller</a>{/if}
+              {#if items[0].vendor?.id}<a href={`/admin/users/${items[0].vendor.user_id}`} class="text-xs px-2.5 py-1 rounded-full bg-ink-100 hover:bg-ink-200">{$t('aod.sellerDetail')}</a>{/if}
             </div>
             {#each items as it}
               <div class="flex items-start gap-3 py-2 last:pb-0">
@@ -148,17 +150,17 @@
     <!-- Sidebar admin actions -->
     <aside class="space-y-5 lg:sticky lg:top-24 self-start">
       <div class="card">
-        <h3 class="font-semibold mb-3">Ringkasan</h3>
+        <h3 class="font-semibold mb-3">{$t('aod.summary')}</h3>
         <div class="text-sm space-y-1.5">
-          <div class="flex justify-between"><span class="text-ink-500">Subtotal</span><span>{fmtRp(order.subtotal)}</span></div>
-          <div class="flex justify-between"><span class="text-ink-500">Ongkir</span><span>{fmtRp(order.shipping)}</span></div>
-          {#if order.insurance > 0}<div class="flex justify-between"><span class="text-ink-500">Asuransi</span><span>{fmtRp(order.insurance)}</span></div>{/if}
-          {#if order.payment_fee > 0}<div class="flex justify-between"><span class="text-ink-500">Fee bayar</span><span>{fmtRp(order.payment_fee)}</span></div>{/if}
-          <div class="flex justify-between pt-2 border-t border-ink-100 font-semibold"><span>Total</span><span>{fmtRp(order.total)}</span></div>
+          <div class="flex justify-between"><span class="text-ink-500">{$t('cart.subtotal')}</span><span>{fmtRp(order.subtotal)}</span></div>
+          <div class="flex justify-between"><span class="text-ink-500">{$t('aod.shipping')}</span><span>{fmtRp(order.shipping)}</span></div>
+          {#if order.insurance > 0}<div class="flex justify-between"><span class="text-ink-500">{$t('aod.insurance')}</span><span>{fmtRp(order.insurance)}</span></div>{/if}
+          {#if order.payment_fee > 0}<div class="flex justify-between"><span class="text-ink-500">{$t('aod.payFee')}</span><span>{fmtRp(order.payment_fee)}</span></div>{/if}
+          <div class="flex justify-between pt-2 border-t border-ink-100 font-semibold"><span>{$t('cart.total')}</span><span>{fmtRp(order.total)}</span></div>
         </div>
         {#if order.payment}
           <div class="mt-3 pt-3 border-t border-ink-100 text-xs space-y-1">
-            <div class="text-ink-500">Pembayaran</div>
+            <div class="text-ink-500">{$t('aod.payment')}</div>
             <div><b>{order.payment.method_name}</b> · {order.payment.status}</div>
             {#if order.payment.pay_code}<div class="font-mono">{order.payment.pay_code}</div>{/if}
           </div>
@@ -166,19 +168,19 @@
       </div>
 
       <div class="card">
-        <h3 class="font-semibold mb-3">Tindakan Admin</h3>
+        <h3 class="font-semibold mb-3">{$t('aod.adminActions')}</h3>
         <div class="space-y-3">
           <div>
-            <label class="label">Ubah Status</label>
+            <label class="label">{$t('aod.changeStatus')}</label>
             <select bind:value={newStatus} class="input">
               {#each Object.entries(ORDER_STATUS_LABEL) as [k, v]}<option value={k}>{v}</option>{/each}
             </select>
           </div>
           <div>
-            <label class="label">No. Resi</label>
+            <label class="label">{$t('aod.trackingNo')}</label>
             <input bind:value={trackingNo} class="input font-mono text-xs" placeholder="JNT0000000001" />
           </div>
-          <button on:click={save} disabled={saving} class="btn-primary btn-md w-full">{saving ? 'Menyimpan…' : 'Simpan Perubahan'}</button>
+          <button on:click={save} disabled={saving} class="btn-primary btn-md w-full">{saving ? $t('mk.saving') : $t('mk.saveChanges')}</button>
         </div>
       </div>
     </aside>

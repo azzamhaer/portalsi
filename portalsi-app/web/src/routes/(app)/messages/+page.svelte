@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { Edit3, Plus, Search, Users, X } from '@lucide/svelte';
+	import { get } from 'svelte/store';
+	import { t } from '$lib/i18n';
 	import { onMount } from 'svelte';
 	import { invalidateAll } from '$app/navigation';
 	import Avatar from '$lib/components/ui/Avatar.svelte';
@@ -45,13 +47,13 @@
 			>
 		</div>{/snippet}
 	<div class="messages-shell surface">
-		<section class="inbox" aria-label="Daftar percakapan">
+		<section class="inbox" aria-label={$t('msg.ariaList')}>
 			<div class="inbox-head">
-				<div><strong>Kotak masuk</strong><small>{data.chats.length} percakapan</small></div>
-				<a href="/messages/new" aria-label="Tulis pesan baru"><Edit3 size={17} /></a>
+				<div><strong>{$t('msg.inbox')}</strong><small>{data.chats.length} percakapan</small></div>
+				<a href="/messages/new" aria-label={$t('msg.newMessage')}><Edit3 size={17} /></a>
 			</div>
 			{#if data.specialGroups.length}<div class="special-groups">
-					<strong>Grup sekolah</strong>
+					<strong>{$t('msg.schoolGroups')}</strong>
 					<div>
 						{#each data.specialGroups as group (group.id)}<a href={`/messages/groups/${group.id}`}
 								><Avatar name={group.name} src={group.avatarUrl ?? undefined} size="sm" /><span
@@ -61,19 +63,19 @@
 					</div>
 				</div>{/if}
 			<label class="chat-search"
-				><Search size={17} /><span class="sr-only">Cari percakapan</span><input
+				><Search size={17} /><span class="sr-only">{$t('msg.searchConv')}</span><input
 					bind:value={query}
-					placeholder="Cari percakapan"
-				/>{#if query}<button onclick={() => (query = '')} aria-label="Hapus pencarian"
+					placeholder={$t('msg.searchConv')}
+				/>{#if query}<button onclick={() => (query = '')} aria-label={$t('msg.ariaClearSearch')}
 						><X size={15} /></button
 					>{/if}</label
 			>
 			<div class="inbox-tabs">
-				<button class:active={filter === 'all'} onclick={() => (filter = 'all')}>Semua</button>
+				<button class:active={filter === 'all'} onclick={() => (filter = 'all')}>{$t('common.all')}</button>
 				<button class:active={filter === 'unread'} onclick={() => (filter = 'unread')}
-					>Belum dibaca</button
+					>{$t('chat.unread')}</button
 				>
-				<button class:active={filter === 'group'} onclick={() => (filter = 'group')}>Grup</button>
+				<button class:active={filter === 'group'} onclick={() => (filter = 'group')}>{$t('nav.groups')}</button>
 			</div>
 			<div class="chat-list">
 				{#each chats as chat (chat.type + chat.id)}
@@ -97,22 +99,22 @@
 							></span
 						>
 						<span class="chat-meta"
-							><time>{chat.time}</time>{#if chat.unreadCount > 0}<i class="count" aria-label={`${chat.unreadCount} belum dibaca`}>{chat.unreadCount > 99 ? '99+' : chat.unreadCount}</i>{:else if chat.unread}<i aria-label="Belum dibaca"></i>{/if}</span
+							><time>{chat.time}</time>{#if chat.unreadCount > 0}<i class="count" aria-label={`${chat.unreadCount} belum dibaca`}>{chat.unreadCount > 99 ? '99+' : chat.unreadCount}</i>{:else if chat.unread}<i aria-label={$t('chat.unread')}></i>{/if}</span
 						>
 					</a>
 				{/each}
 				{#if chats.length === 0}<p class="empty-list">
 						{query.trim()
-							? 'Tidak ada percakapan yang cocok.'
-							: 'Belum ada percakapan. Mulai pesan baru untuk menyapa teman.'}
+							? get(t)('msg.noMatch')
+							: get(t)('msg.emptyList')}
 					</p>{/if}
 			</div>
 		</section>
-		<section class="conversation-empty" aria-label="Pilih percakapan">
+		<section class="conversation-empty" aria-label={$t('msg.ariaPick')}>
 			<div class="message-art"><span></span><span></span><Edit3 size={26} /></div>
-			<h2>Pilih percakapan</h2>
-			<p>Buka pesan yang sudah ada atau mulai percakapan baru dengan teman di Portal SI.</p>
-			<a href="/messages/new">Mulai pesan baru</a>
+			<h2>{$t('msg.pickTitle')}</h2>
+			<p>{$t('msg.pickSub')}</p>
+			<a href="/messages/new">{$t('msg.newMessage')}</a>
 		</section>
 	</div>
 </SectionPage>

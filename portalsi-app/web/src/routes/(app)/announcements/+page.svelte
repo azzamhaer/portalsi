@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { CalendarDays, ImagePlus, Megaphone, Pencil, Pin, Trash2 } from '@lucide/svelte';
+	import { get } from 'svelte/store';
+	import { t } from '$lib/i18n';
 	import SectionPage from '$lib/components/layout/SectionPage.svelte';
 	import type { PageProps } from './$types';
 	import { confirmButtonAction } from '$lib/ui/confirm';
@@ -15,8 +17,8 @@
 	>{#if data.canManage}<details class="manager surface">
 			<summary><Megaphone size={18} /> Buat pengumuman</summary>
 			<form method="POST" action="?/create" enctype="multipart/form-data">
-				<label>Judul <input name="title" maxlength="255" /></label><label
-					>Konten <textarea name="content" rows="5"></textarea></label
+				<label>{$t('form.title')} <input name="title" maxlength="255" /></label><label
+					>{$t('form.content')} <textarea name="content" rows="5"></textarea></label
 				><label class="image"
 					><ImagePlus size={17} /> Gambar opsional<input
 						name="image"
@@ -25,7 +27,7 @@
 					/></label
 				><label class="check"
 					><input name="pinned" type="checkbox" value="1" /> Sematkan pengumuman</label
-				><button type="submit">Terbitkan</button>
+				><button type="submit">{$t('annc.publish')}</button>
 			</form>
 		</details>{/if}
 	{#if form?.message}<p class:success={form.success} class="notice" role="status">
@@ -50,8 +52,8 @@
 					{#if data.canManage && item.createdBy === data.currentUserId}<details class="edit">
 							<summary><Pencil size={14} /> Kelola</summary>
 							<form method="POST" action={`?/update&id=${item.id}`} enctype="multipart/form-data">
-								<label>Judul <input name="title" maxlength="255" value={item.title} /></label><label
-									>Konten <textarea name="content" rows="4">{item.content}</textarea></label
+								<label>{$t('form.title')} <input name="title" maxlength="255" value={item.title} /></label><label
+									>{$t('form.content')} <textarea name="content" rows="4">{item.content}</textarea></label
 								><label class="image"
 									><ImagePlus size={15} /> Ganti gambar<input
 										name="image"
@@ -62,17 +64,17 @@
 									><input name="pinned" type="checkbox" value="1" checked={item.pinned} /> Disematkan</label
 								>
 								<div class="manage-actions">
-									<button type="submit">Simpan</button><button
+									<button type="submit">{$t('common.save')}</button><button
 										class="delete"
 										type="submit"
 										formaction={`?/delete&id=${item.id}`}
 										onclick={(event) =>
 											confirmButtonAction(event, {
-												title: 'Hapus pengumuman?',
-												description: 'Pengumuman ini akan dihapus dari semua pengguna.',
-												confirmLabel: 'Hapus pengumuman',
+												title: get(t)('annc.delTitle'),
+												description: get(t)('annc.delMsg'),
+												confirmLabel: get(t)('annc.delConfirm'),
 												tone: 'danger'
-											})}><Trash2 size={14} /> Hapus</button
+											})}><Trash2 size={14} /> {$t('common.delete')}</button
 									>
 								</div>
 							</form>

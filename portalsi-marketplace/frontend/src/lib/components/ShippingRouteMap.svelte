@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
+  import { get } from 'svelte/store';
+  import { t } from '$lib/i18n';
 
   let { order, height = '320px' } = $props<{ order: any; height?: string }>();
 
@@ -39,7 +41,7 @@
       const s = document.createElement('script');
       s.src = src;
       s.onload = () => resolve();
-      s.onerror = () => reject(new Error('Gagal memuat peta'));
+      s.onerror = () => reject(new Error(get(t)('srm.mapLoadFail')));
       document.head.appendChild(s);
     });
   }
@@ -78,10 +80,10 @@
     const timeout = setTimeout(() => controller.abort(), 7000);
     try {
       const res = await fetch(url, { signal: controller.signal });
-      if (!res.ok) throw new Error('Route gagal');
+      if (!res.ok) throw new Error(get(t)('srm.routeFail'));
       const json = await res.json();
       const coords = json?.routes?.[0]?.geometry?.coordinates;
-      if (!Array.isArray(coords) || coords.length < 2) throw new Error('Route kosong');
+      if (!Array.isArray(coords) || coords.length < 2) throw new Error(get(t)('srm.routeEmpty'));
       return coords.map((c: number[]) => [c[1], c[0]] as Point);
     } finally {
       clearTimeout(timeout);
@@ -194,7 +196,7 @@
       }).addTo(map);
     }
 
-    L.marker(endPoint()).addTo(map).bindPopup('Alamat penerima');
+    L.marker(endPoint()).addTo(map).bindPopup(get(t)('srm.recipientAddr'));
     marker = L.marker(pointAtProgress(calcProgress()), { icon: truckIcon(), zIndexOffset: 500 }).addTo(map);
     const allPoints = segments.flatMap((s) => s.points);
     map.fitBounds(L.latLngBounds(allPoints), { padding: [28, 28] });
@@ -205,7 +207,7 @@
 
   onMount(() => init().catch(() => {
     loadingRoute = false;
-    error = 'Peta pengiriman belum bisa dimuat.';
+    error = '{$t('srm.mapUnavailable')}';
   }));
   onDestroy(() => { clearInterval(timer); map?.remove(); });
 </script>
@@ -214,7 +216,7 @@
   <div class="relative z-0 overflow-hidden rounded-2xl border border-ink-200 bg-ink-50">
     <div bind:this={mapEl} style:height class="relative z-0 w-full"></div>
     {#if loadingRoute}
-      <div class="absolute inset-0 z-10 grid place-items-center bg-white/70 text-sm text-ink-600">Menyusun rute darat dan udara...</div>
+      <div class="absolute inset-0 z-10 grid place-items-center bg-white/70 text-sm text-ink-600">{$t('srm.buildingRoute')}</div>
     {/if}
     <div class="flex items-center justify-between gap-3 px-3 py-2 text-xs text-ink-600">
       <span>Progress estimasi: {Math.round(progress * 100)}%</span>

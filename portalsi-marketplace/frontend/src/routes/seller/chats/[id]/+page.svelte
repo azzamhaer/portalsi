@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy, tick } from 'svelte';
+  import { t } from '$lib/i18n';
+  import { get } from 'svelte/store';
   import Icon from '$lib/components/Icon.svelte';
   import SellerSidebar from '$lib/components/SellerSidebar.svelte';
   import VendorBadge from '$lib/components/VendorBadge.svelte';
@@ -49,12 +51,12 @@
     const file = input.files?.[0];
     if (!file) return;
     if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type)) {
-      toast.error('Format foto harus JPG, PNG, WebP, atau GIF.');
+      toast.error(get(t)('schd.photoFormat'));
       input.value = '';
       return;
     }
     if (file.size > 1024 * 1024) {
-      toast.error('Maksimal foto chat 1MB.');
+      toast.error(get(t)('schd.photoMax'));
       input.value = '';
       return;
     }
@@ -81,10 +83,10 @@
   }
 </script>
 
-<svelte:head><title>Chat Pembeli</title></svelte:head>
+<svelte:head><title>{$t('sch.buyerChats')}</title></svelte:head>
 
 <div class="container-x py-6 sm:py-8">
-  <h1 class="section-title mb-6 sm:mb-8">Seller Center</h1>
+  <h1 class="section-title mb-6 sm:mb-8">{$t('nav.sellerCenter')}</h1>
   <div class="grid lg:grid-cols-[230px_1fr] gap-6">
     <SellerSidebar />
     <section class="min-w-0">
@@ -93,7 +95,7 @@
       </a>
 
       {#if loading}
-        <div class="card text-center text-ink-500 py-10">Memuat...</div>
+        <div class="card text-center text-ink-500 py-10">{$t('ch.loading')}</div>
       {:else if thread}
         <div class="card !p-0 overflow-hidden flex flex-col" style="height: calc(100vh - 220px); min-height: 500px;">
           <div class="flex items-center gap-3 p-4 border-b border-ink-100 bg-white">
@@ -165,8 +167,8 @@
           {#if pendingImage}
             <div class="px-3 pt-2 border-t border-ink-100 flex items-center gap-2">
               <img src={pendingImage} alt="" class="w-14 h-14 rounded-lg object-cover" />
-              <span class="text-xs text-ink-500">Foto siap dikirim</span>
-              <button type="button" on:click={() => pendingImage = null} class="ml-auto text-xs text-red-600 hover:underline">Hapus</button>
+              <span class="text-xs text-ink-500">{$t('chd.photoReady')}</span>
+              <button type="button" on:click={() => pendingImage = null} class="ml-auto text-xs text-red-600 hover:underline">{$t('cart.remove')}</button>
             </div>
           {/if}
 
@@ -175,7 +177,7 @@
               <Icon name="image" size={18} class="text-ink-500" />
               <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" on:change={onPickImage} class="hidden" />
             </label>
-            <input bind:value={msg} placeholder="Ketik pesan..." class="input flex-1 !rounded-full" />
+            <input bind:value={msg} placeholder={$t('schd.typePlaceholder')} class="input flex-1 !rounded-full" />
             <button type="submit" disabled={sending || (!msg.trim() && !pendingImage)} class="btn-primary btn-md !px-4 shrink-0"><Icon name="send" size={16} /></button>
           </form>
         </div>

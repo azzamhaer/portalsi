@@ -1,5 +1,6 @@
 <script lang="ts">
   import { settings } from '$lib/stores.svelte';
+  import { t } from '$lib/i18n';
   let { data } = $props();
 </script>
 
@@ -7,8 +8,8 @@
 
 <div class="container-x py-12 max-w-4xl">
   <div class="text-center mb-12">
-    <div class="section-eyebrow mb-2">Bantuan</div>
-    <h1 class="font-display text-4xl font-bold tracking-tightest">Bagaimana kami bisa membantu?</h1>
+    <div class="section-eyebrow mb-2">{$t('help.eyebrow')}</div>
+    <h1 class="font-display text-4xl font-bold tracking-tightest">{$t('help.heading')}</h1>
     {#if settings.helpIntro}
       <div class="mt-6 max-w-2xl mx-auto text-left text-sm text-ink-700 bg-ink-50 rounded-2xl p-5 whitespace-pre-line">{settings.helpIntro}</div>
     {/if}

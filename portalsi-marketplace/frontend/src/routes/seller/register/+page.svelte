@@ -1,5 +1,7 @@
 <script lang="ts">
   import Icon from '$lib/components/Icon.svelte';
+  import { t } from '$lib/i18n';
+  import { get } from 'svelte/store';
   import AddressFields from '$lib/components/AddressFields.svelte';
   import MapPicker from '$lib/components/MapPicker.svelte';
   import { auth, toast } from '$lib/stores.svelte';
@@ -29,7 +31,7 @@
   function onKtp(e: any) {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) { toast.warn('Ukuran KTP maks 2MB'); return; }
+    if (file.size > 2 * 1024 * 1024) { toast.warn(get(t)('sr.ktpMax')); return; }
     const r = new FileReader();
     r.onload = () => { ktpData = r.result as string; };
     r.readAsDataURL(file);
@@ -37,14 +39,14 @@
 
   async function submit(e: Event) {
     e.preventDefault();
-    if (!ktpData) { toast.warn('Upload foto KTP terlebih dahulu'); return; }
-    if (address.latitude == null || address.longitude == null) { toast.warn('Geser pin lokasi toko terlebih dahulu'); return; }
+    if (!ktpData) { toast.warn(get(t)('sr.ktpFirst')); return; }
+    if (address.latitude == null || address.longitude == null) { toast.warn(get(t)('sr.pinFirst')); return; }
     saving = true;
     try {
       await apiEndpoints.sellerRegister({ name, ...address, description, bank_name, bank_account, bank_holder, ktp_image: ktpData });
       const me: any = await apiEndpoints.me();
       auth.set(me);
-      toast.success('Pendaftaran terkirim, menunggu verifikasi admin');
+      toast.success(get(t)('sr.submitted'));
       // Vendor baru status PENDING — langsung ke halaman pending
       goto('/seller/pending');
     } catch (e: any) { toast.error(e.message); } finally { saving = false; }
@@ -60,12 +62,12 @@
   const addressQuery = $derived([address.village, address.district, address.city, address.province, address.postal_code, 'Indonesia'].filter(Boolean).join(', '));
 </script>
 
-<svelte:head><title>Buka Toko</title></svelte:head>
+<svelte:head><title>{$t('nav.openStore')}</title></svelte:head>
 
 <div class="container-x py-6 sm:py-8">
   <section class="card bg-app-primary text-app-pfg">
-    <h1 class="font-display text-2xl sm:text-3xl md:text-4xl font-bold tracking-tightest mb-2">Mulai berjualan</h1>
-    <p class="text-ink-300 max-w-xl text-sm sm:text-base">Jangkau jutaan pembeli, kelola toko semudah klik, terima pembayaran instan otomatis.</p>
+    <h1 class="font-display text-2xl sm:text-3xl md:text-4xl font-bold tracking-tightest mb-2">{$t('sr.startSelling')}</h1>
+    <p class="text-ink-300 max-w-xl text-sm sm:text-base">{$t('sr.desc')}</p>
   </section>
 
   <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mt-5">
@@ -79,28 +81,28 @@
   </div>
 
   <div class="card mt-6 max-w-2xl">
-    <h3 class="font-semibold mb-4">Formulir Pendaftaran</h3>
+    <h3 class="font-semibold mb-4">{$t('sr.form')}</h3>
     <form on:submit={submit} class="space-y-4">
-      <div><label class="label">Nama Toko <span class="text-red-600">*</span></label><input class="input" bind:value={name} required /></div>
-      <div><label class="label">Deskripsi Toko <span class="text-red-600">*</span></label><textarea class="input" rows={3} bind:value={description} required></textarea></div>
+      <div><label class="label">{$t('sr.storeName')}<span class="text-red-600">*</span></label><input class="input" bind:value={name} required /></div>
+      <div><label class="label">{$t('sr.storeDesc')}<span class="text-red-600">*</span></label><textarea class="input" rows={3} bind:value={description} required></textarea></div>
       <AddressFields bind:value={address} contact={false} title="Alamat Toko" />
       <div>
-        <label class="label">Pin Lokasi Toko</label>
+        <label class="label">{$t('sr.storePin')}</label>
         <MapPicker bind:lat={address.latitude} bind:lng={address.longitude} query={addressQuery} />
       </div>
       <div class="grid sm:grid-cols-3 gap-3">
-        <div><label class="label">Bank</label>
+        <div><label class="label">{$t('sr.bank')}</label>
           <select class="input" bind:value={bank_name}>
             <option>BCA</option><option>BRI</option><option>Mandiri</option><option>BNI</option><option>BSI</option><option>CIMB Niaga</option><option>Permata</option>
           </select>
         </div>
-        <div><label class="label">No. Rekening</label><input class="input" bind:value={bank_account} /></div>
-        <div><label class="label">Atas Nama</label><input class="input" bind:value={bank_holder} /></div>
+        <div><label class="label">{$t('sr.accountNo')}</label><input class="input" bind:value={bank_account} /></div>
+        <div><label class="label">{$t('sr.onBehalf')}</label><input class="input" bind:value={bank_holder} /></div>
       </div>
 
       <div>
-        <label class="label">Foto KTP <span class="text-red-600">*</span></label>
-        <p class="helper mb-2">KTP digunakan untuk verifikasi identitas. Data Anda dilindungi & tidak dipublikasikan.</p>
+        <label class="label">{$t('sr.ktpPhoto')}<span class="text-red-600">*</span></label>
+        <p class="helper mb-2">{$t('lf.ktpNote')}</p>
         <div class="grid sm:grid-cols-[200px_1fr] gap-3 items-start">
           <div class="aspect-[1.6/1] rounded-xl border-2 border-dashed border-ink-200 bg-ink-50 grid place-items-center overflow-hidden">
             {#if ktpData}<img src={ktpData} alt="KTP" class="w-full h-full object-cover" />
@@ -114,7 +116,7 @@
         <Icon name="info" size={12} class="inline" /> Toko Anda akan aktif setelah admin memverifikasi identitas (1-2 hari kerja).
       </div>
 
-      <button disabled={saving} class="btn-primary btn-lg w-full">{saving ? 'Memproses…' : 'Buka Toko Sekarang'}</button>
+      <button disabled={saving} class="btn-primary btn-lg w-full">{saving ? $t('mk.processing') : $t('lf.openStoreNow')}</button>
     </form>
   </div>
 </div>

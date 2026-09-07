@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Plus } from '@lucide/svelte';
+	import { t } from '$lib/i18n';
 	import StoryAvatarLink from '$lib/components/story/StoryAvatarLink.svelte';
 	import UserBadges from '$lib/components/ui/UserBadges.svelte';
 	import type { StoryPreview } from '$lib/types/domain';
@@ -12,9 +13,9 @@
 <section class="story-section" aria-labelledby="story-title">
 	<div class="section-title">
 		<h2 id="story-title">
-			{stories.some((story) => story.recommended) ? 'Cerita & rekomendasi' : 'Cerita hari ini'}
+			{stories.some((story) => story.recommended) ? $t('story.ariaSection') : $t('story.today')}
 		</h2>
-		<a href="/create/story">Buat cerita</a>
+		<a href="/create/story">{$t('story.create')}</a>
 	</div>
 	<div class="story-rail">
 		{#each stories as story (story.id)}
@@ -31,17 +32,17 @@
 						seen={story.user.storyViewed}
 						profileHref={story.isOwn ? '/create/story' : `/u/${story.user.username}`}
 					/>
-					{#if story.isOwn && !story.user.hasStory}<a href="/create/story" aria-label="Buat cerita"
+					{#if story.isOwn && !story.user.hasStory}<a href="/create/story" aria-label={$t('story.create')}
 							><i><Plus size={13} strokeWidth={3} /></i></a
 						>{/if}
 				</span>
 				<span class="story-name"
-					>{story.isOwn ? 'Cerita Anda' : story.user.fullName.split(' ')[0]}<UserBadges
+					>{story.isOwn ? $t('story.yours') : story.user.fullName.split(' ')[0]}<UserBadges
 						verified={story.user.badgeVerified}
 						role={story.user.role}
 					/></span
 				>
-				{#if story.recommended}<small class="recommended">Rekomendasi</small>{/if}
+				{#if story.recommended}<small class="recommended">{$t('story.recommendations')}</small>{/if}
 			</div>
 		{/each}
 	</div>

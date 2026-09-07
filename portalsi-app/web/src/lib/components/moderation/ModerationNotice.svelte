@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { get } from 'svelte/store';
+	import { t } from '$lib/i18n';
 	import { goto } from '$app/navigation';
 	import { z } from 'zod';
 	import { ShieldAlert, X, LoaderCircle, Trash2, Eye } from '@lucide/svelte';
@@ -60,9 +62,9 @@
 	async function deletePost(postId: number) {
 		if (busyId !== null) return;
 		const ok = await confirmAction({
-			title: 'Hapus postingan ini?',
-			description: 'Postingan yang dimoderasi akan dihapus permanen dan tidak dapat dipulihkan.',
-			confirmLabel: 'Hapus permanen',
+			title: get(t)('pd.delPostTitle'),
+			description: get(t)('pd.delPostMsg'),
+			confirmLabel: get(t)('pd.delPermanent'),
 			tone: 'danger'
 		});
 		if (!ok) return;
@@ -99,7 +101,7 @@
 		use:portal
 		role="dialog"
 		aria-modal="true"
-		aria-label="Pemberitahuan moderasi"
+		aria-label={$t('pd.ariaModNotice')}
 	>
 		<div class="mn-card" class:single={notices.length === 1}>
 			<header class="mn-head">
@@ -107,7 +109,7 @@
 				<div class="mn-headtext">
 					<strong>
 						{notices.length === 1
-							? 'Postingan Anda dimoderasi'
+							? get(t)('pd.yourPostModerated')
 							: `${notices.length} postingan Anda dimoderasi`}
 					</strong>
 					<p>
@@ -120,7 +122,7 @@
 					class="mn-x"
 					onclick={acknowledgeAll}
 					disabled={closing}
-					aria-label="Tutup semua">{#if closing}<LoaderCircle size={16} class="mn-spin" />{:else}<X
+					aria-label={$t('mod.closeAll')}>{#if closing}<LoaderCircle size={16} class="mn-spin" />{:else}<X
 							size={18}
 						/>{/if}</button
 				>
@@ -137,13 +139,13 @@
 							{/if}
 						</div>
 						<div class="mn-item-body">
-							<small>Alasan moderasi</small>
-							<p>{n.reason || 'Melanggar kebijakan platform.'}</p>
+							<small>{$t('pd.moderationReason')}</small>
+							<p>{n.reason || get(t)('pd.violatedPolicy')}</p>
 							<div class="mn-item-actions">
 								<button
 									class="mn-open"
 									onclick={() => viewPost(n.post_id)}
-									disabled={busyId !== null}><Eye size={15} /> Lihat post</button
+									disabled={busyId !== null}><Eye size={15} /> {$t('mod.viewPost')}</button
 								>
 								<button
 									class="mn-del"

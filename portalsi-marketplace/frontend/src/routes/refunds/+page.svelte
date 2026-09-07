@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { t } from '$lib/i18n';
   import { apiEndpoints } from '$lib/api';
   import { auth, toast } from '$lib/stores.svelte';
   import LoginRequired from '$lib/components/LoginRequired.svelte';
@@ -41,7 +42,7 @@
   }
 </script>
 
-<svelte:head><title>Riwayat Refund</title></svelte:head>
+<svelte:head><title>{$t('nav.refunds')}</title></svelte:head>
 
 {#if !auth.user}
   <LoginRequired icon="wallet" title="Login untuk melihat refund" description="Riwayat pengembalian dana akan muncul setelah Anda login." />
@@ -51,31 +52,31 @@
   <div class="container-x py-6 sm:py-8 max-w-4xl">
     <div class="mb-6 flex items-end justify-between gap-3 flex-wrap">
       <div>
-        <h1 class="section-title">Riwayat Refund</h1>
-        <p class="text-sm text-ink-500 mt-1">Daftar pengembalian dana dari pesanan yang dibatalkan atau di-return.</p>
+        <h1 class="section-title">{$t('nav.refunds')}</h1>
+        <p class="text-sm text-ink-500 mt-1">{$t('rf.subtitle')}</p>
       </div>
-      <a href="/profile" class="text-xs text-ink-500 hover:text-ink-950 flex items-center gap-1"><Icon name="arrow-left" size={12} /> Kembali ke profil</a>
+      <a href="/profile" class="text-xs text-ink-500 hover:text-ink-950 flex items-center gap-1"><Icon name="arrow-left" size={12} /> {$t('lf.backToProfile')}</a>
     </div>
 
     <!-- Summary cards -->
     <div class="grid sm:grid-cols-3 gap-3 mb-5">
       <div class="card">
-        <div class="text-xs uppercase tracking-widest text-ink-500">Total kasus</div>
+        <div class="text-xs uppercase tracking-widest text-ink-500">{$t('rf.totalCases')}</div>
         <div class="font-display text-xl font-bold tracking-tightest mt-2">{summary.count ?? 0}</div>
       </div>
       <div class="card bg-emerald-50 border-emerald-100">
-        <div class="text-xs uppercase tracking-widest text-emerald-700">Dana dikembalikan</div>
+        <div class="text-xs uppercase tracking-widest text-emerald-700">{$t('rf.refunded')}</div>
         <div class="font-display text-xl font-bold tracking-tightest mt-2 text-emerald-700">{fmtRp(summary.total_refunded ?? 0)}</div>
       </div>
       <div class="card bg-amber-50 border-amber-100">
-        <div class="text-xs uppercase tracking-widest text-amber-700">Sedang diproses</div>
+        <div class="text-xs uppercase tracking-widest text-amber-700">{$t('rf.processing')}</div>
         <div class="font-display text-xl font-bold tracking-tightest mt-2 text-amber-700">{fmtRp(summary.total_pending ?? 0)}</div>
       </div>
     </div>
 
     <!-- Filter chips -->
     <div class="flex gap-2 mb-4 flex-wrap">
-      {#each [['ALL','Semua'],['REFUNDED','Sudah dikembalikan'],['PENDING','Diproses'],['REJECTED','Ditolak']] as [k, l]}
+      {#each [['ALL',$t('ord.all')],['REFUNDED',$t('rf.filterRefunded')],['PENDING',$t('rf.filterProcessing')],['REJECTED',$t('rf.filterRejected')]] as [k, l]}
         <button on:click={() => filter = k as any}
                 class="text-xs px-3 py-1.5 rounded-full transition
                        {filter === k ? 'bg-app-primary text-app-pfg' : 'bg-ink-100 hover:bg-ink-200'}">
@@ -85,12 +86,12 @@
     </div>
 
     {#if loading}
-      <div class="card text-center text-ink-500 py-10">Memuat…</div>
+      <div class="card text-center text-ink-500 py-10">{$t('wl.loading')}</div>
     {:else if filtered.length === 0}
       <div class="card text-center py-16">
         <Icon name="wallet" size={48} class="mx-auto text-ink-300 mb-3" />
-        <h3 class="font-semibold mb-1">Belum ada refund</h3>
-        <p class="text-sm text-ink-500">Refund akan muncul di sini jika ada pesanan yang dibatalkan setelah dibayar atau di-return.</p>
+        <h3 class="font-semibold mb-1">{$t('rf.empty')}</h3>
+        <p class="text-sm text-ink-500">{$t('rf.emptyDesc')}</p>
       </div>
     {:else}
       <div class="space-y-3">
@@ -123,14 +124,14 @@
               <button type="button" on:click={() => expanded = expanded === it.id ? null : it.id}
                       class="mt-3 text-xs text-ink-500 hover:text-ink-950 inline-flex items-center gap-1">
                 <Icon name={expanded === it.id ? 'chevron-up' : 'chevron-down'} size={12} />
-                {expanded === it.id ? 'Sembunyikan' : 'Lihat detail'}
+                {expanded === it.id ? $t('rf.hide') : $t('rf.viewDetail')}
               </button>
 
               {#if expanded === it.id}
                 <div class="mt-3 pt-3 border-t border-ink-100 space-y-3">
                   {#if it.items?.length}
                     <div>
-                      <h4 class="text-xs uppercase tracking-widest text-ink-500 mb-2">Item</h4>
+                      <h4 class="text-xs uppercase tracking-widest text-ink-500 mb-2">{$t('rf.item')}</h4>
                       <ul class="space-y-1.5">
                         {#each it.items as x}
                           <li class="flex items-center justify-between gap-3 text-sm">
@@ -143,7 +144,7 @@
                   {/if}
                   {#if it.admin_note}
                     <div class="bg-ink-50 p-3 rounded-xl">
-                      <div class="text-xs text-ink-500 mb-1">Catatan admin</div>
+                      <div class="text-xs text-ink-500 mb-1">{$t('rf.adminNote')}</div>
                       <div class="text-sm text-ink-700 whitespace-pre-line">{it.admin_note}</div>
                     </div>
                   {/if}
