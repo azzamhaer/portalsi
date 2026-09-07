@@ -1,7 +1,7 @@
 <script lang="ts">
-	import {
 	import { get } from 'svelte/store';
 	import { t } from '$lib/i18n';
+	import {
 		Bookmark,
 		ChevronLeft,
 		ChevronRight,
