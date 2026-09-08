@@ -13,7 +13,7 @@ export function SettingsPanel({ onClose, enhanceLight, onToggleEnhanceLight, isH
   captionsOn?: boolean; onToggleCaptions?: () => void;
   videoQuality?: 'highest' | 'balanced' | 'lowest' | 'auto'; onVideoQualityChange?: (q: 'highest' | 'balanced' | 'lowest' | 'auto') => void;
 }) {
-  const { t } = useT();
+  const { t, lang, setLang } = useT();
   const [devices, setDevices] = useState<{ audio: MediaDeviceInfo[]; video: MediaDeviceInfo[] }>({ audio: [], video: [] });
 
   useEffect(() => {
@@ -97,6 +97,22 @@ export function SettingsPanel({ onClose, enhanceLight, onToggleEnhanceLight, isH
           {onToggleCaptions && (
              <Toggle icon={<MessageSquare className="h-4 w-4 text-purple-400" />} title="Live Captions (CC)" desc="Tampilkan teks otomatis" active={!!captionsOn} onToggle={onToggleCaptions} />
           )}
+        </div>
+        <hr className="border-white/[0.06]" />
+        <div className="space-y-3">
+          <h3 className="text-xs font-medium text-white/40 uppercase tracking-wider">Bahasa / Language</h3>
+          <div className="flex gap-2">
+            {(['id', 'en'] as const).map((l) => (
+              <button
+                key={l}
+                type="button"
+                onClick={() => setLang(l)}
+                className={`flex-1 py-2.5 rounded-xl text-xs font-semibold border transition-all ${lang === l ? 'bg-[#8ab4f8] text-[#0a0a0f] border-[#8ab4f8]' : 'bg-white/[0.04] text-white/70 border-white/[0.08] hover:bg-white/[0.08]'}`}
+              >
+                {l === 'id' ? 'Indonesia' : 'English'}
+              </button>
+            ))}
+          </div>
         </div>
         <div className="flex items-start gap-2.5 bg-white/[0.03] rounded-xl p-3">
           <AlertCircle className="h-4 w-4 text-white/30 shrink-0 mt-0.5" />

@@ -3,7 +3,7 @@ import { Inter } from 'next/font/google';
 import { cookies } from 'next/headers';
 import '@livekit/components-styles';
 import './globals.css';
-import { LangProvider, LangToggle, type Lang } from '@/lib/i18n';
+import { LangProvider, type Lang } from '@/lib/i18n';
 const inter = Inter({
   subsets: ['latin'],
   variable: '--font-inter',
@@ -46,7 +46,6 @@ export default function RootLayout({
       <body className={`${inter.className} theme-comic`}>
         <LangProvider initial={initialLang}>
           {children}
-          <LangToggle />
         </LangProvider>
       </body>
     </html>
